@@ -11,7 +11,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   code
+   tools
+   primitives
     
 Indices and tables
 ==================
