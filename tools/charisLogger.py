@@ -1,5 +1,6 @@
 import logging
 import platform
+import psutil
 import sys
 import traceback
 
@@ -10,16 +11,54 @@ class CharisLogger(logging.getLoggerClass()):
     This is the advanced logging object used throughout the CHARIS
     Data Extraction Pipeline.  It inherits from the standard 
     Python library 'logging' and provides added features.
-    The default log level for the output file will be DEBUG, ie ALL messages;
+    The default log level for the output file will be 1, ie ALL messages;
     while the default for the screen will be INFO, and can be changed easily 
-    using the setLevel(lvl) member function.
+    using the setStreamLevel(lvl) member function.
     """       
     
-    def newFunc(self,var):
-        """Temp function to be placeholder for when an added function is 
-        needed.
+    def setStreamLevel(self,lvl):
+        """Set/change the level for the stream handler for a logging object.
+        The value of 1 will remain for the file handler to log ALL messages.
+        All messages of a higher severity level than 'lvl' will be printed 
+        to the screen.
+        
+        Current Levels:
+        ---------------
+        MAINCRITICAL = 80
+        MAINERROR = 75
+        MAINWARNING = 70
+        MAININFO = 65
+        MAINDEBUG = 60
+        PRIMCRITICAL = 55
+        CRITICAL = 50
+        PRIMERROR = 49
+        PRIMWARNING = 45
+        ERROR = 40
+        PRIMINFO = 39
+        PRIMDEBUG = 35
+        WARNING = 30
+        TOOLCRITICAL = 29
+        TOOLERROR = 25
+        INFO = 20
+        TOOLWARNING = 19
+        TOOLINFO = 15
+        DEBUG = 10
+        TOOLDEBUG = 9
+        SUMMARY = 5
+        NOTSET = 0
         """
-        print 'var:'+repr(var)  
+        verbose = False
+        if verbose:
+            print 'Changing logging level to '+repr(lvl)  
+        # Kill off the old handlers and reset them with the setHandlers func
+        while len(self.handlers) > 0:
+            h = self.handlers[0]
+            if verbose:
+                print('removing handler %s'%str(h))
+            self.removeHandler(h)
+            if verbose:
+                print('%d more to go'%len(self.handlers))
+        setHandlers(self,lvl)
         
     # Add the new log levels needed for the 3 tier hierarchy plus the summary
     # level to the logging object.
@@ -55,7 +94,7 @@ class CharisLogger(logging.getLoggerClass()):
     def primcritical(self,msg,lvl=PRIMCRITICAL, *args, **kws):
         self.log(lvl,msg, *args, **kws)
     logging.Logger.primcritical = primcritical
-    PRIMERROR = 50
+    PRIMERROR = 49
     logging.addLevelName(PRIMERROR, 'PRIMERROR')
     def primerror(self,msg,lvl=PRIMERROR, *args, **kws):
         self.log(lvl,msg, *args, **kws)
@@ -65,7 +104,7 @@ class CharisLogger(logging.getLoggerClass()):
     def primwarning(self,msg,lvl=PRIMWARNING, *args, **kws):
         self.log(lvl,msg, *args, **kws)
     logging.Logger.primwarning = primwarning
-    PRIMINFO = 40
+    PRIMINFO = 39
     logging.addLevelName(PRIMINFO, 'PRIMINFO')
     def priminfo(self,msg,lvl=PRIMINFO, *args, **kws):
         self.log(lvl,msg, *args, **kws)
@@ -76,7 +115,7 @@ class CharisLogger(logging.getLoggerClass()):
         self.log(lvl,msg, *args, **kws)
     logging.Logger.primdebug = primdebug
     # Levels for the 'tools' tier.
-    TOOLCRITICAL = 30
+    TOOLCRITICAL = 29
     logging.addLevelName(TOOLCRITICAL, 'TOOLCRITICAL')
     def toolcritical(self,msg,lvl=TOOLCRITICAL, *args, **kws):
         self.log(lvl,msg, *args, **kws)
@@ -86,7 +125,7 @@ class CharisLogger(logging.getLoggerClass()):
     def toolerror(self,msg,lvl=TOOLERROR, *args, **kws):
         self.log(lvl,msg, *args, **kws)
     logging.Logger.toolerror = toolerror
-    TOOLWARNING = 20
+    TOOLWARNING = 19
     logging.addLevelName(TOOLWARNING, 'TOOLWARNING')
     def toolwarning(self,msg,lvl=TOOLWARNING, *args, **kws):
         self.log(lvl,msg, *args, **kws)
@@ -96,7 +135,7 @@ class CharisLogger(logging.getLoggerClass()):
     def toolinfo(self,msg,lvl=TOOLINFO, *args, **kws):
         self.log(lvl,msg, *args, **kws)
     logging.Logger.toolinfo = toolinfo
-    TOOLDEBUG = 10
+    TOOLDEBUG = 9
     logging.addLevelName(TOOLDEBUG, 'TOOLDEBUG')
     def tooldebug(self,msg,lvl=TOOLDEBUG, *args, **kws):
         self.log(lvl,msg, *args, **kws)
@@ -108,7 +147,7 @@ class CharisLogger(logging.getLoggerClass()):
     def summary(self,msg,lvl=SUMMARY, *args, **kws):
         self.log(lvl,msg, *args, **kws)
     logging.Logger.summary = summary
-
+    
 def getLogger(name='generalLoggerName'):
     """This will either return the logging object already
     instantiated, or instantiate a new one and return it.
@@ -123,52 +162,103 @@ def getLogger(name='generalLoggerName'):
                                   already exist, then returned.
     """
     log = False
+    verbose = False
     try:
         log = log_dict[name]
-        #print repr(log_dict)
-        #print 'found a log by the name already exists so returning it'
+        if verbose:
+            print repr(log_dict)
+            print 'found a log by the name already exists so returning it'
     except:
+        if verbose:
+            print 'No logger object found so creating one with the name '+name
         log = setUpLogger(name)
     return log
     
-def setUpLogger(name='generalLoggerName'):
+def setUpLogger(name='generalLoggerName',lvl=20):
+    """ This function is utilized by getLogger to set up a new logging object.
+    It will have the default name 'generalLoggerName' and stream handler level
+    of 20 unless redefined in the function call.
+    
+    Args:
+        name (str): The name for the logging object and 
+                    name.log will be the output file written to disk.
+        lvl (int): The severity level of messages printed to the screen with 
+                    the stream handler, default = 20.
+    Returns:
+        log (CharisLogger object): A CharisLogger object that was freshly 
+                                   instantiated.
+    """
     logging.setLoggerClass(CharisLogger)
     log = logging.getLogger(name)
     log_dict[name]=log
-    #self.logger = logging.getLogger(name)
-    log.setLevel(1)
-    # make a file handler
-    fh = logging.FileHandler(name+'.log')
-    fh.setLevel(1)
-    frmtString = '%(asctime)s - %(levelname)s - %(message)s'
+    log.setLevel(lvl)
+    # call setHandlers to set up the file and steam handlers
+    setHandlers(log,lvl)
+    
+    return log
+
+def setHandlers(log,lvl=20):
+    """
+    Set up the file and stream handlers for the log, using the lowest level
+    for the file handler (1) and the value 'lvl' provided for the stream 
+    handler.
+    """
+    fhLevel = 1
+    verbose = False
+    if verbose:
+        print 'Setting FileHandler level to '+str(fhLevel)+', and '\
+        +'StreamHandler level to '+str(lvl)
+    fh = logging.FileHandler(log.name+'.log')
+    fh.setLevel(fhLevel)
+    frmtString = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     fFrmt = logging.Formatter(frmtString)
     fh.setFormatter(fFrmt)
     # add the Handler to the logger
     log.addHandler(fh)
     # make a stream handler
     sh = logging.StreamHandler(sys.stdout)
-    sh.setLevel(1)
+    sh.setLevel(lvl)
     sFrmt = logging.Formatter('%(message)s')
     sh.setFormatter(sFrmt)
     # add the Handler to the logger
     log.addHandler(sh)
-    # Call the system Info Message func to load up top of log with system Info.
-    systemInfoMessages(log)
-    
-    return log
 
 def systemInfoMessages(log):
     """ A function to be called just after a logging object is instantiated 
     for the DEP to load the log up with info about the computer it is 
-    being ran on and the software version.
+    being ran on and the software version.  This function utilizes the 
+    psutil and platform libraries, so they must be install for it to work.  
+    For clarity of the log, it is suggested to perform immediately after 
+    instantiation to put it at the top of the log file.
+    
+    The messages this prints to the log will look like:
+    
+    ---------- System Information Summary ----------
+    OS type = Linux
+    OS Version = 3.9.10-100.fc17.x86_64
+    Machine UserName = dhcp074.astron.s.u-tokyo.ac.jp
+    Machine Processor Type = x86_64
+    Number of cores = 8
+    Total RAM [GB] = 23.5403785706, % used = 15.9
+    Python Version = '2.7.3'
+    --------------------------------------------------
+    
+    Args:
+        log (Python logging object): logging object to have the system's 
+                                    info summarized in.
     """
-    log.info('-'*50)
+    #log.info('-'*50)
     log.info("-"*10+' System Information Summary '+'-'*10)
-    log.info('Machine Type = '+platform.machine())
-    log.info('Machine Version = '+platform.version())
-    log.info('Machine Platform = '+platform.platform())
+    #log.info('Machine Type = '+platform.machine())
+    #log.info('Machine Version = '+platform.version())
+    log.info('OS type = '+platform.uname()[0])
+    log.info('OS Version = '+platform.uname()[2])
     log.info('Machine UserName = '+platform.uname()[1])
-    log.info('Machine Processor = '+platform.processor())
+    log.info('Machine Processor Type = '+platform.processor())
+    log.info('Number of cores = '+str(psutil.NUM_CPUS))
+    totMem = psutil.virtual_memory()[0]/1073741824.0
+    percentMem = psutil.virtual_memory()[2]
+    log.info('Total RAM [GB] = '+str(totMem)+', % used = '+str(percentMem))
     log.info('Python Version = '+repr(platform.python_version()))
     log.info('-'*50)
     
