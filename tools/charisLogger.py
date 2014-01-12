@@ -208,6 +208,12 @@ def setStandardHandlers(log,lvl=20):
     Set up the file and stream handlers for the log, using the lowest level
     for the file handler (1) and the value 'lvl' provided for the stream 
     handler.
+    
+    Args:
+        log (CharisLogger object): A CharisLogger object that was freshly 
+                                   instantiated.
+        lvl (int): The severity level of messages printed to the screen with 
+                    the stream handler, default = 20.
     """
     fhLevel = 1
     verbose = False
@@ -225,6 +231,15 @@ def setStandardHandlers(log,lvl=20):
     addStreamHandler(log,lvl)
 
 def addStreamHandler(log,lvl=20):
+    """
+    This function will add a stream handler to a log with the provided level.
+    
+    Args:
+        log (CharisLogger object): A CharisLogger object that was freshly 
+                                   instantiated.
+        lvl (int): The severity level of messages printed to the screen with 
+                    the stream handler, default = 20.
+    """
     verbose = False
     if verbose:
         print 'Setting StreamHandler level to '+str(lvl)
@@ -238,7 +253,12 @@ def addStreamHandler(log,lvl=20):
     
 def addFitsStyleHandler(log):
     """
-    This function will add
+    This function will add a file handler with a string format ideal for 
+    directly loading into a FITS header.
+    
+    Args:
+        log (CharisLogger object): A CharisLogger object that was freshly 
+                                   instantiated.
     """
     fitsFhLevel = 1
     verbose = False
