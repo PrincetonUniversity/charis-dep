@@ -18,7 +18,7 @@ class CharisLogger(logging.getLoggerClass()):
     
     def setStreamLevel(self,lvl):
         """Set/change the level for the stream handler for a logging object.
-        The value of 1 will remain for the file handler to log ALL messages.
+        Any file handlers will be left alone.
         All messages of a higher severity level than 'lvl' will be printed 
         to the screen.
         
@@ -51,14 +51,20 @@ class CharisLogger(logging.getLoggerClass()):
         if verbose:
             print 'Changing logging level to '+repr(lvl)  
         # Kill off the old handlers and reset them with the setHandlers func
-        while len(self.handlers) > 0:
-            h = self.handlers[0]
-            if verbose:
-                print('removing handler %s'%str(h))
-            self.removeHandler(h)
+        for i in range(0,len(self.handlers)):
+            h = self.handlers[i]
+            if isinstance(h,logging.FileHandler):
+                if verbose:
+                    print 'filehandler type'
+            elif isinstance(h,logging.StreamHandler):
+                #print 'stream handler type'
+                if verbose:
+                    print('removing handler %s'%str(h))
+                self.removeHandler(h)
+                break
             if verbose:
                 print('%d more to go'%len(self.handlers))
-        setHandlers(self,lvl)
+        addStreamHandler(self,lvl)
         
     # Add the new log levels needed for the 3 tier hierarchy plus the summary
     # level to the logging object.
@@ -193,11 +199,11 @@ def setUpLogger(name='generalLoggerName',lvl=20):
     log_dict[name]=log
     log.setLevel(lvl)
     # call setHandlers to set up the file and steam handlers
-    setHandlers(log,lvl)
+    setStandardHandlers(log,lvl)
     
     return log
 
-def setHandlers(log,lvl=20):
+def setStandardHandlers(log,lvl=20):
     """
     Set up the file and stream handlers for the log, using the lowest level
     for the file handler (1) and the value 'lvl' provided for the stream 
@@ -216,12 +222,36 @@ def setHandlers(log,lvl=20):
     # add the Handler to the logger
     log.addHandler(fh)
     # make a stream handler
+    addStreamHandler(log,lvl)
+
+def addStreamHandler(log,lvl=20):
+    verbose = False
+    if verbose:
+        print 'Setting StreamHandler level to '+str(lvl)
+    # make a stream handler
     sh = logging.StreamHandler(sys.stdout)
     sh.setLevel(lvl)
     sFrmt = logging.Formatter('%(message)s')
     sh.setFormatter(sFrmt)
     # add the Handler to the logger
     log.addHandler(sh)
+    
+def addFitsStyleHandler(log):
+    """
+    This function will add
+    """
+    fitsFhLevel = 1
+    verbose = False
+    if verbose:
+        print 'Setting FITS FileHandler level to '+str(fhLevel)
+    fh2 = logging.FileHandler(log.name+'.fitsFormat.log')
+    fh2.setLevel(fitsFhLevel)
+    frmtString2 = '%(asctime)s - %(message)s'
+    fFrmt2 = logging.Formatter(frmtString2)
+    fh2.setFormatter(fFrmt2)
+    # add the Handler to the logger
+    log.addHandler(fh2)
+    
 
 def systemInfoMessages(log):
     """ A function to be called just after a logging object is instantiated 

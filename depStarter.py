@@ -11,24 +11,24 @@ def main():
     Start a 'main' level logging object and load it up with the user's 
     system information for future reference.
     """
-    log = tools.setUpLogger('testLog')
-    tools.systemInfoMessages(log)
-    log.info('infoTest')    
-    log.maincritical('maincritTest')
-    log.maindebug('maindebugTest')
-    log.primcritical('primcriticalTest')
-    log.priminfo('priminfoTest')
-    log.toolerror('toolerrorTest',exc_info=True)
-    log.summary('summaryTest')
-    log.toolerror('toolerrorTest',exc_info=True)
-    
-    log.setLevel(100)
-    log.info('infoTest_afterLvlSetTo_100')   
-    
-    primitives.testCalPrim()
-    
-    log3 = tools.getLogger('testLog.summary')
-    log3.summary('summaryTestMsg')
+#     log = tools.setUpLogger('testLog')
+#     tools.systemInfoMessages(log)
+#     log.info('infoTest')    
+#     log.maincritical('maincritTest')
+#     log.maindebug('maindebugTest')
+#     log.primcritical('primcriticalTest')
+#     log.priminfo('priminfoTest')
+#     log.toolerror('toolerrorTest',exc_info=True)
+#     log.summary('summaryTest')
+#     log.toolerror('toolerrorTest',exc_info=True)
+#     
+#     log.setLevel(100)
+#     log.info('infoTest_afterLvlSetTo_100')   
+#     
+#     primitives.testCalPrim()
+#     
+#     log3 = tools.getLogger('testLog.summary')
+#     log3.summary('summaryTestMsg')
     
     
     log1 = tools.getLogger('main')
@@ -43,6 +43,13 @@ def main():
     log22 = tools.getLogger('main.tools')
     log22.setStreamLevel(80)
     log22.info('TestInfoMsg')
+    
+    log23 = tools.getLogger('main.summary')
+    log23.setStreamLevel(80)
+    tools.addFitsStyleHandler(log23)
+    log23.info('TestInfoMsg')
+    
+    
     
     
     
