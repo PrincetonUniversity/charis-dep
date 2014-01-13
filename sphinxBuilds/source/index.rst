@@ -21,3 +21,6 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+.. |br| raw:: html
+
+   <br />

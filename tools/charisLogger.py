@@ -16,36 +16,54 @@ class CharisLogger(logging.getLoggerClass()):
     using the setStreamLevel(lvl) member function.
     """       
     
-    def setStreamLevel(self,lvl):
+    def setStreamLevel(self,lvl=20):
         """Set/change the level for the stream handler for a logging object.
         Any file handlers will be left alone.
         All messages of a higher severity level than 'lvl' will be printed 
         to the screen.
         
-        Current Levels:
-        ---------------
-        MAINCRITICAL = 80
-        MAINERROR = 75
-        MAINWARNING = 70
-        MAININFO = 65
-        MAINDEBUG = 60
-        PRIMCRITICAL = 55
-        CRITICAL = 50
-        PRIMERROR = 49
-        PRIMWARNING = 45
-        ERROR = 40
-        PRIMINFO = 39
-        PRIMDEBUG = 35
-        WARNING = 30
-        TOOLCRITICAL = 29
-        TOOLERROR = 25
-        INFO = 20
-        TOOLWARNING = 19
-        TOOLINFO = 15
-        DEBUG = 10
-        TOOLDEBUG = 9
-        SUMMARY = 5
-        NOTSET = 0
+        Args:    
+            lvl (int): The severity level of messages printed to the screen with 
+                    the stream handler, default = 20.
+        
+        +---------------------+----------------------+
+        |    Standard Levels  |        New Levels    |
+        +---------------+-----+----------------+-----+
+        |    Name       |Level|  Name          |Level|
+        +===============+=====+================+=====+
+        |CRITICAL       |  50 | MAINCRITICAL   | 80  | 
+        +---------------+-----+----------------+-----+
+        |ERROR          |  40 | MAINERROR      | 75  |
+        +---------------+-----+----------------+-----+
+        |WARNING        |  30 | MAINWARNING    | 70  |
+        +---------------+-----+----------------+-----+
+        |INFO           |  20 | MAININFO       | 65  |
+        +---------------+-----+----------------+-----+
+        |DEBUG          |  10 | MAINDEBUG      | 60  |
+        +---------------+-----+----------------+-----+
+        |NOTSET         |  0  | PRIMCRITICAL   | 55  |
+        +---------------+-----+----------------+-----+
+        |               |     | PRIMERROR      | 49  |
+        +               +     +----------------+-----+
+        |               |     | PRIMWARNING    | 45  |
+        +               +     +----------------+-----+
+        |               |     | PRIMINFO       | 39  |
+        +               +     +----------------+-----+
+        |               |     | PRIMDEBUG      | 35  |
+        +               +     +----------------+-----+
+        |               |     | TOOLCRITICAL   | 29  |
+        +               +     +----------------+-----+
+        |               |     | TOOLERROR      | 25  |
+        +               +     +----------------+-----+
+        |               |     | TOOLWARNING    | 19  |
+        +               +     +----------------+-----+
+        |               |     | TOOLINFO       | 15  |
+        +               +     +----------------+-----+         
+        |               |     | TOOLDEBUG      | 9   |
+        +               +     +----------------+-----+
+        |               |     | SUMMARY        | 5   |
+        +---------------+-----+----------------+-----+
+        
         """
         verbose = False
         if verbose:
@@ -281,21 +299,21 @@ def systemInfoMessages(log):
     For clarity of the log, it is suggested to perform immediately after 
     instantiation to put it at the top of the log file.
     
-    The messages this prints to the log will look like:
-    
-    ---------- System Information Summary ----------
-    OS type = Linux
-    OS Version = 3.9.10-100.fc17.x86_64
-    Machine UserName = dhcp074.astron.s.u-tokyo.ac.jp
-    Machine Processor Type = x86_64
-    Number of cores = 8
-    Total RAM [GB] = 23.5403785706, % used = 15.9
-    Python Version = '2.7.3'
-    --------------------------------------------------
-    
     Args:
         log (Python logging object): logging object to have the system's 
                                     info summarized in.
+                                    
+    The messages this prints to the log will look like:
+    
+    | System Information Summary:
+    | OS type = Linux
+    | OS Version = 3.9.10-100.fc17.x86_64
+    | Machine UserName = xxxxxx.astron.s.u-tokyo.ac.jp
+    | Machine Processor Type = x86_64
+    | Number of cores = 8
+    | Total RAM [GB] = 23.5403785706, % used = 15.9
+    | Python Version = '2.7.3'
+
     """
     #log.info('-'*50)
     log.info("-"*10+' System Information Summary '+'-'*10)
