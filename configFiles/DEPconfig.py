@@ -13,19 +13,34 @@ Args:
                         subfolder created in this for a run will be based on
                         the input data file's name and the date.
                         
-    inDataFile (str): Name of the input file name to reduce.  The selection of
-                      this/these files will be updated in the future, but for 
-                      current testing providing the single file string will 
-                      suffice.
+    inDataFilesRaw (list of strs): List of the name(s) of the input file name(s)
+                                to reduce.  The selection of this/these file(s)
+                                 will be updated in the future, but for current
+                                testing providing the single file string will 
+                                suffice.
     
     
 """
 
+import pyfits as pf
+import numpy as np
+import os
+import glob
+
 inDataDir = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testData"
 outDirRoot = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testOutputs/"
-inDataFile = 'N20050227S0127.fits'
-inBPMfile = 'combinedBPM.fits'
-inFlatfile = 'NIRI_norm_flat.fits'
+inDataFilesRaw = ['N20050227S0127.fits']
+# Next line just converts the raw names to full path versions
+inDataFiles = []
+for file in inDataFilesRaw:
+    inDataFiles.append(os.path.join(inDataDir,file))
+ndrRoot = '*C1*.fits'
+# get data list for NDRs and sort it
+inputNDRs = np.sort(glob.glob(inDataDir +"/individual_reads/"+ndrRoot))
+bpmRoot = 'combinedBPM.fits'
+inBPMfile = os.path.join(inDataDir,bpmRoot)
+flatRoot = 'NIRI_norm_flat.fits'
+inFlatfile = os.path.join(inDataDir,flatRoot)
 
 
 

@@ -186,7 +186,7 @@ def getLogger(name='generalLoggerName'):
                                   already exist, then returned.
     """
     log = False
-    verbose = False
+    verbose = True
     try:
         log = log_dict[name]
         if verbose:
@@ -198,7 +198,7 @@ def getLogger(name='generalLoggerName'):
         log = setUpLogger(name)
     return log
     
-def setUpLogger(name='generalLoggerName',lvl=20):
+def setUpLogger(name='generalLoggerName',lvl=20,addFH=True,addSH=True):
     """ This function is utilized by getLogger to set up a new logging object.
     It will have the default name 'generalLoggerName' and stream handler level
     of 20 unless redefined in the function call.
@@ -216,37 +216,33 @@ def setUpLogger(name='generalLoggerName',lvl=20):
     log = logging.getLogger(name)
     log_dict[name]=log
     log.setLevel(lvl)
-    # call setHandlers to set up the file and steam handlers
-    setStandardHandlers(log,lvl)
-    
-    return log
+    # add the requested handlers to the log
+    if addFH:
+        addFileHandler(log,lvl=1)
+    # make a stream handler
+    if addSH:
+        addStreamHandler(log,lvl)
+    return log    
 
-def setStandardHandlers(log,lvl=20):
+def addFileHandler(log, lvl=1):
     """
-    Set up the file and stream handlers for the log, using the lowest level
-    for the file handler (1) and the value 'lvl' provided for the stream 
-    handler.
+    This function will add a file handler to a log with the provided level.
     
     Args:
         log (CharisLogger object): A CharisLogger object that was freshly 
                                    instantiated.
-        lvl (int): The severity level of messages printed to the screen with 
-                    the stream handler, default = 20.
+        lvl (int): The severity level of messages printed to the file with 
+                    the file handler, default = 1.
     """
-    fhLevel = 1
     verbose = False
     if verbose:
-        print 'Setting FileHandler level to '+str(fhLevel)+', and '\
-        +'StreamHandler level to '+str(lvl)
+        print 'Setting FileHandler level to '+str(lvl)
     fh = logging.FileHandler(log.name+'.log')
-    fh.setLevel(fhLevel)
+    fh.setLevel(lvl)
     frmtString = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     fFrmt = logging.Formatter(frmtString)
     fh.setFormatter(fFrmt)
-    # add the Handler to the logger
     log.addHandler(fh)
-    # make a stream handler
-    addStreamHandler(log,lvl)
 
 def addStreamHandler(log,lvl=20):
     """
@@ -261,12 +257,10 @@ def addStreamHandler(log,lvl=20):
     verbose = False
     if verbose:
         print 'Setting StreamHandler level to '+str(lvl)
-    # make a stream handler
     sh = logging.StreamHandler(sys.stdout)
     sh.setLevel(lvl)
     sFrmt = logging.Formatter('%(message)s')
     sh.setFormatter(sFrmt)
-    # add the Handler to the logger
     log.addHandler(sh)
     
 def addFitsStyleHandler(log):
@@ -316,7 +310,7 @@ def logSystemInfo(log):
 
     """
     #log.info('-'*50)
-    log.info("-"*10+' System Information Summary '+'-'*10)
+    log.info("-"*11+' System Information Summary '+'-'*11)
     #log.info('Machine Type = '+platform.machine())
     #log.info('Machine Version = '+platform.version())
     log.info('OS type = '+platform.uname()[0])
@@ -333,7 +327,7 @@ def logSystemInfo(log):
 def logFileProcessInfo(log):
     """
     """
-    log.info("="*7+' File and Process Summary '+'='*7)
+    log.info("="*12+' File and Process Summary '+'='*12)
     log.info("NOTHING HAPPENING IN THIS FUNCTION YET!!!!!!")
     log.info('='*50)
     
