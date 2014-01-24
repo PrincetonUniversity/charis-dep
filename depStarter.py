@@ -2,15 +2,16 @@
 
 import tools
 import primitives
+import configFiles
+
 
 def main():
     """
+    This Function takes the place as the 'main' to start and run all the 
+    requested reduction steps on the input data using the information set 
+    in the configuration files.
     """
-
-    """
-    Start a 'main' level logging object and load it up with the user's 
-    system information for future reference.
-    """
+    
 #     log = tools.setUpLogger('testLog')
 #     tools.systemInfoMessages(log)
 #     log.info('infoTest')    
@@ -31,24 +32,33 @@ def main():
 #     log3.summary('summaryTestMsg')
     
     
-    log1 = tools.getLogger('main')
-    tools.systemInfoMessages(log1)
-    log1.setStreamLevel(10)
-    log1.info('TestInfoMsg')
+    log = tools.getLogger('main')
+    tools.logSystemInfo(log)
+    tools.logFileProcessInfo(log)
     
-    log2 = tools.getLogger('main.prims')
-    log2.setStreamLevel(50)
-    log2.info('TestInfoMsg')
+    inputNDRs = []#!!!!!!!!!!!?????!!
+    for inputNDR in inputNDRS:
+        outData = maskHotPixels(inputNDR,BPM)
+        # load nparray back into original pf object?
+        
     
-    log22 = tools.getLogger('main.tools')
-    log22.setStreamLevel(80)
-    log22.info('TestInfoMsg')
-    
-    log23 = tools.getLogger('main.summary')
-    log23.setStreamLevel(80)
-    tools.addFitsStyleHandler(log23)
-    log23.info('TestInfoMsg')
-    
+#     tools.systemInfoMessages(log1)
+#     log1.setStreamLevel(10)
+#     log1.info('TestInfoMsg')
+#     
+#     log2 = tools.getLogger('main.prims')
+#     log2.setStreamLevel(50)
+#     log2.info('TestInfoMsg')
+#     
+#     log22 = tools.getLogger('main.tools')
+#     log22.setStreamLevel(80)
+#     log22.info('TestInfoMsg')
+#     
+#     log23 = tools.getLogger('main.summary')
+#     log23.setStreamLevel(80)
+#     tools.addFitsStyleHandler(log23)
+#     log23.info('TestInfoMsg')
+#     
     
     
     

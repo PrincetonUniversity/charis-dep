@@ -291,7 +291,7 @@ def addFitsStyleHandler(log):
     log.addHandler(fh2)
     
 
-def systemInfoMessages(log):
+def logSystemInfo(log):
     """ A function to be called just after a logging object is instantiated 
     for the DEP to load the log up with info about the computer it is 
     being ran on and the software version.  This function utilizes the 
@@ -329,6 +329,14 @@ def systemInfoMessages(log):
     log.info('Total RAM [GB] = '+str(totMem)+', % used = '+str(percentMem))
     log.info('Python Version = '+repr(platform.python_version()))
     log.info('-'*50)
+    
+def logFileProcessInfo(log):
+    """
+    """
+    log.info("="*7+' File and Process Summary '+'='*7)
+    log.info("NOTHING HAPPENING IN THIS FUNCTION YET!!!!!!")
+    log.info('='*50)
+    
     
 #     def __tracebacker(self):
 #         """
