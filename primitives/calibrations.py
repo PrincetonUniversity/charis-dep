@@ -3,9 +3,7 @@ import os
 import pyfits as pf
 import numpy as np
 
-log = tools.setUpLogger('main.prims',addFH=False,addSH=False)
-tools.addFileHandler(log, lvl=100)
-tools.addStreamHandler(log, lvl=100)
+log = tools.getLogger('main.prims',lvl=100,addFH=False)
 
 def testCalPrim():
     """

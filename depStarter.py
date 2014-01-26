@@ -37,15 +37,18 @@ def main():
     # move to output directory, but copy current one to move back into after finished.
     pwd = os.curdir
     os.chdir(configs.DEPconfig.outDirRoot)
-        
+    
+    #########################################################################
+    # Set up the main and summary loggers, including system and process info.
+    #########################################################################
     log = tools.getLogger('main')
     tools.logSystemInfo(log)
     tools.logFileProcessInfo(log)
+    summaryLog = tools.setUpLogger('main.summary',addFH=False,addSH=False)
+    tools.addFitsStyleHandler(summaryLog)
     
     # test the BPM primitive
     bpmData = tools.loadDataAry(configs.DEPconfig.inBPMfile)
-    summaryLog = tools.setUpLogger('main.summary',addFH=False,addSH=False)
-    tools.addFitsStyleHandler(summaryLog)
     summaryLog.info('Masking hot pixels with file: '+os.path.basename(configs.DEPconfig.inBPMfile))
     bpmCorrDatas = []
     outHDUs = []

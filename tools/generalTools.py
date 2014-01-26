@@ -4,9 +4,7 @@ import pyfits as pf
 import copy
 import os
 
-log = tools.setUpLogger('main.tools',addFH=False,addSH=False)
-tools.addFileHandler(log, lvl=100)
-tools.addStreamHandler(log, lvl=100)
+log = tools.getLogger('main.tools',lvl=100,addFH=False)
     
 def testToolFunc():
     """

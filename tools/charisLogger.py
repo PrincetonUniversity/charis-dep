@@ -172,14 +172,23 @@ class CharisLogger(logging.getLoggerClass()):
         self.log(lvl,msg, *args, **kws)
     logging.Logger.summary = summary
     
-def getLogger(name='generalLoggerName'):
+def getLogger(name='generalLoggerName',lvl=20,addFH=True,addSH=True):
     """This will either return the logging object already
-    instantiated, or instantiate a new one and return it.
+    instantiated, or instantiate a new one and return it.  
+    **Use this function to both create and return any logger** to avoid 
+    accidentally adding additional handlers by using the setUpLogger function 
+    instead.
     
     Args:
         name (str): The name for the logging object and 
                     name.log will be the output file written to disk.
-                    
+        lvl (int): The severity level of messages printed to the screen with 
+                    the stream handler, default = 20.
+        addFH (boolean): Add a file handler to this logger?  Default severity 
+                         level for it will be 1, and it will be named following
+                         name+'.log'.  Default = True.
+        addSH (boolean): Add a stream handler to this logger? Severity set with 
+                        the lvl argument.  Default = True.        
     Returns:
         log (CharisLogger object): A CharisLogger object that was either 
                                   freshly instantiated or determined to 
@@ -195,19 +204,29 @@ def getLogger(name='generalLoggerName'):
     except:
         if verbose:
             print 'No logger object found so creating one with the name '+name
-        log = setUpLogger(name)
+        log = setUpLogger(name,lvl,addFH,addSH)
     return log
     
 def setUpLogger(name='generalLoggerName',lvl=20,addFH=True,addSH=True):
     """ This function is utilized by getLogger to set up a new logging object.
     It will have the default name 'generalLoggerName' and stream handler level
-    of 20 unless redefined in the function call.
+    of 20 unless redefined in the function call.  
+    NOTE:
+    If a file handler is added, it will have the lowest severity level by 
+    default (Currently no need for changing this setting, so it will stay 
+    this way for now).  Remember that any messages will be passed up to any 
+    parent loggers, so children do not always need their own file handler.
     
     Args:
         name (str): The name for the logging object and 
                     name.log will be the output file written to disk.
         lvl (int): The severity level of messages printed to the screen with 
                     the stream handler, default = 20.
+        addFH (boolean): Add a file handler to this logger?  Default severity 
+                         level for it will be 1, and it will be named following
+                         name+'.log'.  Default = True.
+        addSH (boolean): Add a stream handler to this logger? Severity set with 
+                        the lvl argument.  Default = True.
     Returns:
         log (CharisLogger object): A CharisLogger object that was freshly 
                                    instantiated.
@@ -215,7 +234,7 @@ def setUpLogger(name='generalLoggerName',lvl=20,addFH=True,addSH=True):
     logging.setLoggerClass(CharisLogger)
     log = logging.getLogger(name)
     log_dict[name]=log
-    log.setLevel(lvl)
+    log.setLevel(1)
     # add the requested handlers to the log
     if addFH:
         addFileHandler(log,lvl=1)
@@ -259,7 +278,7 @@ def addStreamHandler(log,lvl=20):
         print 'Setting StreamHandler level to '+str(lvl)
     sh = logging.StreamHandler(sys.stdout)
     sh.setLevel(lvl)
-    sFrmt = logging.Formatter('%(message)s')
+    sFrmt = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     sh.setFormatter(sFrmt)
     log.addHandler(sh)
     
@@ -309,7 +328,6 @@ def logSystemInfo(log):
     | Python Version = '2.7.3'
 
     """
-    #log.info('-'*50)
     log.info("-"*11+' System Information Summary '+'-'*11)
     #log.info('Machine Type = '+platform.machine())
     #log.info('Machine Version = '+platform.version())
