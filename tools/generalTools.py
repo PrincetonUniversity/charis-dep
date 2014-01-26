@@ -10,37 +10,27 @@ def testToolFunc():
     """
     Just a test tool func.  Will be deleted once more real tools are written.
     """
-    #log = tools.setUpLogger('main.tools')
-    #log.setStreamLevel(100)
+    #log = tools.getLogger('main.tools',lvl=100,addFH=False)
     print 'Inside testToolFunc'
     log.info('InfoMsgInsideTools')
     
 def loadDataAry(input):
     """
     """
-    #log = tools.setUpLogger('main.tools')
-    #log.setStreamLevel(100)
-    #print 'in loadDataAry'
+    #log = tools.getLogger('main.tools',lvl=100,addFH=False)
     log.debug("Trying to load input of type: "+repr(type(input)))
-    #print 'Trying to load: '+repr(input)+", of type: "+repr(type(input)) #$$$$$
     if isinstance(input, np.ndarray):
         log.debug("Input was of type np.ndarray.")
-        #print "Input inSciNDR was of type np.ndarray." #$$$$
         outData = input
     elif isinstance(input, pf.hdu.hdulist.HDUList) or isinstance(input,str):
         if isinstance(input,str):
             log.debug('input was a string, so checking it exists and loading it.')
-            #print 'input was a string, so checking it exists and loading it.'#$$$
             if os.path.exists(input):
                 inHDU = pf.open(input,'readonly')
-                #print 'Input loaded to an HDU list'#$$$$
             else:
                 log.critical("The provided file name, "+input+", does not exist!!")   
-                #print "The provided file name, "+input+", does not exist!!"#$$$$ 
         elif isinstance(input, pf.hdu.hdulist.HDUList):
             log.debug("Input input was of type pf.hdu.hdulist.HDUlist")
-            #print "Input input was of type pf.hdu.hdulist.HDUlist"#$$$
-            #print "len of outHDU = "+repr(len(inHDU))#$$$$
             inHDU = input
         if len(inHDU)<=2:
             outData =  inHDU[-1].data.copy()        
@@ -50,7 +40,6 @@ def loadDataAry(input):
     else:
         log.critical("The type for input, "+repr(type(input))+", is not supported by this primitive!")
     log.info("data from input file correctly loaded and being returned as an ndarray")
-    log.debug("testprint")#$$$$
     return outData
 
 def loadHDU(input):
@@ -64,8 +53,7 @@ def loadHDU(input):
                                                     it and close the original 
                                                     file if input is a string.
     """
-    #log = tools.setUpLogger('main.tools')
-    #log.setStreamLevel(100)
+    #log = tools.getLogger('main.tools',lvl=100,addFH=False)
     if isinstance(input, pf.hdu.hdulist.HDUList) or isinstance(input,str):
         if isinstance(input,str):
             log.debug('input was a string, so checking it exists and loading it.')
@@ -102,8 +90,7 @@ def updateOutputFitsHeader(hdu, logFileName='main.summary'):
         logFileName (str): Complete path file name of the summary file to copy
                             its lines into the provided HDU's PHU.        
     """
-    #log = tools.setUpLogger('main.tools')
-    #log.setStreamLevel(100)
+    #log = tools.getLogger('main.tools',lvl=100,addFH=False)
     log.info("Loading up HDUlist with lines from log file: "+logFileName)
     if os.path.exists(logFileName):
         lf = open(logFileName,"r")

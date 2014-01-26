@@ -9,8 +9,7 @@ def testCalPrim():
     """
     Just a test prim during very early development.
     """
-    #log = tools.setUpLogger('main.prims')
-    #log.setStreamLevel(100)
+    #log = tools.getLogger('main.prims',lvl=100,addFH=False)
     print("this is an empty test calibration primitive")
     log.info('testInfoMsgInsidePrim')
     
@@ -20,8 +19,7 @@ def maskHotPixels(inSciNDR, BPM):
     """
     This primitive will mask the 
     """
-    #log = tools.setUpLogger('main.prims')
-    #log.setStreamLevel(100)
+    #log = tools.getLogger('main.prims',lvl=100,addFH=False)
     print("this primitive will mask the BPM/hot pixels; still in test mode!!")
     log.info("Performing BPM masking on input with input BPM ")
     ## Make the type that is passed into the primitives standardized!!!!
@@ -36,6 +34,5 @@ def maskHotPixels(inSciNDR, BPM):
     except:
         log.error("Something when wrong while performing maskHotPixels")
         
-    log.debug("testprint")#$$$$
     return outData
     
