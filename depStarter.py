@@ -44,7 +44,7 @@ def main():
     log = tools.getLogger('main')
     tools.logSystemInfo(log)
     tools.logFileProcessInfo(log)
-    summaryLog = tools.setUpLogger('main.summary',addFH=False,addSH=False)
+    summaryLog = tools.getLogger('main.summary',addFH=False,addSH=False)
     tools.addFitsStyleHandler(summaryLog)
     
     # test the BPM primitive
