@@ -41,36 +41,49 @@ def main():
     #########################################################################
     # Set up the main and summary loggers, including system and process info.
     #########################################################################
-    log = tools.getLogger('main')
+    log = tools.getLogger("main")
     tools.logSystemInfo(log)
     tools.logFileProcessInfo(log)
-    summaryLog = tools.getLogger('main.summary',addFH=False,addSH=False)
+    summaryLog = tools.getLogger("main.summary",addFH=False,addSH=False)
     tools.addFitsStyleHandler(summaryLog)
     
-    # test the BPM primitive
-    bpmData = tools.loadDataAry(configs.DEPconfig.inBPMfile)
-    summaryLog.info('Masking hot pixels with file: '+os.path.basename(configs.DEPconfig.inBPMfile))
-    bpmCorrDatas = []
-    outHDUs = []
-    i = 0
-    inDataFiles = configs.DEPconfig.inDataFiles#configs.DEPconfig.inputNDRs
-    print "in depStarter there are "+str(len(inDataFiles))+" datafiles"#$$$$$$$$$$
-    for inputNDR in inDataFiles:
-        log.debug('Currently applying BPM to file '+str(i+1)+'/'+str(len(inDataFiles)))
-        outData = prims.maskHotPixels(inputNDR,bpmData)
-        bpmCorrDatas.append(outData)
-        outHDU = tools.loadHDU(inputNDR)
-        outHDU[-1].data = outData
-        outHDUs.append(outHDU)
-        # load nparray back into original pf object?
-    log.debug("Finished BPM corrections and total outputs were = "+str(len(bpmCorrDatas)))
-    log.info('Finished BPM correction(s)')
+    if configs.DEPconfig.applyBPM:
+        bpmData = tools.loadDataAry(configs.DEPconfig.inBPMfile)
+        summaryLog.info("Masking hot pixels with file: "+os.path.basename(configs.DEPconfig.inBPMfile))
+        bpmCorrDatas = []
+        outHDUs = []
+        i = 0
+        inDataFiles = configs.DEPconfig.inputNDRs#configs.DEPconfig.inDataFiles
+        print "in depStarter there are "+str(len(inDataFiles))+" datafiles"#$$$$$$$$$$
+        for inputNDR in inDataFiles:
+            log.debug("Currently applying BPM to file "+str(i+1)+"/"+str(len(inDataFiles)))
+            outData = prims.maskHotPixels(inputNDR,bpmData)
+            bpmCorrDatas.append(outData)
+            outHDU = tools.loadHDU(inputNDR)
+            outHDU[-1].data = outData
+            outHDUs.append(outHDU)
+            # load nparray back into original pf object?
+        log.debug("Finished BPM corrections and total outputs were = "+str(len(bpmCorrDatas)))
+        log.info("Finished BPM correction(s)")
+        
+    if configs.DEPconfig.fitNDRs:
+        inputs = []
+        if configs.DEPconfig.applyBPM:
+            log.debug("BPMs were applied, so stacking the corrected HDUs.")
+            inputs = outHDUs
+        else:
+            log.debug("BPMs were not applied, so stacking the raw NDRs.")
+            inputs = configs.DEPconfig.inputNDRs
+        log.info("about to try and fit the slope of the "+str(len(inputs))+" NDRs provided.")
+        output = prims.fitNDRs(inputs)
+        log.info("Finished fitting the slope of the NDRs.")
+        outHDUs = [output]
     
-    log.info("writing latest "+str(len(outHDUs))+" data to output files")
+    log.info("Writing latest "+str(len(outHDUs))+" data to output files")
     for outHDU in outHDUs:
-        tools.updateOutputFitsHeader(outHDU, 'main.summary.fitsFormat.log')
+        tools.updateOutputFitsHeader(outHDU, "main.summary.fitsFormat.log")
         split = os.path.splitext(os.path.basename(outHDU.filename()))
-        outFileNameRoot = split[0]+'_OUT'+split[1]
+        outFileNameRoot = split[0]+"_OUT"+split[1]
         outFileName = os.path.join(configs.DEPconfig.outDirRoot,outFileNameRoot)
         outHDU.writeto(outFileName)
         outHDU.close()

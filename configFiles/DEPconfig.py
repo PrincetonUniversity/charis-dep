@@ -34,13 +34,21 @@ inDataFilesRaw = ['N20050227S0127.fits']
 inDataFiles = []
 for file in inDataFilesRaw:
     inDataFiles.append(os.path.join(inDataDir,file))
-ndrRoot = '*C1*.fits'
+ndrRoot = '*R1*.fits'
 # get data list for NDRs and sort it
 inputNDRs = np.sort(glob.glob(inDataDir +"/individual_reads/"+ndrRoot))
-bpmRoot = 'combinedBPM.fits'
-inBPMfile = os.path.join(inDataDir,bpmRoot)
+if False:
+    bpmRoot = 'combinedBPM.fits'
+    inBPMfile = os.path.join(inDataDir,bpmRoot)
+if True:
+    bpmRoot = 'ndrsFakeBPM.fits'
+    inBPMfile = os.path.join(inDataDir +"/individual_reads/",bpmRoot)
 flatRoot = 'NIRI_norm_flat.fits'
 inFlatfile = os.path.join(inDataDir,flatRoot)
+
+# List of Primitives to run
+applyBPM = True
+fitNDRs = True
 
 
 

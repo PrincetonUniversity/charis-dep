@@ -195,7 +195,7 @@ def getLogger(name='generalLoggerName',lvl=20,addFH=True,addSH=True):
                                   already exist, then returned.
     """
     log = False
-    verbose = True
+    verbose = False
     try:
         log = log_dict[name]
         if verbose:

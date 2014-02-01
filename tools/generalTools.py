@@ -92,11 +92,12 @@ def updateOutputFitsHeader(hdu, logFileName='main.summary'):
     """
     #log = tools.getLogger('main.tools',lvl=100,addFH=False)
     log.info("Loading up HDUlist with lines from log file: "+logFileName)
+    #log.setStreamLevel(lvl=0)
     if os.path.exists(logFileName):
         lf = open(logFileName,"r")
         lines = lf.readlines()
         log.info(str(len(lines))+" lines are being converted to 70 characters per line and written to the PHU")
-        print '$$$$'+str(len(lines))+" lines are being converted to 70 characters per line and written to the PHU"
+        #print '$$$$ '+str(len(lines))+" line(s) are being converted to 70 characters per line and written to the PHU"
         lineNum = 1
         for line in lines:
             log.debug("Converting and loading line # "+str(lineNum)+" to the PHU")
@@ -107,10 +108,12 @@ def updateOutputFitsHeader(hdu, logFileName='main.summary'):
             while i<=(len(line)//70):
                 if i<(len(line)//70):
                     hdu[0].header.add_history(line[last:last+70])
+                    #print line[last:last+70]#$$$$$$$$$$$$$$$$$$$$
                     last+=70
                     i+=1
                 else:
-                    hdu[0].header.add_history(line[last:-1])
+                    hdu[0].header.add_history(line[last:])
+                    #print line[last:] #$$$$$$$$$$$$$$$$$$$
                     i+=1
     else:
         log.critical("Log file provided does not exists! So, can't update header!")

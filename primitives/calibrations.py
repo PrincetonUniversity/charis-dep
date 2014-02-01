@@ -18,10 +18,9 @@ def testCalPrim():
     
 def maskHotPixels(inSciNDR, BPM):
     """
-    This primitive will mask the 
+    This primitive will mask the bad pixels in each provided science frame.
     """
     #log = tools.getLogger('main.prims',lvl=100,addFH=False)
-    print("this primitive will mask the BPM/hot pixels; still in test mode!!")
     log.info("Performing BPM masking on input with input BPM ")
     ## Make the type that is passed into the primitives standardized!!!!
     ## Load the provided sci data into a ndarray.
@@ -70,41 +69,47 @@ def fitNDRs(ndrs):
     summaryLog = tools.getLogger('main.summary')
     ndrsLoaded = []
     exptimeFirst = 0
-    objectFirst = ''
+    #objectFirst = ''
     for ndr in ndrs:
-        ndrOut = loadHDU(ndr)
-        exptime = ndrOut[0].header['EXPTIME']
-        object = ndrOut[0].header['OBJECT']
-        if exptimeFirst==0:
-            exptimeFirst=exptime
-            ndrsLoaded.append(ndrOut)
-            objectFirst = object
-        else:
-            if exptime!=exptimeFirst:
-                log.error("The first frame's EXPTIME was "+str(exptimeFirst)+
-                          ", while this frame's is "+str(exptime))
-                log.error("Mismatching EXPTIME frames cannot have their slope fit!")
-                break
-            elif objectFirst!=object:
-                log.error("The first frame's OBJECT was "+objectFirst+
-                          ", while this frame's is "+object)
-                log.error("Mismatching OBJECT frames cannot have their slope fit!")
-                break
-            else:
+        try:
+            ndrOut = tools.loadHDU(ndr)
+            exptime = ndrOut[0].header['P_TFRAME']
+            #object = ndrOut[0].header['OBJECT']
+            if exptimeFirst==0:
+                exptimeFirst=exptime
                 ndrsLoaded.append(ndrOut)
+                objectFirst = object
+            else:
+                if exptime!=exptimeFirst:
+                    log.error("The first frame's P_TFRAME was "+str(exptimeFirst)+
+                              ", while this frame's is "+str(exptime))
+                    log.error("Mismatching P_TFRAME frames cannot have their slope fit!")
+                    break
+#                 elif objectFirst!=object:
+#                     log.error("The first frame's OBJECT was "+objectFirst+
+#                               ", while this frame's is "+object)
+#                     log.error("Mismatching OBJECT frames cannot have their slope fit!")
+#                     break
+                else:
+                    ndrsLoaded.append(ndrOut)
+            #ndrsLoaded.append(ndrOut)
+        except:
+            log.error("An exception occurred while loading one of the NDRs.")
                 
     if len(ndrsLoaded)==len(ndrs):
         N = len(ndrsLoaded)
-        summaryLog.info("The set of NDRs has an EXPTIME of "+str(exptime)+" for each of its "+str(N)+" frames.")    
+        summaryLog.info("The set of NDRs has an P_TFRAME of "+str(exptime)+" for each of its "+str(N)+" frames.")    
         deltaT = exptime
         constA = 12.0/((N**3.0-N)*deltaT)
         constB = (N+1.0)/2.0
-        outArray = np.zeros(ndrsLoaded[0][-1].data.shape)
+        first = ndrsLoaded[0]
+        outArray = np.zeros(first[-1].data.shape)
         outHDU = copy.deepcopy(ndrsLoaded[0])
         for i in range(1,N+1):
             left = constA*(i-constB)
             log.debug("The left value for frame "+str(i)+" = "+str(left))
-            outArray+=left*ndrsLoaded[i][-1].data
+            ndr = ndrsLoaded[i-1]
+            outArray+=left*ndr[-1].data
             
         log.info("** MAYBE ADD MORE MSGS TO SUMMARYLOG DURING fitNDRs?? **")
         outHDU[-1].data = outArray
