@@ -9,4 +9,8 @@ from tools.generalTools import updateOutputFitsHeader
 from tools.generalTools import testToolFunc
 from tools.generalTools import loadDataAry
 from tools.generalTools import loadHDU
+from tools.destripeTools import horizontal
+from tools.destripeTools import interpbadpix
+from tools.destripeTools import verticalmed
+from tools.destripeTools import verticalref
 
