@@ -79,6 +79,21 @@ def main():
         log.info("Finished fitting the slope of the NDRs.")
         outHDUs = [output]
     
+    if configs.DEPconfig.destripe:
+        log.debug("About to try and destripe the frame.")
+        writeFiles = True
+        biasOnly = False
+        output = prims.destripe(frame, configs.DEPconfig.inFlatfile, configs.DEPconfig.inBPMfile, 
+                 writeFiles, config.DEPconfig.outDirRoot, biasOnly,
+                 clean=True, storeall=True, r_ex=0, extraclean=True)
+        log.info("Finished destriping the frame.")
+        outHDU = [output]
+    
+    if configs.DEPconfig.pca:
+        log.debug("About to try and apply PCA to decompose the frame.")
+        log.critical("THIS DOESN'T DO ANYTHING YET!!!!")
+        log.info("Finished decomposing the frame with PCA.")
+    
     log.info("Writing latest "+str(len(outHDUs))+" data to output files")
     for outHDU in outHDUs:
         tools.updateOutputFitsHeader(outHDU, "main.summary.fitsFormat.log")

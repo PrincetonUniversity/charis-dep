@@ -18,8 +18,6 @@ Args:
                                  will be updated in the future, but for current
                                 testing providing the single file string will 
                                 suffice.
-    
-    
 """
 
 import pyfits as pf
@@ -36,19 +34,25 @@ for file in inDataFilesRaw:
     inDataFiles.append(os.path.join(inDataDir,file))
 ndrRoot = '*R1*.fits'
 # get data list for NDRs and sort it
-inputNDRs = np.sort(glob.glob(inDataDir +"/individual_reads/"+ndrRoot))
-if False:
-    bpmRoot = 'combinedBPM.fits'
+inputNDRs = np.sort(glob.glob(inDataDir +"/individual_reads/"+ndrRoot))  
+if True:
+    bpmRoot = 'ndrsFakeBPM.fits'# a 2048x2048 one's array
+    inBPMfile = os.path.join(inDataDir +"/individual_reads/",bpmRoot)
+else:
+    bpmRoot = 'combinedBPM.fits'# a 1024x1024 real BPM from NIRI data
     inBPMfile = os.path.join(inDataDir,bpmRoot)
 if True:
-    bpmRoot = 'ndrsFakeBPM.fits'
-    inBPMfile = os.path.join(inDataDir +"/individual_reads/",bpmRoot)
-flatRoot = 'NIRI_norm_flat.fits'
-inFlatfile = os.path.join(inDataDir,flatRoot)
+    flatRoot = 'ndrsFakeFlat.fits'# a 2048x2048 one's array
+    inFlatfile = os.path.join(inDataDir +"/individual_reads/",flatRoot)
+else:
+    flatRoot = 'NIRI_norm_flat.fits'# a 1024x1024 real Flat from NIRI data
+    inFlatfile = os.path.join(inDataDir,flatRoot)
 
 # List of Primitives to run
 applyBPM = True
 fitNDRs = True
+destripe = True
+pca = True
 
 
 

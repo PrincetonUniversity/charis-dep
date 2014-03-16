@@ -1,3 +1,4 @@
 from primitives.calibrations import testCalPrim
 from primitives.calibrations import maskHotPixels
 from primitives.calibrations import fitNDRs
+from primitives.wavelengthExtraction import pcaTest
