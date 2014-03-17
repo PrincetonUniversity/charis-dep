@@ -25,7 +25,8 @@ import numpy as np
 import os
 import glob
 
-inDataDir = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testData"
+#inDataDir = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testData"
+inDataDir = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testData/"
 outDirRoot = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testOutputs/"
 inDataFilesRaw = ['N20050227S0127.fits']
 # Next line just converts the raw names to full path versions
@@ -35,6 +36,10 @@ for file in inDataFilesRaw:
 ndrRoot = '*R1*.fits'
 # get data list for NDRs and sort it
 inputNDRs = np.sort(glob.glob(inDataDir +"/individual_reads/"+ndrRoot))  
+# get list of input ADI fits files
+adiRoot = '*S01*.fits'
+inputADIs = np.sort(glob.glob(inDataDir+"HD_105631-TestADIset/"+adiRoot))
+print '$$$$ '+repr(len(inputADIs))
 if True:
     bpmRoot = 'ndrsFakeBPM.fits'# a 2048x2048 one's array
     inBPMfile = os.path.join(inDataDir +"/individual_reads/",bpmRoot)
@@ -49,9 +54,9 @@ else:
     inFlatfile = os.path.join(inDataDir,flatRoot)
 
 # List of Primitives to run
-applyBPM = True
-fitNDRs = True
-destripe = True
+applyBPM = False
+fitNDRs = False
+destripe = False
 pca = True
 
 

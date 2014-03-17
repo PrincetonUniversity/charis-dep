@@ -91,7 +91,8 @@ def main():
     
     if configs.DEPconfig.pca:
         log.debug("About to try and apply PCA to decompose the frame.")
-        log.critical("THIS DOESN'T DO ANYTHING YET!!!!")
+        writeFiles = True
+        prims.pcaTest(configs.DEPconfig.inputADIs,7, writeFiles, configs.DEPconfig.outDirRoot)
         log.info("Finished decomposing the frame with PCA.")
     
     log.info("Writing latest "+str(len(outHDUs))+" data to output files")
