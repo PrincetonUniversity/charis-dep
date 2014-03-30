@@ -115,6 +115,12 @@ def updateOutputFitsHeader(hdu, logFileName='main.summary'):
                     hdu[0].header.add_history(line[last:])
                     #print line[last:] #$$$$$$$$$$$$$$$$$$$
                     i+=1
+        if True:
+            # a test of get_history
+            print "\n\n generalTools:ln120: $$ testing get_history func of pf $$"
+            history = hdu[0].header.get_history()
+            print repr(history)
+            print '\n\n generalTools:ln123: $$ Done get_history test $$'
     else:
         log.critical("Log file provided does not exists! So, can't update header!")
         

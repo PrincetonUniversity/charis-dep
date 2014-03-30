@@ -55,9 +55,9 @@ else:
 
 # List of Primitives to run
 applyBPM = False
-fitNDRs = False
-destripe = False
-pca = True
+fitNDRs = True
+destripe = True
+pca = False
 
 
 

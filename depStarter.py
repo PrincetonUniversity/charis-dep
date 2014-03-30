@@ -83,11 +83,17 @@ def main():
         log.debug("About to try and destripe the frame.")
         writeFiles = True
         biasOnly = False
-        output = prims.destripe(frame, configs.DEPconfig.inFlatfile, configs.DEPconfig.inBPMfile, 
-                 writeFiles, config.DEPconfig.outDirRoot, biasOnly,
+        if configs.DEPconfig.fitNDRs and (configs.DEPconfig.applyBPM==False)and(configs.DEPconfig.pca==False):
+            if len(outHDUs)==1:
+                frame = outHDUs[0]
+                output = prims.destripe(frame, configs.DEPconfig.inFlatfile, configs.DEPconfig.inBPMfile, 
+                 writeFiles, configs.DEPconfig.outDirRoot, biasOnly,
                  clean=True, storeall=True, r_ex=0, extraclean=True)
-        log.info("Finished destriping the frame.")
-        outHDU = [output]
+                log.info("Finished destriping the frame.")
+                outHDU = [output]
+        else:
+            log.error("An error occurred while trying to destripe the inputs.")
+        
     
     if configs.DEPconfig.pca:
         log.debug("About to try and apply PCA to decompose the frame.")

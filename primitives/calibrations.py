@@ -116,6 +116,8 @@ def fitNDRs(ndrs):
             
         log.info("** MAYBE ADD MORE MSGS TO SUMMARYLOG DURING fitNDRs?? **")
         log.critical("** ADD COADD KEY TO HEADERS AND SUMMARYLOG **")
+        log.info("COADD header added, but not sure if correct!!!!!")
+        outHDU[0].header.update('COADD', str(len(ndrs)), "Number of NDRs fit together")
         outHDU[-1].data = outArray
         return outHDU
         
@@ -133,8 +135,8 @@ def destripe(frame, flat, hotpix, write_files, output_dir, bias_only,
     described more fully in Brandt 2013 (ACORNS paper). 
     
     Function destripe takes two arguments:
-    1.  A (usually) 2048 x 2048 array of flux values
-    2.  A (usually) 2048 x 2048 flatfield image
+    1.  A (usually) 2048 x 2048 array of flux values NOTE: Must be a str or HDUList
+    2.  A (usually) 2048 x 2048 flatfield image NOTE: must be an ndarray
     3.  The coordinates of the hot pixels to be masked
     4.  Write destriped data to files? 
     5.  Directory to write data (ignored if write_files=False)
@@ -154,25 +156,48 @@ def destripe(frame, flat, hotpix, write_files, output_dir, bias_only,
     NOTE: This code is a modified version of that found in the destripe 
     directory of the ACORNS-ADI pipeline along with the tools it calls.
     """
-        
+    #load hotpix and flat arrays (although currently just the BPM and fake flat)!!!!!
+    hotpix = tools.loadDataAry(hotpix)
+    #hotpix = np.where(hotpix>10000)#$$$$ making a sorta fax hotpix array
+    flat = tools.loadDataAry(flat)
+    #print 'type(hotpix) = '+repr(type(hotpix))#$$$$$$$$$$$
+    #print 'type(flat) = '+repr(type(flat))#$$$$$$$$$$$
+    
     np.seterr(all='ignore')
     if not (storeall or write_files):
-        lot.erro("Error: attempting to run destripe without saving files to either disk or memory")
+        log.error("Error: attempting to run destripe without saving files to either disk or memory")
 
     ncoadd = 1
     try:
-        fluxfits = pyf.open(frame, "readonly")        
+        if isinstance(frame, pf.hdu.hdulist.HDUList):
+            fluxfits = frame
+        elif isinstance(frame,str):
+            fluxfits = pyf.open(frame, "readonly")
+        else:
+            log.error("input type was not a string or HDUList!!!")     
         header = fluxfits[0].header
+        #print 'ln157'#$$$$$$$$$$$
         try:
             ncoadd = header['COADD']
         except:
             ncoadd = 1
-        flux = fluxfits[0].data.astype(np.float32)
+        #print 'ln179'#$$$$$$$$$$$
+        flux = fluxfits[-1].data.astype(np.float32)
+        #print 'ln181'#$$$$$$$$$$$
         dimy, dimx = flux.shape
-        if hotpix is not None:
-            flux[hotpix] = np.nan
+        #print 'flux.shape = '+repr(flux.shape)+', hotpix.shape = '+repr(hotpix.shape)
+        try:
+            #print 'ln190'#$$$$$$$$$$
+            if hotpix is not None:
+                flux[hotpix] = np.nan
+            #print 'ln193'#$$$$$$$$$$
+        except:
+            #print 'ln195'#$$$$$$$$$$
+            log.info("Original hotpix replacement method did not work, so using new np.where approach.")
+            flux = np.where(hotpix>0,flux,np.nan)
+            #print 'ln198'#$$$$$$$$$$
     except:
-        log.error("Error reading file " + frame)
+        log.error("Error reading file " + repr(frame))
         exit()
 
     ##############################################################
