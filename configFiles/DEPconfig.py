@@ -35,20 +35,20 @@ for file in inDataFilesRaw:
     inDataFiles.append(os.path.join(inDataDir,file))
 ndrRoot = '*R1*.fits'
 # get data list for NDRs and sort it
-inputNDRs = np.sort(glob.glob(inDataDir +"/individual_reads/"+ndrRoot))  
+inputNDRs = np.sort(glob.glob(inDataDir +"individual_reads/"+ndrRoot))  
 # get list of input ADI fits files
 adiRoot = '*S01*.fits'
 inputADIs = np.sort(glob.glob(inDataDir+"HD_105631-TestADIset/"+adiRoot))
 print '$$$$ '+repr(len(inputADIs))
 if True:
     bpmRoot = 'ndrsFakeBPM.fits'# a 2048x2048 one's array
-    inBPMfile = os.path.join(inDataDir +"/individual_reads/",bpmRoot)
+    inBPMfile = os.path.join(inDataDir +"individual_reads/",bpmRoot)
 else:
     bpmRoot = 'combinedBPM.fits'# a 1024x1024 real BPM from NIRI data
     inBPMfile = os.path.join(inDataDir,bpmRoot)
 if True:
     flatRoot = 'ndrsFakeFlat.fits'# a 2048x2048 one's array
-    inFlatfile = os.path.join(inDataDir +"/individual_reads/",flatRoot)
+    inFlatfile = os.path.join(inDataDir +"individual_reads/",flatRoot)
 else:
     flatRoot = 'NIRI_norm_flat.fits'# a 1024x1024 real Flat from NIRI data
     inFlatfile = os.path.join(inDataDir,flatRoot)

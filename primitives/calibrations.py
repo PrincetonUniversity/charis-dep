@@ -7,7 +7,7 @@ import copy
 import warnings
 from scipy.signal import medfilt2d
 
-log = tools.getLogger('main.prims',lvl=100,addFH=False)
+log = tools.getLogger('main.prims',lvl=1,addFH=False)
 
 def testCalPrim():
     """
@@ -19,27 +19,34 @@ def testCalPrim():
     
     tools.testToolFunc()
     
-def maskHotPixels(inSciNDR, BPM):
+def maskHotPixels(inSci, BPM, outputDir='',writeFiles=True):
     """
     This primitive will mask the bad pixels in each provided science frame.
     """
     #log = tools.getLogger('main.prims',lvl=100,addFH=False)
     log.info("Performing BPM masking on input with input BPM ")
-    ## Make the type that is passed into the primitives standardized!!!!
-    ## Load the provided sci data into a ndarray.
-    inData = tools.loadDataAry(inSciNDR)
-    bpmData = tools.loadDataAry(BPM)
+    bpmData = tools.loadHDU(BPM)
+    
+    inHDUs = tools.loadListOfHDUs(inSci)
     
     ## Got the data into a ndarray, now apply the BPM array.
-    outData = False
-    try:
-        outData = inData*bpmData
-    except:
-        log.error("Something when wrong while performing maskHotPixels")
-        
+    for i in range(0,len(inHDUs)):
+        log.debug("Currently applying BPM to file "+str(i+1)+"/"+str(len(inHDUs)))
+        outHDU = copy.deepcopy(inHDUs[i])
+        inData = input[-1].data
+        frameName = tools.hduToFileName(inHDUs[i])
+        try:
+            outHDU[-1].data = inData*bpmData
+            outData.append(outHDU)
+        except:
+            log.error("Something when wrong while performing maskHotPixels on "+frameName)
+            
+        if writeFiles:
+            tools.writeIntermediate(outHDU,outputDir,"_bpm")
+            
     return outData
 
-def fitNDRs(ndrs):
+def fitNDRs(ndrs, outputDir='',writeFiles=True):
     """
     A function to take a list of NDR frames, fit the slope and produce a single
     frame of photons/second.
@@ -65,7 +72,7 @@ def fitNDRs(ndrs):
     Args:
         ndrs (list of PyFits objects or strings for their complete filenames):
             The files to have their slope fit.  The items in this list will be 
-            loaded into pyfits objects if strings are provided.
+            loaded into pfits objects if strings are provided.
     Returns:
         outHDU (A single PyFits object):  The resulting single frame
     """
@@ -119,13 +126,17 @@ def fitNDRs(ndrs):
         log.info("COADD header added, but not sure if correct!!!!!")
         outHDU[0].header.update('COADD', str(len(ndrs)), "Number of NDRs fit together")
         outHDU[-1].data = outArray
+        
+        if writeFiles:
+            tools.writeIntermediate(outHDU,outputDir,"_ndrfit")
+
         return outHDU
         
     else:
         log.error("The ndrs list passed into fitNDRs failed to have its slope fit!")
         return False
     
-def destripe(frame, flat, hotpix, write_files, output_dir, bias_only,
+def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
              clean=True, storeall=True, r_ex=0, extraclean=True):
 
     """
@@ -135,11 +146,11 @@ def destripe(frame, flat, hotpix, write_files, output_dir, bias_only,
     described more fully in Brandt 2013 (ACORNS paper). 
     
     Function destripe takes two arguments:
-    1.  A (usually) 2048 x 2048 array of flux values NOTE: Must be a str or HDUList
+    1.  A (usually) 2048 x 2048 array of flux values NOTE: Must be a str or HDUList (if HDUList, a frame name will be created from the OBJECT and DATE header keys)
     2.  A (usually) 2048 x 2048 flatfield image NOTE: must be an ndarray
     3.  The coordinates of the hot pixels to be masked
     4.  Write destriped data to files? 
-    5.  Directory to write data (ignored if write_files=False)
+    5.  Directory to write data (ignored if writeFiles=False)
     6.  Use only reference pixels?
 
     Optional arguments:
@@ -164,25 +175,29 @@ def destripe(frame, flat, hotpix, write_files, output_dir, bias_only,
     #print 'type(flat) = '+repr(type(flat))#$$$$$$$$$$$
     
     np.seterr(all='ignore')
-    if not (storeall or write_files):
+    if not (storeall or writeFiles):
         log.error("Error: attempting to run destripe without saving files to either disk or memory")
 
     ncoadd = 1
+    frameName = ""
     try:
         if isinstance(frame, pf.hdu.hdulist.HDUList):
-            fluxfits = frame
+            fluxFits = frame
+            frameName = tools.hduToFileName(fluxFits)
         elif isinstance(frame,str):
-            fluxfits = pyf.open(frame, "readonly")
+            fluxFits = tools.loadHDU(frame)
+            frameName = frame
         else:
-            log.error("input type was not a string or HDUList!!!")     
-        header = fluxfits[0].header
+            log.error("input type was not a string or HDUList!!!") 
+            #frameName = "'Unknown' as there was an error opening it!"    
+        header = fluxFits[0].header
         #print 'ln157'#$$$$$$$$$$$
         try:
-            ncoadd = header['COADD']
+            ncoadd = int(header['COADD'])
         except:
             ncoadd = 1
         #print 'ln179'#$$$$$$$$$$$
-        flux = fluxfits[-1].data.astype(np.float32)
+        flux = fluxFits[-1].data.astype(np.float32)
         #print 'ln181'#$$$$$$$$$$$
         dimy, dimx = flux.shape
         #print 'flux.shape = '+repr(flux.shape)+', hotpix.shape = '+repr(hotpix.shape)
@@ -287,21 +302,13 @@ def destripe(frame, flat, hotpix, write_files, output_dir, bias_only,
 
     np.putmask(flux, np.logical_not(np.isfinite(flux)), 0)
 
-    if write_files:
-        try:
-            fluxout = pyf.HDUList()
-            flux_hdu = pyf.PrimaryHDU(flux, header)
-            fluxout.append(flux_hdu)
-    
-            outname = re.sub(".fits", "_ds.fits", frame)
-            outname = re.sub(".*HICA", output_dir + "/" + "HICA", outname)
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore')
-                fluxout.writeto(outname, clobber=True)
-                fluxout.close()
-        except IOError, err:
-            log.error(err)
-            sys.exit(1)
+    if writeFiles:
+#         fluxout = pf.HDUList()
+#         flux_hdu = pf.PrimaryHDU(flux, header)
+#         fluxout.append(flux_hdu)
+        fluxout = copy.deepcopy(fluxFits)
+        flux[-1].data = flux
+        tools.writeIntermediate(fluxout,outputDir,"_ds")
 
     if storeall:
         return flux

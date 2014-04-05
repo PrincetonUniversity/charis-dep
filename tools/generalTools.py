@@ -3,8 +3,10 @@ import numpy as np
 import pyfits as pf
 import copy
 import os
+import re
+import warnings
 
-log = tools.getLogger('main.tools',lvl=100,addFH=False)
+log = tools.getLogger('main.tools',lvl=0,addFH=False)
     
 def testToolFunc():
     """
@@ -14,6 +16,63 @@ def testToolFunc():
     print 'Inside testToolFunc'
     log.info('InfoMsgInsideTools')
     
+def writeIntermediate(hdus, outputDir="", postStr = "", closeAfter=False):
+    """
+    A function to write a hdu, or list of them, to disk with an post-pended string 
+    if desired.
+    """    
+    if isinstance(hdus, pf.hdu.hdulist.HDUList):
+        hdus = [hdus]
+        
+    for hdu in hdus:
+        try:
+            frameName = hduToFileName(hdu)
+            ps = postStr+".fits"
+            log.debug("replacement to .fits will be '"+ps+"' ")
+            outname = re.sub(".fits", ps, frameName)
+            outname = os.path.join(outputDir,os.path.basename(outname))
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                hdu.writeto(outname, clobber=True)
+                log.info("Intermediate flux file written to: "+outname)
+                if closeAfter:
+                    hdu.close()
+        except IOError, err:
+            log.error(err)
+            sys.exit(1)
+
+def hduToFileName(hdu):
+    """
+    A function to take a input HDUList object and either get its filename or 
+    make one from the OBJECT and DATE header keys if it doesn't exist.
+    """
+    frameName = ""
+    log.debug("\ninput type into hduToFileName = "+repr(type(hdu))+'\n')
+    try:
+        frameName = hdu.filename()
+        if not isinstance(frameName,str):
+            log.critical("\nhdu.filename() did not return a string!!!\n")
+    except:
+        log.debug('trying to make frameName as the HDU had no filename')
+        obj = ""
+        try:
+            obj = hdu[0].header['OBJECT']
+            log.debug("obj found to be = "+obj)
+        except:
+            #for key in fluxFits[0].header:
+            #    print key+" = "+str(fluxFits[0].header[key])
+            log.error("Input HDUList did not have the OBJECT key or filename, so using 'UNKNOWNOBJ'."+\
+                      "  NOTE: this happens when a new empty fits file is created without any original PHU loaded in.")
+            obj = "UNKNOWNOBJ"
+        date = str(hdu[0].header["DATE"])
+        log.debug("date found to be = "+date)
+        date = re.sub(" ","",date)
+        frameName = obj+"_"+date+'.fits'
+        log.debug('frame name created = '+frameName)
+    log.debug("returning the fileName = '"+frameName+"'")
+    
+    return frameName
+
 def loadDataAry(input):
     """
     """
@@ -76,6 +135,33 @@ def loadHDU(input):
     inHDU.close()
     
     return outHDU
+def loadListOfHDUs(input):
+    """
+    Load a list of strings to a list of HDULists, or just append the HDUList objects into a list if already opened.
+    """
+    HDUs = []
+    if isinstance(inSci,list) and (not isinstance(inSci, pf.hdu.hdulist.HDUList)):
+        for input in inSci:
+            if isinstance(inSci, pf.hdu.hdulist.HDUList):
+                fluxFits = frame
+                frameName = tools.hduToFileName(fluxFits)
+                HDUs.append(fluxFits)
+            elif isinstance(inSci,str):
+                fluxFits = tools.loadHDU(frame)
+                frameName = frame
+                HDUs.append(fluxFits)
+    elif isinstance(inSci, pf.hdu.hdulist.HDUList):
+        fluxFits = frame
+        frameName = tools.hduToFileName(fluxFits)
+        HDUs.append(fluxFits)
+    elif isinstance(inSci,str):
+        fluxFits = tools.loadHDU(frame)
+        frameName = frame
+        HDUs.append(fluxFits)       
+    else:
+        log.error("input type was not a list, a string or HDUList!!!")
+        
+    return HDUs
 
 def updateOutputFitsHeader(hdu, logFileName='main.summary'):
     """

@@ -48,22 +48,11 @@ def main():
     tools.addFitsStyleHandler(summaryLog)
     
     if configs.DEPconfig.applyBPM:
-        bpmData = tools.loadDataAry(configs.DEPconfig.inBPMfile)
         summaryLog.info("Masking hot pixels with file: "+os.path.basename(configs.DEPconfig.inBPMfile))
-        bpmCorrDatas = []
-        outHDUs = []
-        i = 0
         inDataFiles = configs.DEPconfig.inputNDRs#configs.DEPconfig.inDataFiles
-        print "in depStarter there are "+str(len(inDataFiles))+" datafiles"#$$$$$$$$$$
-        for inputNDR in inDataFiles:
-            log.debug("Currently applying BPM to file "+str(i+1)+"/"+str(len(inDataFiles)))
-            outData = prims.maskHotPixels(inputNDR,bpmData)
-            bpmCorrDatas.append(outData)
-            outHDU = tools.loadHDU(inputNDR)
-            outHDU[-1].data = outData
-            outHDUs.append(outHDU)
-            # load nparray back into original pf object?
-        log.debug("Finished BPM corrections and total outputs were = "+str(len(bpmCorrDatas)))
+        log.debug("in depStarter there are "+str(len(inDataFiles))+" datafiles")
+        outHDUs = prims.maskHotPixels(inDataFiles,configs.DEPconfig.inBPMfile, configs.DEPconfig.outDirRoot, writeFiles=True)
+        log.debug("Finished BPM corrections and total outputs were = "+str(len(outHDUs)))
         log.info("Finished BPM correction(s)")
         
     if configs.DEPconfig.fitNDRs:
@@ -75,7 +64,7 @@ def main():
             log.debug("BPMs were not applied, so stacking the raw NDRs.")
             inputs = configs.DEPconfig.inputNDRs
         log.info("about to try and fit the slope of the "+str(len(inputs))+" NDRs provided.")
-        output = prims.fitNDRs(inputs)
+        output = prims.fitNDRs(inputs, configs.DEPconfig.outDirRoot, writeFiles=True)
         log.info("Finished fitting the slope of the NDRs.")
         outHDUs = [output]
     
