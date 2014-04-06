@@ -33,7 +33,7 @@ inDataFilesRaw = ['N20050227S0127.fits']
 inDataFiles = []
 for file in inDataFilesRaw:
     inDataFiles.append(os.path.join(inDataDir,file))
-ndrRoot = '*R1*.fits'
+ndrRoot = '*R*.fits'
 # get data list for NDRs and sort it
 inputNDRs = np.sort(glob.glob(inDataDir +"individual_reads/"+ndrRoot))  
 # get list of input ADI fits files
@@ -56,7 +56,7 @@ else:
 # List of Primitives to run
 applyBPM = False
 fitNDRs = True
-destripe = True
+destripe = False
 pca = False
 
 

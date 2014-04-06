@@ -8,6 +8,7 @@ import warnings
 from scipy.signal import medfilt2d
 
 log = tools.getLogger('main.prims',lvl=1,addFH=False)
+summaryLog = tools.getLogger('main.summary')
 
 def testCalPrim():
     """
@@ -42,6 +43,7 @@ def maskHotPixels(inSci, BPM, outputDir='',writeFiles=True):
             log.error("Something when wrong while performing maskHotPixels on "+frameName)
             
         if writeFiles:
+            log.info("Writing outputs of maskHotPixels to disk.")
             tools.writeIntermediate(outHDU,outputDir,"_bpm")
             
     return outData
@@ -76,7 +78,6 @@ def fitNDRs(ndrs, outputDir='',writeFiles=True):
     Returns:
         outHDU (A single PyFits object):  The resulting single frame
     """
-    summaryLog = tools.getLogger('main.summary')
     ndrsLoaded = []
     exptimeFirst = 0
     #objectFirst = ''
@@ -108,7 +109,7 @@ def fitNDRs(ndrs, outputDir='',writeFiles=True):
                 
     if len(ndrsLoaded)==len(ndrs):
         N = len(ndrsLoaded)
-        summaryLog.info("The set of NDRs has an P_TFRAME of "+str(exptime)+" for each of its "+str(N)+" frames.")    
+        summaryLog.info("The set of NDRs has an P_TFRAME of "+str(exptime)+" for each of its "+str(N)+" frames.")   
         deltaT = exptime
         constA = 12.0/((N**3.0-N)*deltaT)
         constB = (N+1.0)/2.0
@@ -122,23 +123,23 @@ def fitNDRs(ndrs, outputDir='',writeFiles=True):
             outArray+=left*ndr[-1].data
             
         log.info("** MAYBE ADD MORE MSGS TO SUMMARYLOG DURING fitNDRs?? **")
-        log.critical("** ADD COADD KEY TO HEADERS AND SUMMARYLOG **")
         log.info("COADD header added, but not sure if correct!!!!!")
-        outHDU[0].header.update('COADD', str(len(ndrs)), "Number of NDRs fit together")
+        # COADD needed by destripe, so adding to header directly
+        outHDU[0].header.update('COADD', str(len(ndrs)), "Number of NDRs fit together") 
+        summaryLog.info("COADD = "+str(N)) # added twice now??
         outHDU[-1].data = outArray
         
         if writeFiles:
+            log.info("Writing outputs of fitNDRs to disk.")
             tools.writeIntermediate(outHDU,outputDir,"_ndrfit")
 
         return outHDU
-        
     else:
         log.error("The ndrs list passed into fitNDRs failed to have its slope fit!")
         return False
     
 def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
              clean=True, storeall=True, r_ex=0, extraclean=True):
-
     """
     This function will destripe the input science/flux frame.  By that we mean 
     it will take the bias and reference pixels properly into account and remove
@@ -168,11 +169,12 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
     directory of the ACORNS-ADI pipeline along with the tools it calls.
     """
     #load hotpix and flat arrays (although currently just the BPM and fake flat)!!!!!
-    hotpix = tools.loadDataAry(hotpix)
-    #hotpix = np.where(hotpix>10000)#$$$$ making a sorta fax hotpix array
-    flat = tools.loadDataAry(flat)
-    #print 'type(hotpix) = '+repr(type(hotpix))#$$$$$$$$$$$
-    #print 'type(flat) = '+repr(type(flat))#$$$$$$$$$$$
+    hotpixHDU = tools.loadHDU(hotpix)
+    hotpixFilname = tools.hduToFileName(hotpixHDU)
+    hotpix = tools.loadDataAry(hotpixHDU)
+    flatHDU = tools.loadHDU(flat)
+    flatFilname = tools.hduToFileName(flatHDU)
+    flat = tools.loadDataAry(flatHDU)
     
     np.seterr(all='ignore')
     if not (storeall or writeFiles):
@@ -204,15 +206,18 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
         try:
             #print 'ln190'#$$$$$$$$$$
             if hotpix is not None:
+                # ACORNS approach here doesn't seem to work...?? so except version is being used.
                 flux[hotpix] = np.nan
+                summaryLog.info("Applied BPM named: "+hotpixFilename)
             #print 'ln193'#$$$$$$$$$$
         except:
             #print 'ln195'#$$$$$$$$$$
             log.info("Original hotpix replacement method did not work, so using new np.where approach.")
             flux = np.where(hotpix>0,flux,np.nan)
+            summaryLog.info("Applied BPM named: "+hotpixFilename)
             #print 'ln198'#$$$$$$$$$$
     except:
-        log.error("Error reading file " + repr(frame))
+        log.error("Error reading file " + repr(frameName))
         exit()
 
     ##############################################################
@@ -229,7 +234,7 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
         for stripe in range(32):      
             tools.horizontal(flux, stripe)
     except:
-        log.error("Horizontal destriping failed on frame " + frame)
+        log.error("Horizontal destriping failed on frame " + frameName)
         exit()
             
     ##############################################################
@@ -243,7 +248,7 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
         else:
             oddstripe, evenstripe = tools.verticalmed(flux, flat, r_ex=r_ex)
     except:
-        log.error("Vertical destriping failed on frame " + frame)
+        log.error("Vertical destriping failed on frame " + frameName)
         exit()
         
     for i in range(1, 33, 2):
@@ -263,7 +268,7 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
     try:
         if clean:
             if extraclean:
-                
+                log.info("Applying 'extraclean' method to input sci data.")
                 #############################################################
                 # We'll be taking a median, so make half the bad pixels
                 # inf and the other half ninf
@@ -293,7 +298,7 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
                 
             tools.interpbadpix(flux)
     except:
-        log.error("Cleaning bad pixels failed on frame " + frame)
+        log.error("Cleaning bad pixels failed on frame " + frameName)
         sys.exit(1)
         
     ##############################################################
@@ -306,6 +311,7 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
 #         fluxout = pf.HDUList()
 #         flux_hdu = pf.PrimaryHDU(flux, header)
 #         fluxout.append(flux_hdu)
+        log.info("Writing outputs of destrip to disk.")
         fluxout = copy.deepcopy(fluxFits)
         flux[-1].data = flux
         tools.writeIntermediate(fluxout,outputDir,"_ds")
