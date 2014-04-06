@@ -170,10 +170,10 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
     """
     #load hotpix and flat arrays (although currently just the BPM and fake flat)!!!!!
     hotpixHDU = tools.loadHDU(hotpix)
-    hotpixFilname = tools.hduToFileName(hotpixHDU)
+    hotpixFilename = tools.hduToFileName(hotpixHDU)
     hotpix = tools.loadDataAry(hotpixHDU)
     flatHDU = tools.loadHDU(flat)
-    flatFilname = tools.hduToFileName(flatHDU)
+    flatFilename = tools.hduToFileName(flatHDU)
     flat = tools.loadDataAry(flatHDU)
     
     np.seterr(all='ignore')
@@ -202,7 +202,7 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
         flux = fluxFits[-1].data.astype(np.float32)
         #print 'ln181'#$$$$$$$$$$$
         dimy, dimx = flux.shape
-        #print 'flux.shape = '+repr(flux.shape)+', hotpix.shape = '+repr(hotpix.shape)
+        log.debug('flux.shape = '+repr(flux.shape)+', hotpix.shape = '+repr(hotpix.shape))
         try:
             #print 'ln190'#$$$$$$$$$$
             if hotpix is not None:
@@ -215,6 +215,7 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
             #print 'ln195'#$$$$$$$$$$
             log.debug("ACORNS hotpix replacement method did not work, so using new np.where approach.")
             flux = np.where(hotpix>0,flux,np.nan)
+            #print "ln218"
             summaryLog.info("Applied BPM named: "+hotpixFilename)
             #print 'ln198'#$$$$$$$$$$
     except:
