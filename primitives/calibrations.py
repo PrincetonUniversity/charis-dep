@@ -207,12 +207,13 @@ def destripe(frame, flat, hotpix, writeFiles, outputDir, bias_only,
             #print 'ln190'#$$$$$$$$$$
             if hotpix is not None:
                 # ACORNS approach here doesn't seem to work...?? so except version is being used.
+                # it is because ACORNS passes a list of pixel locations where bad, not an ndarray used in the DEP
                 flux[hotpix] = np.nan
                 summaryLog.info("Applied BPM named: "+hotpixFilename)
             #print 'ln193'#$$$$$$$$$$
         except:
             #print 'ln195'#$$$$$$$$$$
-            log.info("Original hotpix replacement method did not work, so using new np.where approach.")
+            log.debug("ACORNS hotpix replacement method did not work, so using new np.where approach.")
             flux = np.where(hotpix>0,flux,np.nan)
             summaryLog.info("Applied BPM named: "+hotpixFilename)
             #print 'ln198'#$$$$$$$$$$
