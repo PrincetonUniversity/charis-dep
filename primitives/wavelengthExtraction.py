@@ -124,3 +124,59 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
     """
     
     
+    startX = 9.0
+    startY = 783.5
+    
+    xMax = inMonochrom.shape()[0]
+    yMax = inMonochrom.shape()[1]
+    
+    yTop = y = startY
+    xTop = x = startX
+    # Stage 1: go up the left side of the array
+    while yTop>35.0:
+        while y<(yMax -14.0):
+            # Do stuff to this PSF from its rough center #$$$$$$$$$$$$
+            (expectationX,expectationY) = centerOfLight(inMonochrom[x-2:x+3,y-2:y+3], x, y)
+            # Move to next one in this line
+            y = y + 14.0
+            x = x + 7.0
+        # Update rough center for next line top
+        yTop = yTop -34.5
+        y = yTop
+        x = xTop
+        
+    # Stage 2: go along the bottom of the array
+    while x<(xMax - 7.5):
+        while x<(xMax -7.5):
+            # Do stuff to this PSF from its center #$$$$$$$$$$$$
+            (expectationX,expectationY) = centerOfLight(inMonochrom[x-2:x+3,y-2:y+3], x, y)
+            # Update rough center for this line
+            x = y + 14.0
+            y = x + 7.0
+        # Update rough center for next line top
+        if y<9.0:
+            y = y + 7.0
+            x = x + 21.0
+        else:
+            y = y -7.0
+            x = x + 14.0
+    
+    
+    # $$$$$$$$ What do we do with the updated centers array? output as a new numpy array???  $$$$$$$$$$$$$
+    
+
+def centerOfLight(subArray, xCent, yCent):
+    """
+    Find the center of light in a 5x5 box around the current approximated center.
+    """
+    # Make a sub array of 5x5
+    Is = subArray
+    # Make Xs and Ys arrays
+    Xs = [-2.0,-1.0,0.0,1.0,2.0]
+    Ys = Xs
+    
+    # calculate center of light expectation value
+    expectationX = np.sum(Xs*Is)/np.sum(Is) # where Xs are the X locations within a box around a PSF
+    expectationY = np.sum(Ys*Is)/np.sum(Is)
+    
+    return (expectationX,expectationY)
