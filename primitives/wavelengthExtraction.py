@@ -110,4 +110,17 @@ def pcaTest(flux, ncomp=5, writeFiles=True, outputDirRoot='.'):
         subPlot.plot(x,y)
         plt.savefig(os.path.join(outPCAdir,"pcaSubVarPlot.png"))
         
+
+def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
+    """
+    Intial test version of the tool/prim to find the centers of the 
+    PSFs in a monochromatic image.  Maybe in here we will also test the
+    creation of the PCA components for those PSFs.  Later we will need to
+    upgrade this to work on a series of monochromatic images for all 
+    the wavelengths of an entire band or all the bands together.
+    In the end, this will be part (or all) of process to develop
+    a wavelength solution to be used to extract the 3D data cube from 
+    a single frame of science data.
+    """
+    
     
