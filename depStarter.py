@@ -87,8 +87,14 @@ def main():
     if configs.DEPconfig.pca:
         log.debug("About to try and apply PCA to decompose the frame.")
         writeFiles = True
-        prims.pcaTest(configs.DEPconfig.inputADIs,7, writeFiles, configs.DEPconfig.outDirRoot)
+        prims.pcaTest(configs.DEPconfig.inputADIs,7, configs.DEPconfig.outDirRoot, writeFiles)
         log.info("Finished decomposing the frame with PCA.")
+    
+    if configs.DEPconfig.psfExtractTest:
+        log.debug("About to try to find centers of PSFs.")
+        writeFiles = False
+        prims.findPSFcentersTest(configs.DEPconfig.inputPSFs, configs.DEPconfig.outDirRoot, writeFiles)
+        log.info("Finished finding PSFs centers.")
     
     log.info("Writing latest "+str(len(outHDUs))+" data to output files")
     for outHDU in outHDUs:

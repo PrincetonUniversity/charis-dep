@@ -11,7 +11,7 @@ plt = pylab.matplotlib.pyplot
 
 log = tools.getLogger('main.prims',lvl=0,addFH=False)#('main.prims',lvl=100,addFH=False)
 
-def pcaTest(flux, ncomp=5, writeFiles=True, outputDirRoot='.'):
+def pcaTest(flux, ncomp=5, outputDirRoot='.', writeFiles=True):
     """
     """
     
@@ -123,33 +123,41 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
     a single frame of science data.
     """
     
+    inMono = tools.loadDataAry(inMonochrom)
     
     startX = 9.0
-    startY = 783.5
+    startY = 784.0
     
     xMax = inMonochrom.shape()[0]
     yMax = inMonochrom.shape()[1]
+    
+    centers = []
     
     yTop = y = startY
     xTop = x = startX
     # Stage 1: go up the left side of the array
     while yTop>35.0:
-        while y<(yMax -14.0):
+        if (y==startY) and (x==startX):
+            (expectationX,expectationY) = centerOfLight(inMono[x-5:x+6,y-5:y+6], x, y)
+            centers.append([expectactionX,expectationY])
+        while y<(yMax-14.0):
             # Do stuff to this PSF from its rough center #$$$$$$$$$$$$
-            (expectationX,expectationY) = centerOfLight(inMonochrom[x-2:x+3,y-2:y+3], x, y)
+            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
+            centers.append([expectactionX,expectationY])
             # Move to next one in this line
             y = y + 14.0
             x = x + 7.0
         # Update rough center for next line top
-        yTop = yTop -34.5
+        yTop = yTop - 35.0
         y = yTop
         x = xTop
         
     # Stage 2: go along the bottom of the array
-    while x<(xMax - 7.5):
-        while x<(xMax -7.5):
+    while x<(xMax-8):
+        while x<(xMax-8):
             # Do stuff to this PSF from its center #$$$$$$$$$$$$
-            (expectationX,expectationY) = centerOfLight(inMonochrom[x-2:x+3,y-2:y+3], x, y)
+            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
+            centers.append([expectactionX,expectationY])
             # Update rough center for this line
             x = y + 14.0
             y = x + 7.0
@@ -161,19 +169,31 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
             y = y -7.0
             x = x + 14.0
     
+    if True:
+        for center in centers:
+            print repr(center)
     
+    return centers
     # $$$$$$$$ What do we do with the updated centers array? output as a new numpy array???  $$$$$$$$$$$$$
     
 
-def centerOfLight(subArray, xCent, yCent):
+def centerOfLight(subArray, xCent, yCent, width=5):
     """
     Find the center of light in a 5x5 box around the current approximated center.
+    
+    NOTE: currently only the choices of 5 and 11 are available for the width.
     """
     # Make a sub array of 5x5
     Is = subArray
     # Make Xs and Ys arrays
-    Xs = [-2.0,-1.0,0.0,1.0,2.0]
-    Ys = Xs
+    if width==5.0:
+        Xs = [-2.0,-1.0,0.0,1.0,2.0]
+        Xs = [Xs,Xs,Xs,Xs,Xs]
+    if width==11.0:
+        Xs = [-5.0,-4.0,-3.0,-2.0,-1.0,0.0,1.0,2.0,3.0,4.0,5.0]
+        Xs = [Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs]
+    Ys = np.array(Xs)
+    Ys = Ys.T
     
     # calculate center of light expectation value
     expectationX = np.sum(Xs*Is)/np.sum(Is) # where Xs are the X locations within a box around a PSF
