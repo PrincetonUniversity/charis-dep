@@ -122,28 +122,48 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
     a wavelength solution to be used to extract the 3D data cube from 
     a single frame of science data.
     """
+    debug = True
     
     inMono = tools.loadDataAry(inMonochrom)
     
     startX = 9.0
     startY = 784.0
     
-    xMax = inMonochrom.shape()[0]
-    yMax = inMonochrom.shape()[1]
+    xMax = inMono.shape[0]
+    yMax = inMono.shape[1]
     
     centers = []
     
     yTop = y = startY
     xTop = x = startX
+    odd = False
     # Stage 1: go up the left side of the array
-    while yTop>35.0:
+    if debug:
+        print "starting stage 1"
+        print "starting with 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+    while yTop>34.0:
         if (y==startY) and (x==startX):
-            (expectationX,expectationY) = centerOfLight(inMono[x-5:x+6,y-5:y+6], x, y)
-            centers.append([expectactionX,expectationY])
-        while y<(yMax-14.0):
-            # Do stuff to this PSF from its rough center #$$$$$$$$$$$$
+            # first PSF, so centering box is bigger
+            (expectationX,expectationY) = centerOfLight(inMono[x-5:x+6,y-5:y+6], x, y,11)
+            centers.append([expectationX+x,expectationY+y])
+            y = yTop = expectationY+y
+            #x = expectationX+x
+            if debug:
+                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+        elif (y==yTop)and(x==xTop):
+            # Re-center this 'top'
             (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-            centers.append([expectactionX,expectationY])
+            centers.append([expectationX+x,expectationY+y])
+            y = yTop = expectationY+y
+            #x = xTop = expectationX+x
+            if debug:
+                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+        while y<(yMax-14.0):
+            # Do stuff to this PSF from its rough center 
+            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
+            centers.append([expectationX+x,expectationY+y])
+            y = expectationY+y
+            x = expectationX+x
             # Move to next one in this line
             y = y + 14.0
             x = x + 7.0
@@ -151,31 +171,93 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
         yTop = yTop - 35.0
         y = yTop
         x = xTop
-        
+        if debug:
+            print "New 'top' = ["+str(x)+" , "+str(y)+"]"
+    
+    x = xTop
+    y = yTop
+    if debug:
+        print "starting stage 2"
+        print "starting with 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+    
     # Stage 2: go along the bottom of the array
-    while x<(xMax-8):
-        while x<(xMax-8):
-            # Do stuff to this PSF from its center #$$$$$$$$$$$$
+    while xTop<(xMax-8):
+        if ((y==yTop)and(x==xTop)):
+            # Re-center this 'top'
             (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-            centers.append([expectactionX,expectationY])
+            centers.append([expectationX+x,expectationY+y])
+            y = yTop = expectationY+y
+            x = xTop = expectationX+x
+            if debug:
+                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+        while x<(xMax-15):
+            # Do stuff to this PSF from its center 
+            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
+            centers.append([expectationX+x,expectationY+y])
             # Update rough center for this line
-            x = y + 14.0
-            y = x + 7.0
+            x = x + 14.0 + expectationX
+            y = y + 7.0 + expectationY
         # Update rough center for next line top
-        if y<9.0:
-            y = y + 7.0
-            x = x + 21.0
+        if yTop>=16.0:#(xTop<(xMax-15))and(yTop>16.0):
+            if debug:
+                print "yTop>16 so subtracting 7, value was = "+str(yTop)
+            yTop = yTop - 7.0
+            xTop = xTop + 14.0
+        elif yTop<16.0:#(xTop<(xMax-22))and(yTop<9.0):
+            if debug:
+                print "yTop<16 so adding 7, value was = "+str(yTop)
+            yTop = yTop + 7.0
+            xTop = xTop + 21.0
         else:
-            y = y -7.0
-            x = x + 14.0
+            print "Not in either of the 'top' ranges for stage 2, yTop = "+str(yTop)+". yTop<16.0 = "+repr(yTop<16.0)+", yTop>=16.0 = "+repr(yTop>=16.0)
+        x = xTop
+        y = yTop
+        if debug:
+            print "New 'top' = ["+str(x)+" , "+str(y)+"]\n"
+            
+    if False:
+        for i in range(0,len(centers)+1):
+            print "PSF # "+str(i+1)+" = "+repr(centers[i])
+    
+    centersUpdated = refinePSFcentersTest(inMono,centers)
     
     if True:
-        for center in centers:
-            print repr(center)
+        for i in range(0,50):#len(centersUpdated)+1):
+            print "PSF # "+str(i+1)+" = "+repr(centersUpdated[i])
+            
+    return centersUpdated
     
-    return centers
-    # $$$$$$$$ What do we do with the updated centers array? output as a new numpy array???  $$$$$$$$$$$$$
     
+def refinePSFcentersTest(inMono, centers):
+    """
+    A function to loop over all the centers found in the findPSFcentersTest func in a loop to refine 
+    them further using the centerOfLight func.  This will be done iteratively until convergence.
+    NOTE: Still not sure yet how to merge these two functions, or if that is even a good idea...
+    """
+    meanDiff = 10.0
+    debug = True
+    centersLast = centers
+    iteration = 1
+    while meanDiff>0.05:
+        if debug:
+            print "iteration = "+str(iteration)
+        centersUpdated = []
+        for i in range(0,len(centersLast)):
+            x = centersLast[i][0]
+            y = centersLast[i][1]
+            try:
+                (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
+                centersUpdated.append([expectationX+x,expectationY+y])
+            except:
+                print "an error occurred while trying to re-center a PSF.  Its [x,y] were = ["+str(x)+" , "+str(y)+"]"
+                break
+        meanDiff = abs(np.mean(centersLast)-np.mean(centersUpdated))
+        if debug:
+            print "meanDiff = "+str(meanDiff)
+        iteration+=1
+        centersLast = centersUpdated
+    
+    return centersUpdated
 
 def centerOfLight(subArray, xCent, yCent, width=5):
     """

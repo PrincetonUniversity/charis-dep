@@ -26,10 +26,10 @@ import os
 import glob
 
 root = '/run/media/kmede/SharedData' # for Kyle's laptop
-#root = 'mnt/Data1/Todai_Work/Data' # for Kyle's desktop
+#root = 'mnt/Data1/Todai_Work' # for Kyle's desktop
 #inDataDir = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testData"
-inDataDir = root+"/data_CHARIS/testData/"
-outDirRoot = root+"/data_CHARIS/testOutputs/"
+inDataDir = root+"/Data/data_CHARIS/testData/"
+outDirRoot = root+"/Data/data_CHARIS/testOutputs/"
 inDataFilesRaw = ['N20050227S0127.fits']
 # Next line just converts the raw names to full path versions
 inDataFiles = []
