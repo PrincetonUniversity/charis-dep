@@ -136,70 +136,85 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
     
     yTop = y = startY
     xTop = x = startX
-    odd = False
+    tops = []
+    #tops.append([xTop,yTop])
+    ############################################
     # Stage 1: go up the left side of the array
+    ############################################
     if debug:
-        print "starting stage 1"
+        print "\n"+"*"*10+"   STARTING STAGE 1   "+"*"*10+"\n"
         print "starting with 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
     while yTop>34.0:
-        if (y==startY) and (x==startX):
-            # first PSF, so centering box is bigger
-            (expectationX,expectationY) = centerOfLight(inMono[x-5:x+6,y-5:y+6], x, y,11)
-            centers.append([expectationX+x,expectationY+y])
-            y = yTop = expectationY+y
-            #x = expectationX+x
-            if debug:
-                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]\n"
-        elif (y==yTop)and(x==xTop):
-            # Re-center this 'top'
-            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-            centers.append([expectationX+x,expectationY+y])
-            y = yTop = expectationY+y
-            #x = xTop = expectationX+x
-            if debug:
-                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]\n"
-        while y<(yMax-14.0):
-            # Do stuff to this PSF from its rough center 
-            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-            centers.append([expectationX+x,expectationY+y])
-            y = expectationY+y
-            x = expectationX+x
+        # jump to next 'top' and find its center
+        if (y==startY)or(y==yTop):
+            if (y==startY) and (x==startX):
+                # first PSF, so centering box is bigger
+                (expectationX,expectationY) = centerOfLight(inMono[x-5:x+6,y-5:y+6], x, y,11)
+                y = yTop = expectationY+y
+                #x = expectationX+x
+                centers.append([x,y])
+                tops.append([xTop,yTop])
+                if debug:
+                    print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+            elif (y==yTop)and(x==xTop):
+                # Re-center this 'top'
+                (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
+                y = yTop = expectationY+y
+                #x = xTop = expectationX+x
+                centers.append([x,y])
+                tops.append([xTop,yTop])
+                if debug:
+                    print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+        
+        # 'run down the diagonal' till you hit the bottom
+        while y<(yMax-15.0):
             # Move to next one in this line
             y = y + 14.0
             x = x + 7.0
-        # Update rough center for next line top
-        yTop = yTop - 35.0
-        y = yTop
+            # Do stuff to this PSF from its rough center 
+            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
+            y = expectationY+y
+            x = expectationX+x
+            centers.append([x,y])
+            print "running down the diagonal, ["+str(x)+" , "+str(y)+"]"
+            
+        #  Hit the bottom, so back to the top and jump to next top 
+        y = yTop = yTop - 35.0
         x = xTop
         if debug:
-            print "New 'top' = ["+str(x)+" , "+str(y)+"]"
-        
+            print "\nNew 'top' = ["+str(x)+" , "+str(y)+"]"
+            
+    ############################################    
     # Stage 2: go along the bottom of the array
+    ############################################
     if debug:
-        print "\nstarting stage 2"
+        print "\n"+"*"*10+"   STARTING STAGE 2   "+"*"*10+"\n"
         print "making first jump from the last 'top' found in stage 1"
     # Update initial rough center for next line top
     (xTop,yTop) = updatedStage2PSFtopJump(xTop,yTop,debug)
     x = xTop
     y = yTop
+    tops.append([xTop,yTop])
     if debug:
         print "First new 'top' of stage 2 is = ["+str(xTop)+" , "+str(yTop)+"]"
-    while xTop<(xMax-8):
+    while xTop<(xMax-5):
         if ((y==yTop)and(x==xTop)):
             # Re-center this 'top'
             (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-            centers.append([expectationX+x,expectationY+y])
             y = yTop = expectationY+y
             x = xTop = expectationX+x
+            centers.append([x,y])
+            tops.append([xTop,yTop])
             if debug:
                 print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
-        while x<(xMax-15):
+        while (x<(xMax-10))and(y<(yMax-15)):
+            # Update rough center for this line
+            x = x + 7.0 + expectationX
+            y = y + 14.0 + expectationY
             # Do stuff to this PSF from its center 
             (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
             centers.append([expectationX+x,expectationY+y])
-            # Update rough center for this line
-            x = x + 14.0 + expectationX
-            y = y + 7.0 + expectationY
+            
         # Update rough center for next line top
         (xTop,yTop) = updatedStage2PSFtopJump(xTop,yTop)
         x = xTop
@@ -207,11 +222,15 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
         if debug:
             print "\nNew 'top' = ["+str(x)+" , "+str(y)+"]"
             
-            
     if True:
         f = open(os.path.join(outputDir,'originalPSFcenters.txt'), 'w')
+        topNum = 1
         for i in range(0,len(centers)):
-            s = "PSF # "+str(i+1)+" = "+repr(centers[i])
+            if centers[i] in tops:
+                s = "PSF # "+str(i+1)+", TOP "+str(topNum)+" = "+repr(centers[i])
+                topNum+=1
+            else:
+                s = "PSF # "+str(i+1)+" = "+repr(centers[i])
             f.write(s+"\n")
             #print s
         f.close()
@@ -291,8 +310,10 @@ def centerOfLight(subArray, xCent, yCent, width=5):
     Ys = np.array(Xs)
     Ys = Ys.T
     
-    # calculate center of light expectation value
-    expectationX = np.sum(Xs*Is)/np.sum(Is) # where Xs are the X locations within a box around a PSF
-    expectationY = np.sum(Ys*Is)/np.sum(Is)
-    
+    try:
+        # calculate center of light expectation value
+        expectationX = np.sum(Xs*Is)/np.sum(Is) # where Xs are the X locations within a box around a PSF
+        expectationY = np.sum(Ys*Is)/np.sum(Is)
+    except:
+        print "Failed to calculate center of light for given predicted center values ["+str(xCent)+" , "+str(yCent)+"]"
     return (expectationX,expectationY)
