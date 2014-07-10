@@ -149,7 +149,7 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
             y = yTop = expectationY+y
             #x = expectationX+x
             if debug:
-                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]\n"
         elif (y==yTop)and(x==xTop):
             # Re-center this 'top'
             (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
@@ -157,7 +157,7 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
             y = yTop = expectationY+y
             #x = xTop = expectationX+x
             if debug:
-                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
+                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]\n"
         while y<(yMax-14.0):
             # Do stuff to this PSF from its rough center 
             (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
@@ -173,14 +173,17 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
         x = xTop
         if debug:
             print "New 'top' = ["+str(x)+" , "+str(y)+"]"
-    
+        
+    # Stage 2: go along the bottom of the array
+    if debug:
+        print "\nstarting stage 2"
+        print "making first jump from the last 'top' found in stage 1"
+    # Update initial rough center for next line top
+    (xTop,yTop) = updatedStage2PSFtopJump(xTop,yTop,debug)
     x = xTop
     y = yTop
     if debug:
-        print "starting stage 2"
-        print "starting with 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
-    
-    # Stage 2: go along the bottom of the array
+        print "First new 'top' of stage 2 is = ["+str(xTop)+" , "+str(yTop)+"]"
     while xTop<(xMax-8):
         if ((y==yTop)and(x==xTop)):
             # Re-center this 'top'
@@ -198,35 +201,46 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
             x = x + 14.0 + expectationX
             y = y + 7.0 + expectationY
         # Update rough center for next line top
-        if yTop>=16.0:#(xTop<(xMax-15))and(yTop>16.0):
-            if debug:
-                print "yTop>16 so subtracting 7, value was = "+str(yTop)
-            yTop = yTop - 7.0
-            xTop = xTop + 14.0
-        elif yTop<16.0:#(xTop<(xMax-22))and(yTop<9.0):
-            if debug:
-                print "yTop<16 so adding 7, value was = "+str(yTop)
-            yTop = yTop + 7.0
-            xTop = xTop + 21.0
-        else:
-            print "Not in either of the 'top' ranges for stage 2, yTop = "+str(yTop)+". yTop<16.0 = "+repr(yTop<16.0)+", yTop>=16.0 = "+repr(yTop>=16.0)
+        (xTop,yTop) = updatedStage2PSFtopJump(xTop,yTop)
         x = xTop
         y = yTop
         if debug:
-            print "New 'top' = ["+str(x)+" , "+str(y)+"]\n"
+            print "\nNew 'top' = ["+str(x)+" , "+str(y)+"]"
             
-    if False:
-        for i in range(0,len(centers)+1):
-            print "PSF # "+str(i+1)+" = "+repr(centers[i])
-    
-    centersUpdated = refinePSFcentersTest(inMono,centers)
-    
+            
     if True:
+        f = open(os.path.join(outputDir,'originalPSFcenters.txt'), 'w')
+        for i in range(0,len(centers)):
+            s = "PSF # "+str(i+1)+" = "+repr(centers[i])
+            f.write(s+"\n")
+            #print s
+        f.close()
+    
+    centersUpdated = centers
+    if False:
+        centersUpdated = refinePSFcentersTest(inMono,centers)
+    
+    if False:
         for i in range(0,50):#len(centersUpdated)+1):
             print "PSF # "+str(i+1)+" = "+repr(centersUpdated[i])
             
     return centersUpdated
     
+def updatedStage2PSFtopJump(xTop,yTop,debug=False):
+    if yTop>=16.0:#(xTop<(xMax-15))and(yTop>16.0):
+        if debug:
+            print "yTop>16 so subtracting 7, value was = "+str(yTop)
+        yTop = yTop - 7.0
+        xTop = xTop + 14.0
+    elif yTop<16.0:#(xTop<(xMax-22))and(yTop<9.0):
+        if debug:
+            print "yTop<16 so adding 7, value was = "+str(yTop)
+        yTop = yTop + 7.0
+        xTop = xTop + 21.0
+    else:
+        print "Not in either of the 'top' ranges for stage 2, yTop = "+str(yTop)+". yTop<16.0 = "+repr(yTop<16.0)+", yTop>=16.0 = "+repr(yTop>=16.0)
+    
+    return (xTop,yTop)
     
 def refinePSFcentersTest(inMono, centers):
     """
