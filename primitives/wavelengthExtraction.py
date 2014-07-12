@@ -126,142 +126,128 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
     
     inMono = tools.loadDataAry(inMonochrom)
     
-    startX = 9.0
-    startY = 784.0
+    startX = 8.5
+    startY = 30.0
     
-    xMax = inMono.shape[0]
-    yMax = inMono.shape[1]
+    yMax = inMono.shape[0]
+    xMax = inMono.shape[1]
+    xAry = np.arange(xMax)
+    yAry = np.arange(yMax)
+    xAry, yAry = np.meshgrid(xAry,yAry)
     
     centers = []
     
     yTop = y = startY
     xTop = x = startX
-    tops = []
-    #tops.append([xTop,yTop])
     ############################################
     # Stage 1: go up the left side of the array
     ############################################
     if debug:
         print "\n"+"*"*10+"   STARTING STAGE 1   "+"*"*10+"\n"
-        print "starting with 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
-    while yTop>34.0:
-        # jump to next 'top' and find its center
-        if (y==startY)or(y==yTop):
-            if (y==startY) and (x==startX):
-                # first PSF, so centering box is bigger
-                (expectationX,expectationY) = centerOfLight(inMono[x-5:x+6,y-5:y+6], x, y,11)
-                y = yTop = expectationY+y
-                #x = expectationX+x
-                centers.append([x,y])
-                tops.append([xTop,yTop])
-                if debug:
-                    print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
-            elif (y==yTop)and(x==xTop):
-                # Re-center this 'top'
-                (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-                y = yTop = expectationY+y
-                #x = xTop = expectationX+x
-                centers.append([x,y])
-                tops.append([xTop,yTop])
-                if debug:
-                    print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
-        
-        # 'run down the diagonal' till you hit the bottom
-        while y<(yMax-15.0):
-            # Move to next one in this line
-            y = y + 14.0
-            x = x + 7.0
-            # Do stuff to this PSF from its rough center 
-            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-            y = expectationY+y
-            x = expectationX+x
-            centers.append([x,y])
-            print "running down the diagonal, ["+str(x)+" , "+str(y)+"]"
-            
-        #  Hit the bottom, so back to the top and jump to next top 
-        y = yTop = yTop - 35.0
-        x = xTop
+        print "starting with 'top' = ["+str(yTop)+" , "+str(xTop)+"]"
+    while yTop<(yMax-13.0):
         if debug:
-            print "\nNew 'top' = ["+str(x)+" , "+str(y)+"]"
-            
+            print "\n\nNew 'top' = ["+str(y)+" , "+str(x)+"]"      
+        ## 'run down the diagonal' till you hit the bottom
+        while y>5.0:
+            ## Do stuff to this PSF from its rough center 
+            x = np.sum(xAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6]) 
+            y = np.sum(yAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6])
+            print "Re-centered value = ["+str(y)+" , "+str(x)+"]\n"
+            centers.append([y,x])
+            ## Move to next one in this line
+            if y>20:
+                y -= 14.0
+                x += 7.0  
+                #print "proposed next center down the diagonal, ["+str(y)+" , "+str(x)+"]"
+            else:
+                break
+        if yTop<(yMax-35.0):
+            ## Hit the bottom, so back to the top and jump to next top 
+            y = yTop = yTop + 34.73
+            x = xTop
+            #print "latest predicted 'top' = ["+str(y)+" , "+str(x)+"]"  
+        else:
+            #print "failed 'top' = ["+str(yTop)+" , "+str(xTop)+"]"
+            break 
+           
     ############################################    
     # Stage 2: go along the bottom of the array
     ############################################
     if debug:
         print "\n"+"*"*10+"   STARTING STAGE 2   "+"*"*10+"\n"
-        print "making first jump from the last 'top' found in stage 1"
-    # Update initial rough center for next line top
-    (xTop,yTop) = updatedStage2PSFtopJump(xTop,yTop,debug)
-    x = xTop
+        print "making first jump from the last 'top' found in stage 1 = ["+str(yTop)+" , "+str(xTop)+"]"
+    ## Update initial rough center for next line top
+    (yTop,xTop) = updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,debug)
     y = yTop
-    tops.append([xTop,yTop])
+    x = xTop
     if debug:
-        print "First new 'top' of stage 2 is = ["+str(xTop)+" , "+str(yTop)+"]"
+        print "First new 'top' of stage 2 is = ["+str(yTop)+" , "+str(xTop)+"]"
     while xTop<(xMax-5):
-        if ((y==yTop)and(x==xTop)):
-            # Re-center this 'top'
-            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-            y = yTop = expectationY+y
-            x = xTop = expectationX+x
-            centers.append([x,y])
-            tops.append([xTop,yTop])
-            if debug:
-                print "re-centered 'top' = ["+str(xTop)+" , "+str(yTop)+"]"
-        while (x<(xMax-10))and(y<(yMax-15)):
-            # Update rough center for this line
-            x = x + 7.0 + expectationX
-            y = y + 14.0 + expectationY
-            # Do stuff to this PSF from its center 
-            (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-            centers.append([expectationX+x,expectationY+y])
-            
-        # Update rough center for next line top
-        (xTop,yTop) = updatedStage2PSFtopJump(xTop,yTop)
-        x = xTop
-        y = yTop
         if debug:
-            print "\nNew 'top' = ["+str(x)+" , "+str(y)+"]"
+            print "\n\nNew 'top' = ["+str(y)+" , "+str(x)+"]"
+        while (x<(xMax-5))and(y>5):
+            ## Do stuff to this PSF from its rough center 
+            x = np.sum(xAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6]) 
+            y = np.sum(yAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6])
+            if debug:
+                print "re-centered value = ["+str(y)+" , "+str(x)+"]"
+            centers.append([y,x])
+            if x<(xMax-9):
+                ## Move to next one in this line
+                y -= 14.0
+                x += 7.0
+                #print "proposed next center down the diagonal, ["+str(y)+" , "+str(x)+"]"
+            else:
+                break
+        ##  Hit the right wall, so back to the top and jump to next top 
+        (yTop,xTop) = updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,False)
+        y = yTop
+        x = xTop
+        #print "proposed next top, ["+str(y)+" , "+str(x)+"]"
             
     if True:
         f = open(os.path.join(outputDir,'originalPSFcenters.txt'), 'w')
-        topNum = 1
         for i in range(0,len(centers)):
-            if centers[i] in tops:
-                s = "PSF # "+str(i+1)+", TOP "+str(topNum)+" = "+repr(centers[i])
-                topNum+=1
-            else:
-                s = "PSF # "+str(i+1)+" = "+repr(centers[i])
+            s = "PSF # "+str(i+1)+" = "+repr(centers[i])
             f.write(s+"\n")
             #print s
         f.close()
     
     centersUpdated = centers
-    if False:
-        centersUpdated = refinePSFcentersTest(inMono,centers)
+    if True:
+        centersUpdated = refinePSFcentersTest(inMono,xAry,yAry,centers)
     
     if False:
         for i in range(0,50):#len(centersUpdated)+1):
             print "PSF # "+str(i+1)+" = "+repr(centersUpdated[i])
             
     return centersUpdated
+
+def psfsToPCA(inMono,centers):
+    """
+    This will break up the input monochromatic image into sections of ~50 PSFs
+    and re-center/crop these into individual subarrays that will then be stacked 
+    to perform PCA on them.
+    """
+    ## $$$$$$$$$$$ how to break up the full array into regions that we can crop out the PSFs to form stacks to perform PCA on??? $$$$$$$$$$$$
     
-def updatedStage2PSFtopJump(xTop,yTop,debug=False):
-    if yTop>=16.0:#(xTop<(xMax-15))and(yTop>16.0):
+def updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,debug=False):
+    if yTop<=(yMax-16.0):#(xTop<(xMax-15))and(yTop>16.0):
         if debug:
             print "yTop>16 so subtracting 7, value was = "+str(yTop)
-        yTop = yTop - 7.0
-        xTop = xTop + 14.0
-    elif yTop<16.0:#(xTop<(xMax-22))and(yTop<9.0):
+        yTop += 7.0
+        xTop +=14.0
+    elif yTop>(yMax-16.0):#(xTop<(xMax-22))and(yTop<9.0):
         if debug:
             print "yTop<16 so adding 7, value was = "+str(yTop)
-        yTop = yTop + 7.0
-        xTop = xTop + 21.0
+        yTop -= 7.0
+        xTop += 20.7
     else:
-        print "Not in either of the 'top' ranges for stage 2, yTop = "+str(yTop)+". yTop<16.0 = "+repr(yTop<16.0)+", yTop>=16.0 = "+repr(yTop>=16.0)
+        print "Not in either of the 'top' ranges for stage 2, yTop = "+str(yTop)+". yTop<=(yMax-16.0) = "+repr(yTop<=(yMax-16.0))+", yTop>=16.0 = "+repr(yTop>(yMax-16.0))
+    return (yTop,xTop)
     
-    return (xTop,yTop)
-    
-def refinePSFcentersTest(inMono, centers):
+def refinePSFcentersTest(inMono,xAry,yAry, centers):
     """
     A function to loop over all the centers found in the findPSFcentersTest func in a loop to refine 
     them further using the centerOfLight func.  This will be done iteratively until convergence.
@@ -271,18 +257,25 @@ def refinePSFcentersTest(inMono, centers):
     debug = True
     centersLast = centers
     iteration = 1
-    while meanDiff>0.05:
+    while meanDiff>0.01:
         if debug:
             print "iteration = "+str(iteration)
         centersUpdated = []
         for i in range(0,len(centersLast)):
-            x = centersLast[i][0]
-            y = centersLast[i][1]
+            y = centersLast[i][0]
+            x = centersLast[i][1]
             try:
-                (expectationX,expectationY) = centerOfLight(inMono[x-2:x+3,y-2:y+3], x, y)
-                centersUpdated.append([expectationX+x,expectationY+y])
+                 ## Do stuff to this PSF from its rough center 
+                if ((x<(inMono.shape[1]-6))or(y<(inMono.shape[0]-6)))or((x<6)or(y<6)):
+                    ## PSF is too close to the edge, so shrink the box
+                    x = np.sum(xAry[y-2:y+3,x-2:x+3]*inMono[y-2:y+3,x-2:x+3])/np.sum(inMono[y-2:y+3,x-2:x+3]) 
+                    y = np.sum(yAry[y-2:y+3,x-2:x+3]*inMono[y-2:y+3,x-2:x+3])/np.sum(inMono[y-2:y+3,x-2:x+3])
+                else:
+                    x = np.sum(xAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6]) 
+                    y = np.sum(yAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6])
+                centersUpdated.append([y,x])
             except:
-                print "an error occurred while trying to re-center a PSF.  Its [x,y] were = ["+str(x)+" , "+str(y)+"]"
+                print "an error occurred while trying to re-center a PSF.  Its [y,x] were = ["+str(y)+" , "+str(x)+"]"
                 break
         meanDiff = abs(np.mean(centersLast)-np.mean(centersUpdated))
         if debug:
@@ -292,28 +285,28 @@ def refinePSFcentersTest(inMono, centers):
     
     return centersUpdated
 
-def centerOfLight(subArray, xCent, yCent, width=5):
-    """
-    Find the center of light in a 5x5 box around the current approximated center.
-    
-    NOTE: currently only the choices of 5 and 11 are available for the width.
-    """
-    # Make a sub array of 5x5
-    Is = subArray
-    # Make Xs and Ys arrays
-    if width==5.0:
-        Xs = [-2.0,-1.0,0.0,1.0,2.0]
-        Xs = [Xs,Xs,Xs,Xs,Xs]
-    if width==11.0:
-        Xs = [-5.0,-4.0,-3.0,-2.0,-1.0,0.0,1.0,2.0,3.0,4.0,5.0]
-        Xs = [Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs]
-    Ys = np.array(Xs)
-    Ys = Ys.T
-    
-    try:
-        # calculate center of light expectation value
-        expectationX = np.sum(Xs*Is)/np.sum(Is) # where Xs are the X locations within a box around a PSF
-        expectationY = np.sum(Ys*Is)/np.sum(Is)
-    except:
-        print "Failed to calculate center of light for given predicted center values ["+str(xCent)+" , "+str(yCent)+"]"
-    return (expectationX,expectationY)
+# def centerOfLight(subArray, xCent, yCent, width=5):
+#     """
+#     Find the center of light in a 5x5 box around the current approximated center.
+#     
+#     NOTE: currently only the choices of 5 and 11 are available for the width.
+#     """
+#     # Make a sub array of 5x5
+#     Is = subArray
+#     # Make Xs and Ys arrays
+#     if width==5.0:
+#         Xs = [-2.0,-1.0,0.0,1.0,2.0]
+#         Xs = [Xs,Xs,Xs,Xs,Xs]
+#     if width==11.0:
+#         Xs = [-5.0,-4.0,-3.0,-2.0,-1.0,0.0,1.0,2.0,3.0,4.0,5.0]
+#         Xs = [Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs]
+#     Ys = np.array(Xs)
+#     Ys = Ys.T
+#     
+#     try:
+#         # calculate center of light expectation value
+#         expectationX = np.sum(Xs*Is)/np.sum(Is) # where Xs are the X locations within a box around a PSF
+#         expectationY = np.sum(Ys*Is)/np.sum(Is)
+#     except:
+#         print "Failed to calculate center of light for given predicted center values ["+str(xCent)+" , "+str(yCent)+"]"
+#     return (expectationX,expectationY)
