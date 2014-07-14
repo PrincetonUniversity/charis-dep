@@ -13,6 +13,12 @@ log = tools.getLogger('main.prims',lvl=0,addFH=False)#('main.prims',lvl=100,addF
 
 def pcaTest(flux, ncomp=5, outputDirRoot='.', writeFiles=True):
     """
+    This function/prim will take any set of equally sized sequence of images with at least
+    5 frames of a point source and extract its top 5 principle components using PCA.
+    
+    NOTE: This code is basically a test of concept and shall be used primarily as sample
+    code for further applications during the wavelength extraction and wavelength solution 
+    primitives.
     """
     
     log.debug("Now inside pcaTest primitive.  Will try to perform PCA.")
@@ -229,7 +235,10 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     psfStack = []
     numAdded = 0
     numNotAdded = 0
+    inMonoCorrected = inMono
+    np.putmask(inMonoCorrected,np.isnan(inMonoCorrected),0.0)
     for i in range(0,len(centersUpdated)):
+        currAry = np.zeros((13,13))
         y = centersUpdated[i][0]
         x = centersUpdated[i][1]
         if ((x>(xMax-6))or(y>(yMax-6)))or((x<6)or(y<6)):
@@ -237,7 +246,10 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
             log.debug("This PSF has insufficient surrounding pixels to be cropped to 13x13, center = ["+str(y)+" , "+str(x)+"]")
         else:
             numAdded += 1
-            psfStack.append(ndimage.map_coordinates(inMono,[yAry[y-6:y+7,x-6:x+7],xAry[y-6:y+7,x-6:x+7]],order=3))
+            currAry = ndimage.map_coordinates(inMonoCorrected,[yAry[y-6:y+7,x-6:x+7],xAry[y-6:y+7,x-6:x+7]],order=3)
+            psfStack.append(currAry)
+        if np.isnan(np.sum(currAry)):
+            print "\n\n"+repr(currAry)
     psfStack = np.array(psfStack)
     log.debug( "numAdded = "+str(numAdded)+", numNotAdded = "+str(numNotAdded))
     log.debug( "Shape of psfStack cropping and stacking = "+repr(psfStack.shape))    
@@ -257,7 +269,8 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     
     # super basic version of SVD.  ACORNS uses a much more advances version with multiprocessing we will implement later
     log.debug("about to try np.linalg.svd")
-    u, s, V = np.linalg.svd(stackFlattened.T,full_matrices=False)
+    from scipy import linalg  #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ HACK!!
+    u, s, V = linalg.svd(stackFlattened.T,full_matrices=False)
     uNew = u.T[:ncomp]  # These are the top components from the PCA/SVD decomposition, but need to be reshaped to de-flatten
     log.debug("output uNew has shape: "+repr(uNew.shape))
     
@@ -267,13 +280,13 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     pcaAryFlattened = uNew
     
     # save PCA components as individual fits files
-    outPCAdir= os.path.join(outputDirRoot,"pcaOutputs")
+    outPCAdir= os.path.join(outputDir,"pcaOutputs")
     if writeFiles:
         os.mkdir(outPCAdir)
         for j in range(ncomp):
             hdu = pf.PrimaryHDU(pcaAry[j])
             hduList = pf.HDUList([hdu])
-            outFilename = os.path.join(outputDirRoot+"/pcaOutputs/","pcaComponent_"+str(j+1)+".fits")
+            outFilename = os.path.join(outPCAdir,"pcaComponent_"+str(j+1)+".fits")
             hduList.writeto(outFilename)
             hduList.close()    
     

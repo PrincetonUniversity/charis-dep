@@ -92,7 +92,7 @@ def main():
     
     if configs.DEPconfig.psfExtractTest:
         log.debug("About to try to find centers of PSFs.")
-        writeFiles = False
+        writeFiles = True
         prims.findPSFcentersTest(configs.DEPconfig.inputPSFs, 5, configs.DEPconfig.outDirRoot, writeFiles)
         log.info("Finished finding PSFs centers.")
     
