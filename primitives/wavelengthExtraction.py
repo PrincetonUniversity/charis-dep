@@ -97,12 +97,12 @@ def pcaTest(flux, ncomp=5, outputDirRoot='.', writeFiles=True):
         y.append(np.var(fluxSubbed[0][0]))
         for j in range(ncomp):
             y.append(np.var(fluxSubbed[0][j+1]))
-        print '$$$$$$$$$ '+repr(len(y))
-        print repr(y)
+        #print '$$$$$$$$$ '+repr(len(y))
+        #print repr(y)
         #y = np.ndarray(y)
         # sorta normalize y values
         y = y/y[0]*100.0
-        print repr(y)
+        #print repr(y)
         
         # set up fig and plot x,y data
         fig = plt.figure(1, figsize=(20,15) ,dpi=300) 
@@ -143,17 +143,16 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     # Stage 1: go up the left side of the array
     ############################################
     if debug:
-        print "\n"+"*"*10+"   STARTING STAGE 1   "+"*"*10+"\n"
-        print "starting with 'top' = ["+str(yTop)+" , "+str(xTop)+"]"
+        log.info("\n"+"*"*10+"   STARTING STAGE 1   "+"*"*10+"\n")
+        log.debug("starting with 'top' = ["+str(yTop)+" , "+str(xTop)+"]")
     while yTop<(yMax-13.0):
-        if debug:
-            print "\n\nNew 'top' = ["+str(y)+" , "+str(x)+"]"      
+        log.debug("\n\nNew 'top' = ["+str(y)+" , "+str(x)+"]")   
         ## 'run down the diagonal' till you hit the bottom
         while y>5.0:
             ## Do stuff to this PSF from its rough center 
             x = np.sum(xAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6]) 
             y = np.sum(yAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6])
-            print "Re-centered value = ["+str(y)+" , "+str(x)+"]\n"
+            log.debug("Re-centered value = ["+str(y)+" , "+str(x)+"]\n")
             centers.append([y,x])
             ## Move to next one in this line
             if y>20:
@@ -175,23 +174,21 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     # Stage 2: go along the bottom of the array
     ############################################
     if debug:
-        print "\n"+"*"*5+"   STARTING STAGE 2   "+"*"*5+"\n"
-        print "making first jump from the last 'top' found in stage 1 = ["+str(yTop)+" , "+str(xTop)+"]"
+        log.info("\n"+"*"*5+"   STARTING STAGE 2   "+"*"*5+"\n")
+        log.debug("making first jump from the last 'top' found in stage 1 = ["+str(yTop)+" , "+str(xTop)+"]")
     ## Update initial rough center for next line top
     (yTop,xTop) = updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,debug)
     y = yTop
     x = xTop
     if debug:
-        print "First new 'top' of stage 2 is = ["+str(yTop)+" , "+str(xTop)+"]"
+        log.debug("First new 'top' of stage 2 is = ["+str(yTop)+" , "+str(xTop)+"]")
     while xTop<(xMax-5):
-        if debug:
-            print "\n\nNew 'top' = ["+str(y)+" , "+str(x)+"]"
+        log.debug("\n\nNew 'top' = ["+str(y)+" , "+str(x)+"]")
         while (x<(xMax-5))and(y>5):
             ## Do stuff to this PSF from its rough center 
             x = np.sum(xAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6]) 
             y = np.sum(yAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6])
-            if debug:
-                print "re-centered value = ["+str(y)+" , "+str(x)+"]"
+            log.debug("re-centered value = ["+str(y)+" , "+str(x)+"]")
             centers.append([y,x])
             if x<(xMax-9):
                 ## Move to next one in this line
@@ -223,12 +220,12 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     
     if False:
         for i in range(0,50):#len(centersUpdated)+1):
-            print "PSF # "+str(i+1)+" = "+repr(centersUpdated[i])
+            log.debug("PSF # "+str(i+1)+" = "+repr(centersUpdated[i]))
       
     #########################################################################
     # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
     #########################################################################
-    print "*"*10+"   Starting to extract 13x13pix PSFs, stack and perform PCA on them   "+"*"*10
+    log.info("*"*10+"   Starting to extract 13x13pix PSFs, stack and perform PCA on them   "+"*"*10)
     psfStack = []
     numAdded = 0
     numNotAdded = 0
@@ -237,14 +234,13 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
         x = centersUpdated[i][1]
         if ((x>(xMax-6))or(y>(yMax-6)))or((x<6)or(y<6)):
             numNotAdded += 1
-            if debug:
-                print "This PSF has insufficient surrounding pixels to be cropped to 13x13, center = ["+str(y)+" , "+str(x)+"]"
+            log.debug("This PSF has insufficient surrounding pixels to be cropped to 13x13, center = ["+str(y)+" , "+str(x)+"]")
         else:
             numAdded += 1
             psfStack.append(ndimage.map_coordinates(inMono,[yAry[y-6:y+7,x-6:x+7],xAry[y-6:y+7,x-6:x+7]],order=3))
     psfStack = np.array(psfStack)
-    print "numAdded = "+str(numAdded)+", numNotAdded = "+str(numNotAdded)
-    print "Shape of psfStack cropping and stacking = "+repr(psfStack.shape)    
+    log.debug( "numAdded = "+str(numAdded)+", numNotAdded = "+str(numNotAdded))
+    log.debug( "Shape of psfStack cropping and stacking = "+repr(psfStack.shape))    
     
     nPSFs = psfStack.shape[0]
     oldshape = psfStack.shape
@@ -286,17 +282,18 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     
 def updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,debug=False):
     if yTop<=(yMax-16.0):#(xTop<(xMax-15))and(yTop>16.0):
-        if debug:
-            print "yTop>16 so subtracting 7, value was = "+str(yTop)
+        #if debug:
+        #    print "yTop>16 so subtracting 7, value was = "+str(yTop)
         yTop += 7.0
         xTop +=14.0
     elif yTop>(yMax-16.0):#(xTop<(xMax-22))and(yTop<9.0):
-        if debug:
-            print "yTop<16 so adding 7, value was = "+str(yTop)
+        #if debug:
+        #    print "yTop<16 so adding 7, value was = "+str(yTop)
         yTop -= 7.0
         xTop += 20.7
     else:
-        print "Not in either of the 'top' ranges for stage 2, yTop = "+str(yTop)+". yTop<=(yMax-16.0) = "+repr(yTop<=(yMax-16.0))+", yTop>=16.0 = "+repr(yTop>(yMax-16.0))
+        log.warning( "Not in either of the 'top' ranges for stage 2, yTop = "+str(yTop)+\
+                     ". yTop<=(yMax-16.0) = "+repr(yTop<=(yMax-16.0))+", yTop>=16.0 = "+repr(yTop>(yMax-16.0)))
     return (yTop,xTop)
     
 def refinePSFcentersTest(inMono,xAry,yAry, centers):
@@ -309,11 +306,11 @@ def refinePSFcentersTest(inMono,xAry,yAry, centers):
     debug = True
     centersLast = centers
     iteration = 0
-    print "*"*5+"  Performing iterative PSF centering loop  "+"*"*5
+    log.debug("*"*5+"  Performing iterative PSF centering loop  "+"*"*5)
     while meanDiff>0.01:
         iteration+=1
         if debug:
-            print "\n Starting iteration = "+str(iteration)
+            log.debug("\n Starting iteration = "+str(iteration))
         centersUpdated = []
         for i in range(0,len(centersLast)):
             y = centersLast[i][0]
@@ -328,15 +325,15 @@ def refinePSFcentersTest(inMono,xAry,yAry, centers):
                     x = np.sum(xAry[y-2:y+3,x-2:x+3]*inMono[y-2:y+3,x-2:x+3])/np.sum(inMono[y-2:y+3,x-2:x+3]) 
                     y = np.sum(yAry[y-2:y+3,x-2:x+3]*inMono[y-2:y+3,x-2:x+3])/np.sum(inMono[y-2:y+3,x-2:x+3])
                 else: 
-                    print "Center coords did not match either box size.  Its [y,x] were = ["+str(y)+" , "+str(x)+"]"
+                    log.warning("Center coords did not match either box size.  Its [y,x] were = ["+str(y)+" , "+str(x)+"]")
                 centersUpdated.append([y,x])
             except:
-                print "an error occurred while trying to re-center a PSF.  Its [y,x] were = ["+str(y)+" , "+str(x)+"]"
+                log.error("an error occurred while trying to re-center a PSF.  Its [y,x] were = ["+str(y)+" , "+str(x)+"]")
                 break
         meanDiff = abs(np.mean(centersLast)-np.mean(centersUpdated))
-        if debug:
-            print "meanDiff = "+str(meanDiff)
+        #if debug:
+        #    print "meanDiff = "+str(meanDiff)
         centersLast = centersUpdated
-    print "Finished PSF re-centering loop in "+str(iteration)+" iterations, resulting in a mean difference of "+str(meanDiff)+"\n"
+    log.info("Finished PSF re-centering loop in "+str(iteration)+" iterations, resulting in a mean difference of "+str(meanDiff)+"\n")
     
     return centersUpdated
