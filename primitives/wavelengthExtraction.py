@@ -3,7 +3,7 @@ import os
 import re
 import pyfits as pf
 import numpy as np
-import scipy as sp
+from scipy import ndimage
 import copy
 import warnings
 import pylab
@@ -39,7 +39,7 @@ def pcaTest(flux, ncomp=5, outputDirRoot='.', writeFiles=True):
     for i in range(nframes):
         fluxFlattened[i] -= meanflux
     
-    # super basic version of SVD.  ACORNS uses a much more advances version with multiprocessing we will implement later
+    # super basic version of SVD.  ACORNS uses a much more advanced version with multiprocessing we will implement later $$$$$$$$$$$$$$$
     log.debug("about to try np.linalg.svd")
     u, s, V = np.linalg.svd(fluxFlattened.T,full_matrices=False)
     uNew = u.T[:ncomp]  # These are the top components from the PCA/SVD decomposition, but need to be reshaped to de-flatten
@@ -111,7 +111,7 @@ def pcaTest(flux, ncomp=5, outputDirRoot='.', writeFiles=True):
         plt.savefig(os.path.join(outPCAdir,"pcaSubVarPlot.png"))
         
 
-def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
+def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     """
     Intial test version of the tool/prim to find the centers of the 
     PSFs in a monochromatic image.  Maybe in here we will also test the
@@ -175,7 +175,7 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
     # Stage 2: go along the bottom of the array
     ############################################
     if debug:
-        print "\n"+"*"*10+"   STARTING STAGE 2   "+"*"*10+"\n"
+        print "\n"+"*"*5+"   STARTING STAGE 2   "+"*"*5+"\n"
         print "making first jump from the last 'top' found in stage 1 = ["+str(yTop)+" , "+str(xTop)+"]"
     ## Update initial rough center for next line top
     (yTop,xTop) = updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,debug)
@@ -214,6 +214,9 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
             #print s
         f.close()
     
+    ########################################################################
+    # Re-center PSFs in an iterative loop
+    ########################################################################
     centersUpdated = centers
     if True:
         centersUpdated = refinePSFcentersTest(inMono,xAry,yAry,centers)
@@ -221,16 +224,65 @@ def findPSFcentersTest(inMonochrom, outputDir='',writeFiles=True):
     if False:
         for i in range(0,50):#len(centersUpdated)+1):
             print "PSF # "+str(i+1)+" = "+repr(centersUpdated[i])
-            
-    return centersUpdated
-
-def psfsToPCA(inMono,centers):
-    """
-    This will break up the input monochromatic image into sections of ~50 PSFs
-    and re-center/crop these into individual subarrays that will then be stacked 
-    to perform PCA on them.
-    """
-    ## $$$$$$$$$$$ how to break up the full array into regions that we can crop out the PSFs to form stacks to perform PCA on??? $$$$$$$$$$$$
+      
+    #########################################################################
+    # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
+    #########################################################################
+    print "*"*10+"   Starting to extract 13x13pix PSFs, stack and perform PCA on them   "+"*"*10
+    psfStack = []
+    numAdded = 0
+    numNotAdded = 0
+    for i in range(0,len(centersUpdated)):
+        y = centersUpdated[i][0]
+        x = centersUpdated[i][1]
+        if ((x>(xMax-6))or(y>(yMax-6)))or((x<6)or(y<6)):
+            numNotAdded += 1
+            if debug:
+                print "This PSF has insufficient surrounding pixels to be cropped to 13x13, center = ["+str(y)+" , "+str(x)+"]"
+        else:
+            numAdded += 1
+            psfStack.append(ndimage.map_coordinates(inMono,[yAry[y-6:y+7,x-6:x+7],xAry[y-6:y+7,x-6:x+7]],order=3))
+    psfStack = np.array(psfStack)
+    print "numAdded = "+str(numAdded)+", numNotAdded = "+str(numNotAdded)
+    print "Shape of psfStack cropping and stacking = "+repr(psfStack.shape)    
+    
+    nPSFs = psfStack.shape[0]
+    oldshape = psfStack.shape
+    log.debug("input array had shape: "+repr(oldshape))
+    
+    # convert to a 2D array [nframes,flattened 2d original data array to 1D]
+    stackFlattened = np.reshape(psfStack, (nPSFs, -1))
+    log.debug("reshaped array is now: "+repr(stackFlattened.shape))
+    
+    # First step: subtract the mean
+    stackMean = np.mean(stackFlattened, axis=0)
+    for i in range(nPSFs):
+        stackFlattened[i] -= stackMean
+    
+    # super basic version of SVD.  ACORNS uses a much more advances version with multiprocessing we will implement later
+    log.debug("about to try np.linalg.svd")
+    u, s, V = np.linalg.svd(stackFlattened.T,full_matrices=False)
+    uNew = u.T[:ncomp]  # These are the top components from the PCA/SVD decomposition, but need to be reshaped to de-flatten
+    log.debug("output uNew has shape: "+repr(uNew.shape))
+    
+    # de-flatten U array to make PCA component array
+    pcaAry = np.reshape(uNew, (ncomp, oldshape[1], oldshape[2]))
+    log.debug("pcaAry has shape: "+repr(pcaAry.shape))
+    pcaAryFlattened = uNew
+    
+    # save PCA components as individual fits files
+    outPCAdir= os.path.join(outputDirRoot,"pcaOutputs")
+    if writeFiles:
+        os.mkdir(outPCAdir)
+        for j in range(ncomp):
+            hdu = pf.PrimaryHDU(pcaAry[j])
+            hduList = pf.HDUList([hdu])
+            outFilename = os.path.join(outputDirRoot+"/pcaOutputs/","pcaComponent_"+str(j+1)+".fits")
+            hduList.writeto(outFilename)
+            hduList.close()    
+    
+    #return centersUpdated
+    
     
 def updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,debug=False):
     if yTop<=(yMax-16.0):#(xTop<(xMax-15))and(yTop>16.0):
@@ -256,23 +308,27 @@ def refinePSFcentersTest(inMono,xAry,yAry, centers):
     meanDiff = 10.0
     debug = True
     centersLast = centers
-    iteration = 1
+    iteration = 0
+    print "*"*5+"  Performing iterative PSF centering loop  "+"*"*5
     while meanDiff>0.01:
+        iteration+=1
         if debug:
-            print "iteration = "+str(iteration)
+            print "\n Starting iteration = "+str(iteration)
         centersUpdated = []
         for i in range(0,len(centersLast)):
             y = centersLast[i][0]
             x = centersLast[i][1]
             try:
                  ## Do stuff to this PSF from its rough center 
-                if ((x<(inMono.shape[1]-6))or(y<(inMono.shape[0]-6)))or((x<6)or(y<6)):
-                    ## PSF is too close to the edge, so shrink the box
-                    x = np.sum(xAry[y-2:y+3,x-2:x+3]*inMono[y-2:y+3,x-2:x+3])/np.sum(inMono[y-2:y+3,x-2:x+3]) 
-                    y = np.sum(yAry[y-2:y+3,x-2:x+3]*inMono[y-2:y+3,x-2:x+3])/np.sum(inMono[y-2:y+3,x-2:x+3])
-                else:
+                if ((x<(inMono.shape[1]-6))or(y<(inMono.shape[0]-6)))or((x>6)or(y>6)):
                     x = np.sum(xAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6]) 
                     y = np.sum(yAry[y-5:y+6,x-5:x+6]*inMono[y-5:y+6,x-5:x+6])/np.sum(inMono[y-5:y+6,x-5:x+6])
+                elif ((x>(inMono.shape[1]-6))or(y>(inMono.shape[0]-6)))or((x<6)or(y<6)):
+                     ## PSF is too close to the edge, so shrink the box
+                    x = np.sum(xAry[y-2:y+3,x-2:x+3]*inMono[y-2:y+3,x-2:x+3])/np.sum(inMono[y-2:y+3,x-2:x+3]) 
+                    y = np.sum(yAry[y-2:y+3,x-2:x+3]*inMono[y-2:y+3,x-2:x+3])/np.sum(inMono[y-2:y+3,x-2:x+3])
+                else: 
+                    print "Center coords did not match either box size.  Its [y,x] were = ["+str(y)+" , "+str(x)+"]"
                 centersUpdated.append([y,x])
             except:
                 print "an error occurred while trying to re-center a PSF.  Its [y,x] were = ["+str(y)+" , "+str(x)+"]"
@@ -280,33 +336,7 @@ def refinePSFcentersTest(inMono,xAry,yAry, centers):
         meanDiff = abs(np.mean(centersLast)-np.mean(centersUpdated))
         if debug:
             print "meanDiff = "+str(meanDiff)
-        iteration+=1
         centersLast = centersUpdated
+    print "Finished PSF re-centering loop in "+str(iteration)+" iterations, resulting in a mean difference of "+str(meanDiff)+"\n"
     
     return centersUpdated
-
-# def centerOfLight(subArray, xCent, yCent, width=5):
-#     """
-#     Find the center of light in a 5x5 box around the current approximated center.
-#     
-#     NOTE: currently only the choices of 5 and 11 are available for the width.
-#     """
-#     # Make a sub array of 5x5
-#     Is = subArray
-#     # Make Xs and Ys arrays
-#     if width==5.0:
-#         Xs = [-2.0,-1.0,0.0,1.0,2.0]
-#         Xs = [Xs,Xs,Xs,Xs,Xs]
-#     if width==11.0:
-#         Xs = [-5.0,-4.0,-3.0,-2.0,-1.0,0.0,1.0,2.0,3.0,4.0,5.0]
-#         Xs = [Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs,Xs]
-#     Ys = np.array(Xs)
-#     Ys = Ys.T
-#     
-#     try:
-#         # calculate center of light expectation value
-#         expectationX = np.sum(Xs*Is)/np.sum(Is) # where Xs are the X locations within a box around a PSF
-#         expectationY = np.sum(Ys*Is)/np.sum(Is)
-#     except:
-#         print "Failed to calculate center of light for given predicted center values ["+str(xCent)+" , "+str(yCent)+"]"
-#     return (expectationX,expectationY)
