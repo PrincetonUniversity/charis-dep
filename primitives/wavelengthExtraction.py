@@ -117,7 +117,7 @@ def pcaTest(flux, ncomp=5, outputDirRoot='.', writeFiles=True):
         plt.savefig(os.path.join(outPCAdir,"pcaSubVarPlot.png"))
         
 
-def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
+def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     """
     Intial test version of the tool/prim to find the centers of the 
     PSFs in a monochromatic image.  Maybe in here we will also test the
@@ -246,7 +246,10 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
             log.debug("This PSF has insufficient surrounding pixels to be cropped to 13x13, center = ["+str(y)+" , "+str(x)+"]")
         else:
             numAdded += 1
-            currAry = ndimage.map_coordinates(inMonoCorrected,[yAry[y-6:y+7,x-6:x+7],xAry[y-6:y+7,x-6:x+7]],order=3)
+            yAry2 = np.linspace(-6.0,+6.0,121)+y
+            xAry2 = np.linspace(-6.0,+6.0,121)+x
+            xAry2,yAry2 = np.meshgrid(xAry2,yAry2)
+            currAry = ndimage.map_coordinates(inMonoCorrected,[yAry2,xAry2],order=3)
             psfStack.append(currAry)
         if np.isnan(np.sum(currAry)):
             print "\n\n"+repr(currAry)
@@ -276,6 +279,10 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     
     # de-flatten U array to make PCA component array
     pcaAry = np.reshape(uNew, (ncomp, oldshape[1], oldshape[2]))
+    # de-flatten mean
+    print "stackMean shape = "+repr(stackMean.shape)
+    print "oldshape[1] = "+str(oldshape[1])+", oldshape[2] = "+str(oldshape[2])
+    stackMeanUnflat = np.reshape(stackMean, (oldshape[1], oldshape[2]))
     log.debug("pcaAry has shape: "+repr(pcaAry.shape))
     pcaAryFlattened = uNew
     
@@ -283,6 +290,12 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     outPCAdir= os.path.join(outputDir,"pcaOutputs")
     if writeFiles:
         os.mkdir(outPCAdir)
+        # store mean first
+        hdu = pf.PrimaryHDU(stackMeanUnflat)
+        hduList = pf.HDUList([hdu])
+        outFilename = os.path.join(outPCAdir,"pcaComponent_mean.fits")
+        hduList.writeto(outFilename)
+        hduList.close()
         for j in range(ncomp):
             hdu = pf.PrimaryHDU(pcaAry[j])
             hduList = pf.HDUList([hdu])
@@ -292,7 +305,45 @@ def findPSFcentersTest(inMonochrom, ncomp = 5,outputDir='',writeFiles=True):
     
     #return centersUpdated
     
-    
+# take 5-7 PCA comps including mean frame as zeroth,
+# bin down to 11x11 and subtract the PCA components from the PSFs, calculating chi squared 
+# Then use the below commented out code from ACORNS to shift the centers and recalculate the chi squared, 
+# this will find the center with the lowest chi squared which will be the updated best center.
+# Once this is complete.  redo the iterative recentering using this PCA approach.
+# ####################################################################
+# # Produce an nxn map of chi2 as a function of offset.
+# # Use SVD to do the fitting at each offset.
+# ####################################################################  
+# 
+# chi2_best = np.inf
+# n = 19
+# x = np.arange(n) - n // 2
+# x, y = np.meshgrid(x, x)
+# 
+# chi2 = np.zeros((n, n))
+# ybest, xbest = [0, 0]
+# for i in range(n):
+#     for j in range(n):
+#         y1 = center[0] + y[i, j] - dimy // 2
+#         x1 = center[1] + x[i, j] - dimx // 2
+# 
+#         subarr = np.reshape(image[y1:y1 + dimy, x1:x1 + dimx], -1)
+#         for k in range(nref):
+#             sub_istd[k] = np.reshape(istd[y1:y1 + dimy, x1:x1 + dimx], -1)
+#         A = sub_istd * refimage2
+#         b = sub_istd[0] * subarr
+#         coef = linalg.lstsq(A.T, b)[0]
+# 
+#         # Compute residuals, sum to get chi2
+#         resid = subarr - coef[0] * refimage2[0]
+#         for k in range(1, nref):
+#             resid -= coef[k] * refimage2[k]
+#         chi2[i, j] = np.sum((resid * sub_istd[0])**2)
+#             
+#         if chi2[i, j] < chi2_best:
+#             chi2_best = chi2[i, j]
+#             ibest, jbest = [i, j]
+
 def updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,debug=False):
     if yTop<=(yMax-16.0):#(xTop<(xMax-15))and(yTop>16.0):
         #if debug:
