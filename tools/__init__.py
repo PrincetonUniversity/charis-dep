@@ -12,6 +12,7 @@ from tools.generalTools import loadHDU
 from tools.generalTools import loadListOfHDUs
 from tools.generalTools import hduToFileName
 from tools.generalTools import writeIntermediate
+from tools.generalTools import rebin
 from tools.destripeTools import horizontal
 from tools.destripeTools import interpbadpix
 from tools.destripeTools import verticalmed
