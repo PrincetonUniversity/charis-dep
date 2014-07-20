@@ -1,6 +1,7 @@
 import tools
 import os
 import re
+import shutil
 import pyfits as pf
 import numpy as np
 from scipy import ndimage
@@ -217,146 +218,130 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             f.write(s+"\n")
             #print s
         f.close()
-    
+    #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    # No PCA component re-centering in a loop.  Instead, with the new centers from a single round of PCA re-centering
+    # use those new centers to reproduce the PCA comps, and do another round of PCA based re-centering.  Put this 
+    # two stage process in a loop until convergence.  AND remove the iterative re-centering with COF, just once if fine.
+    #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
     ########################################################################
     # Re-center PSFs in an iterative loop
     ########################################################################
     centersUpdated = centers
-    if True:
+    if False:
         centersUpdated = refinePSFcentersTest(inMono,xAry,yAry,centers)
     
-    if False:
-        for i in range(0,50):#len(centersUpdated)+1):
-            log.debug("PSF # "+str(i+1)+" = "+repr(centersUpdated[i]))
-      
-    #########################################################################
-    # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
-    #########################################################################
-    nHiRes = 9.0
-    log.info("*"*10+"   Starting to extract 13x13pix PSFs, stack and perform PCA on them   "+"*"*10)
-    psfStack = []
-    numAdded = 0
-    numNotAdded = 0
-    inMonoCorrected = inMono
-    np.putmask(inMonoCorrected,np.isnan(inMonoCorrected),0.0)
-    yAryHiRes = np.linspace(-6.0,+6.0,(12*nHiRes+1))
-    print 'yAryHiRes.shape = '+repr(yAryHiRes.shape)
-    xAryHiRes = yAryHiRes
-    for i in range(0,len(centersUpdated)):
-        currAry = np.zeros((13,13))
-        y = centersUpdated[i][0]
-        x = centersUpdated[i][1]
-        if ((x>(xMax-6))or(y>(yMax-6)))or((x<6)or(y<6)):
-            numNotAdded += 1
-            log.debug("This PSF has insufficient surrounding pixels to be cropped to 13x13, center = ["+str(y)+" , "+str(x)+"]")
-        else:
-            numAdded += 1
-            yAry2 = yAryHiRes+y
-            xAry2 = xAryHiRes+x
-            xAry2,yAry2 = np.meshgrid(xAry2,yAry2)
-            currAry = ndimage.map_coordinates(inMonoCorrected,[yAry2,xAry2],order=3)
-            psfStack.append(currAry)
-        if np.isnan(np.sum(currAry)):
-            print "\n\n"+repr(currAry)
-    psfStack = np.array(psfStack)
-    log.debug( "numAdded = "+str(numAdded)+", numNotAdded = "+str(numNotAdded))
-    log.debug( "Shape of psfStack cropping and stacking = "+repr(psfStack.shape))    
-    
-    nPSFs = psfStack.shape[0]
-    oldshape = psfStack.shape
-    log.debug("input array had shape: "+repr(oldshape))
-    
-    # convert to a 2D array [nframes,flattened 2d original data array to 1D]
-    stackFlattened = np.reshape(psfStack, (nPSFs, -1))
-    log.debug("reshaped array is now: "+repr(stackFlattened.shape))
-    
-    # First step: subtract the mean
-    stackMean = np.mean(stackFlattened, axis=0)
-    for i in range(nPSFs):
-        stackFlattened[i] -= stackMean
-    
-    # super basic version of SVD.  ACORNS uses a much more advances version with multiprocessing we will implement later
-    log.debug("about to try np.linalg.svd")
-    from scipy import linalg  #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ HACK!!
-    u, s, V = linalg.svd(stackFlattened.T,full_matrices=False)
-    uNew = u.T[:ncomp]  # These are the top components from the PCA/SVD decomposition, but need to be reshaped to de-flatten
-    log.debug("output uNew has shape: "+repr(uNew.shape))
-    
-    # de-flatten U array to make PCA component array
-    pcaAry = np.reshape(uNew, (ncomp, oldshape[1], oldshape[2]))
-    # de-flatten mean
-    print "stackMean shape = "+repr(stackMean.shape)
-    print "oldshape[1] = "+str(oldshape[1])+", oldshape[2] = "+str(oldshape[2])
-    stackMeanUnflat = np.reshape(stackMean, (oldshape[1], oldshape[2]))
-    log.debug("pcaAry has shape: "+repr(pcaAry.shape))
-    pcaAryFlattened = uNew
-    
-    # save PCA components as individual fits files
-    outPCAdir= os.path.join(outputDir,"pcaOutputs")
-    if writeFiles:
-        os.mkdir(outPCAdir)
-        # store mean first
-        hdu = pf.PrimaryHDU(stackMeanUnflat)
-        hduList = pf.HDUList([hdu])
-        outFilename = os.path.join(outPCAdir,"pcaComponent_mean.fits")
-        hduList.writeto(outFilename)
-        hduList.close()
-        for j in range(ncomp):
-            # Push mean in as zeroth PCA comp
-            hdu = pf.PrimaryHDU(pcaAry[j])
-            hduList = pf.HDUList([hdu])
-            outFilename = os.path.join(outPCAdir,"pcaComponent_"+str(j+1)+".fits")
-            hduList.writeto(outFilename)
-            hduList.close()    
-    # Push mean in as zeroth PCA comp
-    pcaAry2 = []
-    pcaAry2.append(stackMeanUnflat)
-    for j in range(ncomp):
-        pcaAry2.append(pcaAry[j])
-    pcaAry2 = np.array(pcaAry2)
-    
-    
-# take 5-7 PCA comps including mean frame as zeroth,
-# bin down to 11x11 and subtract the PCA components from the PSFs, calculating chi squared 
-# Then use the below commented out code from ACORNS to shift the centers and recalculate the chi squared, 
-# this will find the center with the lowest chi squared which will be the updated best center.
-# Once this is complete.  redo the iterative re-centering using this PCA approach.
- 
-    meanDiff = 100
+    meanDiff = np.Inf
     centersLast = centersUpdated
     iteration = 0
-    log.info("*"*5+"  Performing iterative PSF centering with PCA comps loop  "+"*"*5)
-    nref = 7
-    ## Create the stepping array for moving around the center
-    x = np.arange(-4,5)
-    stepBoxWidth = x.shape[0]
-    x, y = np.meshgrid(x, x) 
-    while meanDiff>0.1:
+    log.info("*"*10+"   Starting to extract PCA comps and use them to re-center in an iterative loop   "+"*"*10)
+    while meanDiff>0.003:
+        #########################################################################
+        # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
+        #########################################################################
         iteration+=1
         if debug:
             log.debug("\n Starting iteration = "+str(iteration))
-        #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-        # FIRST: think about how to fit a quadratic to the 2D outputs y,x using the chi2 array to find the fractional best fit center, not just integer based center.
-        # if stuck, Tim used something similar in his ACORNS centering routines.
+        nHiRes = 9.0
+        log.info("*"*10+"   Starting to extract 13x13pix PSFs, stack and perform PCA on them   "+"*"*10)
+        psfStack = []
+        numAdded = 0
+        numNotAdded = 0
+        inMonoCorrected = inMono
+        np.putmask(inMonoCorrected,np.isnan(inMonoCorrected),0.0)
+        yAryHiRes = np.linspace(-6.0,+6.0,(12*nHiRes+1))
+        #print 'yAryHiRes.shape = '+repr(yAryHiRes.shape)
+        xAryHiRes = yAryHiRes
+        for i in range(0,len(centersLast)):
+            currAry = np.zeros((13,13))
+            y = centersLast[i][0]
+            x = centersLast[i][1]
+            if ((x>(xMax-6))or(y>(yMax-6)))or((x<6)or(y<6)):
+                numNotAdded += 1
+                log.debug("This PSF has insufficient surrounding pixels to be cropped to 13x13, center = ["+str(y)+" , "+str(x)+"]")
+            else:
+                numAdded += 1
+                yAry2 = yAryHiRes+y
+                xAry2 = xAryHiRes+x
+                xAry2,yAry2 = np.meshgrid(xAry2,yAry2)
+                currAry = ndimage.map_coordinates(inMonoCorrected,[yAry2,xAry2],order=3)
+                psfStack.append(currAry)
+            if np.isnan(np.sum(currAry)):
+                log.error("\n\n"+repr(currAry))
+        psfStack = np.array(psfStack)
+        log.debug( "numAdded = "+str(numAdded)+", numNotAdded = "+str(numNotAdded))
+        log.debug( "Shape of psfStack cropping and stacking = "+repr(psfStack.shape))    
         
+        nPSFs = psfStack.shape[0]
+        oldshape = psfStack.shape
+        log.debug("input array had shape: "+repr(oldshape))
         
-        # No PCA component re-centering in a loop.  Instead, with the new centers from a single round of PCA re-centering
-        # use those new centers to reproduce the PCA comps, and do another round of PCA based re-centering.  Put this 
-        # two stage process in a loop until convergence.  AND remove the iterative re-centering with COF, just once if fine.
-        #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+        # convert to a 2D array [nframes,flattened 2d original data array to 1D]
+        stackFlattened = np.reshape(psfStack, (nPSFs, -1))
+        log.debug("reshaped array is now: "+repr(stackFlattened.shape))
+        
+        # First step: subtract the mean
+        stackMean = np.mean(stackFlattened, axis=0)
+        for i in range(nPSFs):
+            stackFlattened[i] -= stackMean
+        
+        # super basic version of SVD.  ACORNS uses a much more advances version with multiprocessing we will implement later
+        #log.debug("about to try np.linalg.svd")
+        from scipy import linalg  #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ HACK!!
+        u, s, V = linalg.svd(stackFlattened.T,full_matrices=False)
+        uNew = u.T[:ncomp]  # These are the top components from the PCA/SVD decomposition, but need to be reshaped to de-flatten
+        log.debug("output uNew has shape: "+repr(uNew.shape))
+        
+        # de-flatten U array to make PCA component array
+        pcaAry = np.reshape(uNew, (ncomp, oldshape[1], oldshape[2]))
+        # de-flatten mean
+        stackMeanUnflat = np.reshape(stackMean, (oldshape[1], oldshape[2]))
+        log.debug("pcaAry has shape: "+repr(pcaAry.shape))
+        pcaAryFlattened = uNew
+        
+        # save PCA components as individual fits files
+        outPCAdir= os.path.join(outputDir,"pcaOutputs")
+        if writeFiles:
+            if os.path.exists(outPCAdir):
+                shutil.rmtree(outPCAdir)
+            os.mkdir(outPCAdir)
+            # store mean first
+            hdu = pf.PrimaryHDU(stackMeanUnflat)
+            hduList = pf.HDUList([hdu])
+            outFilename = os.path.join(outPCAdir,"pcaComponent_mean.fits")
+            hduList.writeto(outFilename)
+            hduList.close()
+            for j in range(ncomp):
+                hdu = pf.PrimaryHDU(pcaAry[j])
+                hduList = pf.HDUList([hdu])
+                outFilename = os.path.join(outPCAdir,"pcaComponent_"+str(j+1)+".fits")
+                hduList.writeto(outFilename)
+                hduList.close()    
+        # Push mean in as zeroth PCA comp
+        pcaAry2 = []
+        pcaAry2.append(stackMeanUnflat)
+        for j in range(ncomp):
+            pcaAry2.append(pcaAry[j])
+        pcaAry2 = np.array(pcaAry2)
+        
         ###################################################################################################################
         # PCA was done using 13x13 arrays.  First the central 9x9 of the low/standard resolution PSF will be cropped out.
-        # Then the high resolution PCA components will have their central 11x11pix cropped out, binned down to 1pix resolution
+        # Then the high resolution PCA components will have their central 9x9pix cropped out, binned down to 1pix resolution
         # and fit to the PSF.  It will be shifted around the center using a 9x9 box at 0.1pix resolution until the best new 
-        # center is found based on the chi squared of the fit.
+        # center is found based on the chi squared of the fit.  These fit values are integer based, so they are then fit 
+        # again using a secondary stage of least square fiting to find the sub-pixel resolution center.
         ###################################################################################################################
-        #log.info("*"*10+"   Starting to shift and compare central 11x11 of PSF centers to PCA comps to find better centers  "+"*"*10)
+        nref = 7
+        ## Create the stepping array for moving around the center
+        x = np.arange(-4,5)
+        stepBoxWidth = x.shape[0]
+        x, y = np.meshgrid(x, x) 
         centersUpdated2 = []
         centersUpdated3 = []
         offsetsBest = []
         recentSuccess = []
+        log.info("*"*10+"   Starting to perform PCA based re-centering   "+"*"*10)
         ## Loop over each PSF center in the updated centers array produced by the center of light approach
-        for center in range(1):#len(centersLast)):
+        for center in range(0,len(centersLast)):
             #print '\ncenter #'+str(center)
             chi2Best = np.inf
             chi2 = np.zeros((stepBoxWidth, stepBoxWidth))
@@ -376,10 +361,6 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 x1FracShift -= 1.0
             # crop 11x11 PSF and flatten
             currPSFflat = np.reshape(inMonoCorrected[y1-4:y1+5,x1-4:x1+5],-1)
-            print 'y1Orig, x1Orig = %2f, %2f'%(y1Orig,x1Orig)
-            print 'y1,x1 = (%.2f + %.2f, %.2f + %.2f)' % (y1,y1FracShift, x1, x1FracShift)
-            iBest = jBest = 0
-            yBest = xBest = 0
             yBestStr = xBestStr = ''
             ## Loop over each shifted center point to find best new center based on lowest chi squared value
             for i in range(stepBoxWidth):
@@ -389,17 +370,11 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                     ## My version, Not sure if correct as don't know why multiplication by std was used in Tim's version
                     pcaCompsUSE = np.zeros((nref,currPSFflat.shape[0]))
                     for k in range(nref):
-                        # crop 11x11 high resolution PCA components, rebin and flatten
-                        #print 'pca orig size'+repr(pcaAry2[k].shape)
+                        # crop 9x9 high resolution PCA components, rebin and flatten
                         yShift = y2-int(y1FracShift*9.0)
                         xShift = x2-int(x1FracShift*9.0)
-                        #print "yshift = %.2f + %2f"%(y2,y1FracShift*9.0)
-                        #print "xshift = %.2f + %2f"%(x2,x1FracShift*9.0)
-                        #print "yShift,xShift = (%.2f,%.2f) "%(yShift,xShift)
                         pcaCropped = pcaAry2[k][14+yShift:-14+yShift,14+xShift:-14+xShift]
-                        #print "pcaCropped.shape  = "+repr(pcaCropped.shape)
                         pcaBinned = tools.rebin(pcaCropped,(9,9))
-                        #print "pcaBinned.shape = "+repr(pcaBinned.shape)
                         pcaCompsUSE[k] = np.reshape(pcaBinned,-1)
                     A = pcaCompsUSE
                     b = currPSFflat
@@ -407,63 +382,58 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
              
                     # Compute residuals, sum to get chi2
                     resid = currPSFflat - coef[0] * pcaCompsUSE[0]
-                    #print "zeroth residual = "+str(resid)
                     for k in range(1, nref):
                         resid -= coef[k] * pcaCompsUSE[k]
-                    #print "resid afterwards = "+str(resid)
-                    #print "raw chi2  = "+str(np.sum(currPSFflat**2))
                     chi2[i, j] = np.sum(resid**2)
-                    #print "chi2[i,j] = "+repr(chi2[i,j])
+                    
                     if chi2[i, j] < chi2Best:
                         chi2Best = chi2[i, j]
                         iBest, jBest = [i, j]
-                        yBest = yShift
-                        xBest = xShift
-                        yBestStr = "yshift PCA = %.2f - %2f"%(y2,y1FracShift*9.0)
-                        xBestStr = "xshift PCA = %.2f - %2f"%(x2,x1FracShift*9.0)                        
-#             #print "y1 = "+str(y1)+", x1 = "+str(x1)
-            #print "ibest = "+str(ibest)+", jbest = "+str(jbest)
             offsetsBest.append([y[iBest,jBest],x[iBest,jBest]])
-            #print "yBest,xBest PCA = (%2f, %2f)"%(yBest,xBest)
-            #print yBestStr+", "+xBestStr
-            #print "OR in 1pix/element PSF= (%2f, %2f)"%(yBest/9.0,xBest/9.0)
-            #print repr(chi2)
             centersUpdated2.append([y1+(1.0/9.0)*int(y1FracShift*9.0)+(y[iBest,jBest]/9.0),x1+(1.0/9.0)*int(x1FracShift*9.0)+(x[iBest,jBest]/9.0)])
             
             ################################################################################################################################################ 
             # Use a least squares fit to a parabola of (chi2,x,y) to find true x,y shift values instead of integer based ones above.  Only using central 3x3
             ################################################################################################################################################
+            success = True
             try:
                 y0 = y[iBest,jBest]
                 x0 = x[iBest,jBest]
-                yPara = np.reshape(y[1+y0:y0-1,y01:y0-1],-1)
-                xPara = np.reshape(x[1+y0:y0-1,y01:y0-1],-1)
-                initGuess = [2.0, 2.0, chi2Best, y0, x0]
-                chi2Para = chi2[1:-1,1:-1]
-                print "shape chi2Para = "+repr(chi2Para.shape)
-                bestFitVals = optimize.leastsq(residual, initGuess, args=(xPara,yPara,chi2Para))
-            except:
+                yPara = np.reshape(y[3+y0:y0-3,3+y0:y0-3],-1)
+                xPara = np.reshape(x[3+y0:y0-3,3+y0:y0-3],-1)
+                initGuess = [2.0, 2.0, 2.0, chi2Best, y0, x0]
+                chi2Para = chi2[3+y0:y0-3,3+y0:y0-3]
+                chi2Para = np.reshape(chi2Para,-1)
                 if (abs(y0)>1) or (abs(x0)>1):
-                    recentSuccess.append(False)
-                else:
-                    recentSuccess.append(True)
-            centersUpdated3.append(True)#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-            log.debug("chi2Best = "+str(chi2Best))
-            log.debug("Previous center = "+repr(centersLast[center])+", new ones are = "+repr(centersUpdated2[center])+"\n")
+                    success = False
+                bestFitVals,s = optimize.leastsq(residual, initGuess[:], args=(xPara,yPara,chi2Para))
+                yBestOut = bestFitVals[4]
+                xBestOut = bestFitVals[5]
+            except:
+                
+                log.error("An error occurred while trying to find best center from PCA re-centering")
+                log.error("Error occured on PSF #"+str(center)+", with a latest guess center of "+repr(centersUpdated2[center]))
+            recentSuccess.append(success)
+            centersUpdated3.append([y1+(1.0/9.0)*int(y1FracShift*9.0)+(yBestOut/9.0),x1+(1.0/9.0)*int(x1FracShift*9.0)+(xBestOut/9.0)])
+            #print "\n# "+str(center)+": pre-PCA center = "+repr(centersUpdated[center])
+            #print "PCA center output = "+repr(centersUpdated2[center])
+            #print "Final output center = "+repr(centersUpdated3[center])
+            #log.debug("chi2Best = "+str(chi2Best))
+            #log.debug("Previous center = "+repr(centersLast[center])+", new ones are = "+repr(centersUpdated3[center])+"\n")
             
-        #print repr(offsetsBest)
-        meanDiff = abs(np.mean(centersLast)-np.mean(centersUpdated2))
-        print "(np.mean(centersLast)) "+str(np.mean(centersLast))+" - "+str(np.mean(centersUpdated2))+" (np.mean(centersUpdated2)) = "+str(meanDiff)
-        log.debug("PSF #50: Original center = "+repr(centersUpdated[50])+", new ones are = "+repr(centersUpdated2[50]))
-        log.debug("PSF #1000: Original center = "+repr(centersUpdated[1000])+", new ones are = "+repr(centersUpdated2[1000]))
-        centersLast = centersUpdated2
-        #log.debug("Latest diff = "+str(meanDiff))
-    print repr(offsetsBest)
-    log.info("Finished PSF PCA based re-centering loop in "+str(iteration)+" iterations, resulting in a mean difference of "+str(meanDiff)+"\n")
+        meanDiff = abs(np.mean(centersLast)-np.mean(centersUpdated3))
+        print "(np.mean(centersLast)) "+str(np.mean(centersLast))+" - "+str(np.mean(centersUpdated3))+" (np.mean(centersUpdated2)) = "+str(meanDiff)
+        log.debug("PSF #50: Original center = "+repr(centersUpdated[50])+", newest ones are = "+repr(centersUpdated3[50]))
+        log.debug("PSF #1000: Original center = "+repr(centersUpdated[1000])+", newest ones are = "+repr(centersUpdated3[1000]))
+        centersLast = centersUpdated3
+        log.info("Finished PCA-based re-centering resulting in a mean difference of "+str(meanDiff)+"\n")
+    log.info("Finished PSF+PCA combo re-centering loop in "+str(iteration)+" iterations, resulting in a mean difference of "+str(meanDiff)+"\n")
+    
     
 def residual(p,x,y,chi2):
     a,b,c,d,xc,yc = p 
-    return chi2 - (a*(x-xc)**2.0+b*(y-yc)**2.0+c*(x-xc)(y-yc)+d)
+    val = chi2 - (a*(x-xc)**2.0+b*(y-yc)**2.0+c*(x-xc)*(y-yc)+d)
+    return val
     
 def updatedStage2PSFtopJump(yTop,xTop,yMax,xMax,debug=False):
     if yTop<=(yMax-16.0):#(xTop<(xMax-15))and(yTop>16.0):
