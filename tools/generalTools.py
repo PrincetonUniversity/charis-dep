@@ -15,7 +15,27 @@ def testToolFunc():
     #log = tools.getLogger('main.tools',lvl=100,addFH=False)
     print 'Inside testToolFunc'
     log.info('InfoMsgInsideTools')
+ 
+def timeString(duration):
+    """
+    takes a time duration in seconds and returns it in a nice string with info on number of 
+    hours, minutes and/or seconds depending on duration.
     
+    :param str duration: The duration in seconds.
+    :return: The duration reformatted into a nice string.
+    :rtype: str
+    """
+    if duration<60:
+        totalTimeString = str(int(duration))+' seconds'
+    elif duration>3600:
+        duration = duration/3600.0
+        totalTimeString = str(int(duration))+' hours and '+str(int(60*((duration)-int(duration))))+' minutes'
+    else:
+        duration = duration/60.0
+        totalTimeString = str(int(duration))+' minutes and '+str(int(60*((duration)-int(duration))))+' seconds'
+        
+    return totalTimeString
+   
 def writeIntermediate(hdus, outputDir="", postStr = "", closeAfter=False):
     """
     A function to write a hdu, or list of them, to disk with an post-pended string 
