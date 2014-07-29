@@ -239,7 +239,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     xAryHiRes = yAryHiRes
     iteration = 0
     log.info("*"*10+"   Starting to extract PCA comps and use them to re-center in an iterative loop   "+"*"*10)
-    while (meanDiff>0.003)and(iteration<2):
+    while (meanDiff>0.003)and(iteration<5):
         #########################################################################
         # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
         #########################################################################
