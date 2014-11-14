@@ -20,13 +20,13 @@ Args:
                                 suffice.
 """
 
-import pyfits as pf
+#import pyfits as pf
 import numpy as np
 import os
 import glob
 
-root = '/run/media/kmede/SharedData' # for Kyle's laptop
-#root = 'mnt/Data1/Todai_Work' # for Kyle's desktop
+#root = '/run/media/kmede/SharedData' # for Kyle's laptop
+root = '/mnt/Data1/Todai_Work' # for Kyle's desktop
 #inDataDir = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testData"
 inDataDir = root+"/Data/data_CHARIS/testData/"
 outDirRoot = root+"/Data/data_CHARIS/testOutputs/"

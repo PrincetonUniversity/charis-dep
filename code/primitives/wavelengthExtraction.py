@@ -19,7 +19,7 @@ log = tools.getLogger('main.prims',lvl=0,addFH=False)#('main.prims',lvl=100,addF
 def pcaTest(flux, ncomp=5, outputDirRoot='.', writeFiles=True):
     """
     This function/prim will take any set of equally sized sequence of images with at least
-    5 frames of a point source and extract its top 5 principle components using PCA.
+    5 frames of a point source and extract its top (5) principle components using PCA.
     
     NOTE: This code is basically a test of concept and shall be used primarily as sample
     code for further applications during the wavelength extraction and wavelength solution 
@@ -433,9 +433,9 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 #print "chi2Para flat = "+repr(chi2Para)
                 if yPara.shape[0]<9:
                     success = False
-                    print "\ny0 or x0 above +-1, vals were [y0,x0] = "+repr([y0,x0])
+                    #print "\ny0 or x0 above +-1, vals were [y0,x0] = "+repr([y0,x0])
                     log.error("Error occurred on PSF #"+str(center)+", with a latest guess center of \n"+repr(centersUpdated2[center])+", and initGuess = "+repr(initGuess))
-                    print "pre-PCA center = "+repr(centersLast[center])
+                    #print "pre-PCA center = "+repr(centersLast[center])
                 else:
                     #print "about to  call optimize"
                     #print "xPara.shape = "+str(xPara.shape)+", yPara.shape = "+str(yPara.shape)+", chi2Para.shape = "+str(chi2Para.shape)
