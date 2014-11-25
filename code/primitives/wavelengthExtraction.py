@@ -14,7 +14,7 @@ import warnings
 import pylab
 plt = pylab.matplotlib.pyplot
 
-log = tools.getLogger('main.prims',lvl=0,addFH=False)#('main.prims',lvl=100,addFH=False)
+log = tools.getLogger('main.prims',lvl=100,addFH=False)#('main.prims',lvl=100,addFH=False)
 
 def pcaTest(flux, ncomp=5, outputDirRoot='.', writeFiles=True):
     """
@@ -239,7 +239,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     xAryHiRes = yAryHiRes
     iteration = 0
     log.info("*"*10+"   Starting to extract PCA comps and use them to re-center in an iterative loop   "+"*"*10)
-    while (meanDiff>0.003)and(iteration<5):
+    while (meanDiff>0.003)and(iteration<3):
         #########################################################################
         # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
         #########################################################################
@@ -365,7 +365,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             x1FracShift = x1%1
             y1 = int(y1)
             x1 = int(x1)
-            # check if fraction is over 0.5, shift if so 1 whole pix to right
+            # check if fraction is over 0.5, if so shift 1 whole pix toward bottom left corner
             if y1FracShift>=0.5:
                 y1 +=1
                 y1FracShift -= 1.0
@@ -384,13 +384,14 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                     pcaCompsUSE = np.zeros((nref,currPSFflat.shape[0]))
                     for k in range(nref):
                         # crop 9x9 high resolution PCA components, rebin and flatten
+                        ##NOTE: shifting stepping array to left/down, which will shift the PCA comps to the left/down
                         yShift = yStepAry[i, j]-int(y1FracShift*9.0)
                         xShift = xStepAry[i, j]-int(x1FracShift*9.0)
                         pcaCropped = pcaAry2[k][14+yShift:-14+yShift,14+xShift:-14+xShift]
                         pcaBinned = tools.rebin(pcaCropped,(9,9))
                         pcaCompsUSE[k] = np.reshape(pcaBinned,-1)
                     A = pcaCompsUSE
-                    b = currPSFflat
+                    b = currPSFflat #1pix resolution 9x9 array centered on integer (1pix res) center from COL
                     coef = linalg.lstsq(A.T, b)[0]
              
                     # Compute residuals, sum to get chi2
@@ -405,6 +406,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 #p2.render((i+1) * 100 // stepBoxWidth, ' of i vals complete so far.')
             chi2Bests.append(chi2Best)
             offsetsBest.append([yStepAry[iBest,jBest],xStepAry[iBest,jBest]])
+            ##NOTE: PCA shifted and fit outputs are shifted to left/down by FracShift, thus shift back to the right/up
             centersUpdated2.append([y1+(1.0/9.0)*int(y1FracShift*9.0)+(yStepAry[iBest,jBest]/9.0),x1+(1.0/9.0)*int(x1FracShift*9.0)+(xStepAry[iBest,jBest]/9.0)])
             
             ################################################################################################################################################ 
@@ -434,7 +436,14 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 if yPara.shape[0]<9:
                     success = False
                     #print "\ny0 or x0 above +-1, vals were [y0,x0] = "+repr([y0,x0])
-                    log.error("Error occurred on PSF #"+str(center)+", with a latest guess center of \n"+repr(centersUpdated2[center])+", and initGuess = "+repr(initGuess))
+                    log.error("Error occurred on PSF #"+str(center)+"\n** Stepping array size under 3x3 **"+\
+                              "\n[iBest,jBest] = "+"["+str(iBest)+", "+str(jBest)+"]"+\
+                              "\nSize of inMono [yMax,xMax] = ["+str(yMax)+", "+str(xMax)+"]"
+                              "\nyPara.shape[0] = "+repr(yPara.shape[0])+\
+                              "\nyStepAry = "+repr(yPara)+\
+                              "\nxStepAry = "+repr(xPara)+\
+                              "\nPrevious center = "+repr(centersLast[center])+"\nCOL center = "+repr(centersUpdated[center])+\
+                              "\ninitGuess = "+repr(initGuess)+"\n\n")
                     #print "pre-PCA center = "+repr(centersLast[center])
                 else:
                     #print "about to  call optimize"
@@ -445,16 +454,18 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                     xBestOut = bestFitVals[5]
             except:
                 log.error("\nAn error occurred while trying to find best center from PCA re-centering")
-                print "# "+str(center)+": COL center = "+repr(centersUpdated[center])
-                print "Previous center = "+repr(centersLast[center])
-                log.error("Error occurred on PSF #"+str(center)+", with a latest guess center of \n"+repr(centersUpdated2[center])+", and initGuess = "+repr(initGuess)+"\n")
+                #print "# "+str(center)+": COL center = "+repr(centersUpdated[center])
+                #print "Previous center = "+repr(centersLast[center])
+                log.error("Error occurred on PSF #"+str(center)+", with a latest guess center of \n"+repr(centersUpdated2[center])+\
+                          "\nPrevious center = "+repr(centersLast[center])+"\nCOL center = "+repr(centersUpdated[center])+\
+                          "\n and initGuess = "+repr(initGuess)+"\n")
                 
                 #print "PCA center output = "+repr(centersUpdated2[center])
             recentSuccess.append(success)
             centersUpdated3.append([centersUpdated2[center][0]+(yBestOut/9.0),centersUpdated2[center][1]+(xBestOut/9.0)])
             #print "\n# "+str(center)+": pre-PCA center = "+repr(centersUpdated[center])
             #print "PCA center output = "+repr(centersUpdated2[center])
-            #print "Final output center = "+repr(centersUpdated3[center])
+            #print "Final output center = "+repr(centersUpdated3[center])+"\n"
             #log.debug("chi2Best = "+str(chi2Best))
             #log.debug("Previous center = "+repr(centersLast[center])+", new ones are = "+repr(centersUpdated3[center])+"\n")
             
@@ -475,7 +486,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     
     if True:
         f = open(os.path.join(outputDir,'multiStageCentOuts.txt'), 'w')
-        f.write("PCA#  Ycl    Xcl   Ypca1   Xpca1   chi2pca1    Ypca2   Xpca2   chi2pca2")
+        f.write("PCA#  Ycl       Xcl     Ypca1   Xpca1   chi2pca1    Ypca2   Xpca2   chi2pca2\n")
         for i in range(0,len(centersUpdated3)):
             s = "%.1f   %.3f   %.3f   %.3f   %.3f  %.5f     %.3f   %.3f   %.5f "%(i,centersUpdated[i][0],centersUpdated[i][1],centersUpdated2[i][0],centersUpdated[i][1],chi2Bests[i],centersUpdated3[i][0],centersUpdated3[i][1],chi2Best2s[i])
             f.write(s+"\n")

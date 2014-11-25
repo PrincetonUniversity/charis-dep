@@ -29,7 +29,8 @@ import glob
 root = '/mnt/Data1/Todai_Work' # for Kyle's desktop
 #inDataDir = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testData"
 inDataDir = root+"/Data/data_CHARIS/testData/"
-outDirRoot = root+"/Data/data_CHARIS/testOutputs/"
+outDirSubFolder = "PSFextractTest1-posShifts3-3/"
+outDirRoot = root+"/Data/data_CHARIS/testOutputs/"+outDirSubFolder
 inDataFilesRaw = ['N20050227S0127.fits']
 # Next line just converts the raw names to full path versions
 inDataFiles = []
