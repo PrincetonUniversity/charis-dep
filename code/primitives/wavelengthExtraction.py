@@ -415,29 +415,19 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             success = True
             initGuess = []
             try:
-                #y0 = yStepAry[iBest,jBest]
-                #x0 = xStepAry[iBest,jBest]
-                #print "y = "+repr(y)
-                #print "x = "+repr(x)
-                #print "y pre = "+repr(y[3:-3,3:-3])
-                #print "x per = "+repr(x[3:-3,3:-3])
-                #print "y = "+repr(y[3+y0:y0-3,3+x0:x0-3])
-                #print "x = "+repr(x[3+y0:y0-3,3+x0:x0-3])
                 yPara = np.reshape(yStepAry[iBest-1:iBest+2,jBest-1:jBest+2],-1)
                 xPara = np.reshape(xStepAry[iBest-1:iBest+2,jBest-1:jBest+2],-1)
-                #print "yPara = "+repr(yPara)
-                #print "xPara = "+repr(xPara)
                 initGuess = [2.0, 2.0, 2.0, chi2Best, 0.0, 0.0]
-                #print "initGuess [a,b,c,d,yc,xc] = "+repr(initGuess)
                 chi2Para = chi2[iBest-1:iBest+2,jBest-1:jBest+2]
-                #print "chi2Para = "+repr(chi2Para)
                 chi2Para = np.reshape(chi2Para,-1)
-                #print "chi2Para flat = "+repr(chi2Para)
-                if yPara.shape[0]<9:
+                if yPara.shape[0]<=3:
                     success = False
                     #print "\ny0 or x0 above +-1, vals were [y0,x0] = "+repr([y0,x0])
                     log.error("Error occurred on PSF #"+str(center)+"\n** Stepping array size under 3x3 **"+\
+                              "\n"+"-"*50+\
                               "\n[iBest,jBest] = "+"["+str(iBest)+", "+str(jBest)+"]"+\
+                              " -> ("+str(yStepAry[iBest,jBest])+", "+str(xStepAry[iBest,jBest])+")"+\
+                              "\n"+"-"*50+\
                               "\nSize of inMono [yMax,xMax] = ["+str(yMax)+", "+str(xMax)+"]"
                               "\nyPara.shape[0] = "+repr(yPara.shape[0])+\
                               "\nyStepAry = "+repr(yPara)+\
