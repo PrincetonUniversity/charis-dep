@@ -224,6 +224,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
 
     ########################################################################
     # Re-center PSFs in an iterative loop
+    # First set-up initial, or constant, variables/values, then enter the loop.
     ########################################################################
     centersUpdated = centers
     if False:
@@ -235,7 +236,6 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     inMonoCorrected = inMono
     np.putmask(inMonoCorrected,np.isnan(inMonoCorrected),0.0)
     yAryHiRes = np.linspace(-6.0,+6.0,(12*nHiRes+1))
-    #print 'yAryHiRes.shape = '+repr(yAryHiRes.shape)
     xAryHiRes = yAryHiRes
     iteration = 0
     log.info("*"*10+"   Starting to extract PCA comps and use them to re-center in an iterative loop   "+"*"*10)
@@ -244,7 +244,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
         #########################################################################
         # record the time PCA extraction started
-        tic=timeit.default_timer()
+        tic1 = timeit.default_timer()
         iteration+=1
         if debug:
             log.debug("\n Starting iteration = "+str(iteration))
@@ -328,7 +328,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         
         # write total elapsed time to screen and log.
         toc=timeit.default_timer()
-        totalTimeString = tools.timeString(toc - tic)
+        totalTimeString = tools.timeString(toc - tic1)
         log.debug('\n\nPCA comp extraction took '+totalTimeString+' to complete.\n')
         ###################################################################################################################
         # PCA was done using 13x13 arrays.  First the central 9x9 of the low/standard resolution PSF will be cropped out.
@@ -351,7 +351,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         chi2Best2s = []
         recentSuccess = []
         # record the time PCA extraction started
-        tic=timeit.default_timer()
+        tic2=timeit.default_timer()
         log.info("*"*10+"   Starting to perform PCA based re-centering   "+"*"*10)
         ## Loop over each PSF center in the updated centers array produced by the center of light approach
         for center in range(0,len(centersLast)):
@@ -414,27 +414,28 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             ################################################################################################################################################
             success = True
             initGuess = []
+            preParaSummaryStr =  "\n"+"-"*20+" Iteration #"+str(iteration)+", PSF #"+str(center)+"   "+"-"*20+\
+                              "\n[iBest,jBest] = "+"["+str(iBest)+", "+str(jBest)+"]"+\
+                              " -> ("+str(yStepAry[iBest,jBest])+", "+str(xStepAry[iBest,jBest])+")"+\
+                              "\nSize of inMono [yMax,xMax] = ["+str(yMax)+", "+str(xMax)+"]"+\
+                              "\nInitial COL center = "+repr(centersUpdated[center])+\
+                              "\nPrevious center = "+repr(centersLast[center])+\
+                              "\nLatest 1/9 resolution PCA based center = "+repr(centersUpdated2[center])+\
+                              "\n"+"-"*50
+            paraSummaryStr = ""
             try:
                 yPara = np.reshape(yStepAry[iBest-1:iBest+2,jBest-1:jBest+2],-1)
                 xPara = np.reshape(xStepAry[iBest-1:iBest+2,jBest-1:jBest+2],-1)
                 initGuess = [2.0, 2.0, 2.0, chi2Best, 0.0, 0.0]
                 chi2Para = chi2[iBest-1:iBest+2,jBest-1:jBest+2]
                 chi2Para = np.reshape(chi2Para,-1)
-                if yPara.shape[0]<=3:
+                paraSummaryStr =  "\nyPara.shape[0] = "+repr(yPara.shape[0])+\
+                                "\nyStepAry = "+repr(yPara)+\
+                                "\nxStepAry = "+repr(xPara)+\
+                                "\ninitGuess = "+repr(initGuess)
+                if (yPara.shape[0]<=3) or (xPara.shape[0]<=3):
                     success = False
-                    #print "\ny0 or x0 above +-1, vals were [y0,x0] = "+repr([y0,x0])
-                    log.error("Error occurred on PSF #"+str(center)+"\n** Stepping array size under 3x3 **"+\
-                              "\n"+"-"*50+\
-                              "\n[iBest,jBest] = "+"["+str(iBest)+", "+str(jBest)+"]"+\
-                              " -> ("+str(yStepAry[iBest,jBest])+", "+str(xStepAry[iBest,jBest])+")"+\
-                              "\n"+"-"*50+\
-                              "\nSize of inMono [yMax,xMax] = ["+str(yMax)+", "+str(xMax)+"]"
-                              "\nyPara.shape[0] = "+repr(yPara.shape[0])+\
-                              "\nyStepAry = "+repr(yPara)+\
-                              "\nxStepAry = "+repr(xPara)+\
-                              "\nPrevious center = "+repr(centersLast[center])+"\nCOL center = "+repr(centersUpdated[center])+\
-                              "\ninitGuess = "+repr(initGuess)+"\n\n")
-                    #print "pre-PCA center = "+repr(centersLast[center])
+                    log.error("\n** Stepping array size under 3x3 **"+preParaSummaryStr+paraSummaryStr+"\n")
                 else:
                     #print "about to  call optimize"
                     #print "xPara.shape = "+str(xPara.shape)+", yPara.shape = "+str(yPara.shape)+", chi2Para.shape = "+str(chi2Para.shape)
@@ -443,35 +444,30 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                     yBestOut = bestFitVals[4]
                     xBestOut = bestFitVals[5]
             except:
-                log.error("\nAn error occurred while trying to find best center from PCA re-centering")
-                #print "# "+str(center)+": COL center = "+repr(centersUpdated[center])
-                #print "Previous center = "+repr(centersLast[center])
-                log.error("Error occurred on PSF #"+str(center)+", with a latest guess center of \n"+repr(centersUpdated2[center])+\
-                          "\nPrevious center = "+repr(centersLast[center])+"\nCOL center = "+repr(centersUpdated[center])+\
-                          "\n and initGuess = "+repr(initGuess)+"\n")
-                
-                #print "PCA center output = "+repr(centersUpdated2[center])
+                log.error("\nAn error occurred while trying to refine best center from PCA re-centering"+preParaSummaryStr+paraSummaryStr+"\n")
+
             recentSuccess.append(success)
             centersUpdated3.append([centersUpdated2[center][0]+(yBestOut/9.0),centersUpdated2[center][1]+(xBestOut/9.0)])
-            #print "\n# "+str(center)+": pre-PCA center = "+repr(centersUpdated[center])
-            #print "PCA center output = "+repr(centersUpdated2[center])
-            #print "Final output center = "+repr(centersUpdated3[center])+"\n"
-            #log.debug("chi2Best = "+str(chi2Best))
-            #log.debug("Previous center = "+repr(centersLast[center])+", new ones are = "+repr(centersUpdated3[center])+"\n")
             
             p.render((center+1) * 100 // len(centersLast), 'Centers complete so far.')
             
-        # write total elapsed time to screen and log.
+        # write total elapsed time to screen and log for both.
         toc=timeit.default_timer()
-        totalTimeString = tools.timeString(toc - tic)
-        log.debug('\n\nPCA-based re-centering (both parts) took '+totalTimeString+' to complete.\n')
+        totalTimeString = tools.timeString(toc - tic2)
+        log.debug('\n\nPCA-based re-centering took '+totalTimeString+' to complete.\n')
+        totalTimeString = tools.timeString(toc - tic1)
+        log.info("\nIteration "+str(iteration)+" of PCA extraction and re-centering took "+totalTimeString+' to complete.\n')
         
+        ########################################################################################
+        # Calculate mean difference to determine if loop can exit, and update 'centersLast'
+        # with most recently found centers (ie. centersUpdated3).
+        # NOTE: re-centering iterative loop not set up yet!!!!
+        ########################################################################################
         meanDiff = abs(np.mean(centersLast)-np.mean(centersUpdated3))
-        #print "(np.mean(centersLast)) "+str(np.mean(centersLast))+" - "+str(np.mean(centersUpdated3))+" (np.mean(centersUpdated2)) = "+str(meanDiff)
-        log.debug("PSF #50: Original center = "+repr(centersLast[50])+", newest ones are = "+repr(centersUpdated3[50]))
+        log.debug("PSF #50: Original center = "+repr(centersUpdated[50])+", newest ones are = "+repr(centersUpdated3[50]))
         log.debug("PSF #1000: Original center = "+repr(centersUpdated[1000])+", newest ones are = "+repr(centersUpdated3[1000]))
-        centersLast = centersUpdated3
-        log.info("Finished PCA-based re-centering resulting in a mean difference of "+str(meanDiff)+"\n")
+        centersLast = centersUpdated3 
+        log.info("Finished iteration "+str(iteration)+" of PCA-based re-centering resulting in a mean difference of "+str(meanDiff)+"\n")
     log.info("Finished PCA-based re-centering loop in "+str(iteration)+" iterations\n")
     
     if True:
