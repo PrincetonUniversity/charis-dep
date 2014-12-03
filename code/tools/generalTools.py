@@ -16,6 +16,31 @@ def testToolFunc():
     print 'Inside testToolFunc'
     log.info('InfoMsgInsideTools')
  
+def arrayRepr(ary):
+    """
+    Return a well represented string for any input 2D array.  
+    Start said output array on a new line so all the array elements line up. 
+    """
+    if not isinstance(ary, np.ndarray):
+        ary = np.array(ary)
+    
+    s = ""
+    if len(ary.shape)==2:
+        for i in range(0,ary.shape[0]):
+            for j in range(0,ary.shape[1]): 
+                if j>0:
+                    s +=("  ")
+                s2 = "%.5f"%(ary[i][j])
+                s+=s2
+            s+="\n"
+    elif len(ary.shape)==1:
+        for j in range(0,ary.shape[0]): 
+            if j>0:
+                s +=("  ")
+            s2 = "%.5f"%(ary[j])
+            s+=s2
+    return s 
+ 
 def timeString(duration):
     """
     takes a time duration in seconds and returns it in a nice string with info on number of 

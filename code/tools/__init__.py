@@ -14,6 +14,7 @@ from tools.generalTools import hduToFileName
 from tools.generalTools import writeIntermediate
 from tools.generalTools import rebin
 from tools.generalTools import timeString
+from tools.generalTools import arrayRepr
 from tools.destripeTools import horizontal
 from tools.destripeTools import interpbadpix
 from tools.destripeTools import verticalmed
