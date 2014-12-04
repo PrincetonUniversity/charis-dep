@@ -249,7 +249,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             #print s
         f.close()
 
-    print 'iterationsCOL = '+repr(iterationsCOL)#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    #print 'iterationsCOL = '+repr(iterationsCOL)#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
     ########################################################################
     # Re-center PSFs in an iterative loop
@@ -455,7 +455,9 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                               "\nSize of inMono [yMax,xMax] = ["+str(yMax)+", "+str(xMax)+"]"+\
                               "\nInitial COL center = "+repr(centersUpdated[center])+\
                               "\nPrevious center = "+repr(centersLast[center])+\
-                              "\nLatest 1/9 resolution PCA based center = "+repr(centersUpdated2[center])+"\n"
+                              "\nLatest 1/9 resolution PCA based center = "+repr(centersUpdated2[center])+\
+                              "\ny1 = "+str(y1)+", x1 = "+str(x1)+"\n"+\
+                              "\nyFracShift = "+str(y1FracShift)+", xFracShift = "+str(x1FracShift)+"\n"
             paraSummaryStr = ""
             try:
                 yPara = np.reshape(yStepAry[iBest-1:iBest+2,jBest-1:jBest+2],-1)
@@ -479,6 +481,8 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                         sideStr = sideStr+"\ncenter is too close to top!!\n"
                     if centersUpdated2[center][0]<3:
                         sideStr = sideStr+"\ncenter is too close to bottom!\n"
+                    if sideStr=="":
+                        sideStr = "Center of this PSF was not near a side or the array.\n"
                     log.error("\n** Stepping array size under 3x3 **"+preParaSummaryStr+paraSummaryStr+sideStr+"-"*50+"\n")                         
                 else:
                     #print "about to  call optimize"
@@ -491,7 +495,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 log.error("\nAn error occurred while trying to refine best center from PCA re-centering"+preParaSummaryStr+paraSummaryStr+"-"*50+"\n")
 
             recentSuccess.append(success)
-            centersUpdated3.append([centersUpdated2[center][0]+(yBestOut/9.0),centersUpdated2[center][1]+(xBestOut/9.0)])
+            centersUpdated3.append([centersUpdated2[center][0]+(yBestOut/9.0)-(yStepAry[iBest,jBest]/9.0),centersUpdated2[center][1]+(xBestOut/9.0)-(xStepAry[iBest,jBest]/9.0)])
             
             p.render((center+1) * 100 // len(centersLast), 'Centers complete so far.')
             if center==50: #$$$$$$$$$$$$$$
