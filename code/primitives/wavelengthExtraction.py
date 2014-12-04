@@ -262,13 +262,14 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     meanDiff = np.Inf
     nHiRes = 9.0
     centersLast = centersUpdated
+    chi2BestsTotAry = []
     inMonoCorrected = inMono
     np.putmask(inMonoCorrected,np.isnan(inMonoCorrected),0.0)
     yAryHiRes = np.linspace(-6.0,+6.0,(12*nHiRes+1))
     xAryHiRes = yAryHiRes
     iteration = 0
     log.info("*"*10+"   Starting to extract PCA comps and use them to re-center in an iterative loop   "+"*"*10)
-    while (meanDiff>0.003)and(iteration<3):
+    while (meanDiff>0.00003)and(iteration<7):
         #########################################################################
         # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
         #########################################################################
@@ -369,7 +370,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         # center is found based on the chi squared of the fit.  These fit values are integer based, so they are then fit 
         # again using a secondary stage of least square fitting to find the sub-pixel resolution center.
         ###################################################################################################################
-        nref = 13
+        nref = 4
         nPixSteps = 1.0
         # create a progress bar object for updates to user of progress
         p = ProgressBar('red',width=30,block='=',empty='-',lastblock='>')
@@ -547,6 +548,8 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         meanDiffX = np.mean(diffAryX)
         meanDiff = abs(np.mean([meanDiffY,meanDiffX]))
         
+        chi2BestsTotAry.append(chi2Best2s)
+        
         log.debug("PSF #50: Original center = "+repr(centersUpdated[50])+", newest ones are = "+repr(centersUpdated3[50]))
         print "-"*75+"\n"+"\nchi2Ary502:\n"+tools.arrayRepr(chi2Ary502)+"\nBest pre-Para: y = "+str(yBest502)+", x = "+str(xBest502)+", chi2 = "+str(chi2Best502)+"\n"+\
                 "\nchi2Para50:\n"+tools.arrayRepr(chi2Para50)+"\nyPara50:\n"+tools.arrayRepr(yPara50)+"\nxPara50:\n"+tools.arrayRepr(xPara50)+"\n"+\
@@ -561,15 +564,24 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                  "\n meanDiff1 = "+str(meanDiff1)+", meanDiffY = "+str(meanDiffY)+", meanDiffX = "+str(meanDiffX)+"\n")
     log.info("Finished PCA-based re-centering loop in "+str(iteration)+" iterations\n")
     
-    if True:
+    if False:
+        ## write centers from each stage
         f = open(os.path.join(outputDir,'multiStageCentOuts.txt'), 'w')
         f.write("PCA#  Ycl       Xcl     Ypca1   Xpca1   chi2pca1    Ypca2   Xpca2   chi2pca2\n")
         for i in range(0,len(centersUpdated3)):
-            s = "%.1f   %.3f   %.3f   %.3f   %.3f  %.5f     %.3f   %.3f   %.5f "%(i,centersUpdated[i][0],centersUpdated[i][1],centersUpdated2[i][0],centersUpdated[i][1],chi2Bests[i],centersUpdated3[i][0],centersUpdated3[i][1],chi2Best2s[i])
+            s = "%.1f   %.3f   %.3f   %.3f   %.3f  %.5f     %.3f   %.3f   %.5f "%(i,centersUpdated[i][0],centersUpdated[i][1],centersUpdated2[i][0],centersUpdated2[i][1],chi2Bests[i],centersUpdated3[i][0],centersUpdated3[i][1],chi2Best2s[i])
             f.write(s+"\n")
             #print s
         f.close()
-    
+    if True:
+        ## write chi2s to file
+        f = open(os.path.join(outputDir,'iterativePSFcenterChi2s.txt'),'w')
+        for i in range(0,len(chi2BestsTotAry)):
+            for j in range(0,len(chi2BestsTotAry[0])):
+                f.write(str(chi2BestsTotAry[i][j])+"\n")
+            f.write("\n")
+        f.close()
+        
 def residual(p,x,y,chi2):
     #print "inside residual"
     #print "a,b,c,d,yc,xc = "+repr(p)

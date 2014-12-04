@@ -94,6 +94,12 @@ def main():
         log.debug("About to try to find centers of PSFs.")
         writeFiles = True
         prims.findPSFcentersTest(configs.DEPconfig.inputPSFs, 20, configs.DEPconfig.outDirRoot, writeFiles)
+        if True:
+            from TestingAndPlottingFuncs import plotChiSquaredHists
+            from TestingAndPlottingFuncs import loadChi2s
+            ary = loadChi2s(os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s.txt'))
+            plotChiSquaredHists(ary,os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s'))
+            
         log.info("Finished finding PSFs centers.")
     
     log.info("Writing latest "+str(len(outHDUs))+" data to output files")

@@ -14,10 +14,15 @@ def loadChi2s(filename):
     
     f = open(filename)
     lines = f.readlines()
+    ary2 = []
+    ary = []
     for line in lines:
-        if line[0]!="[":
-            sp = line.split(",")
-            
+        if line!="\n":
+            ary.append(float(line))
+        else:
+            ary2.append(ary)
+            ary = []
+    return ary2
 
 def plotChiSquaredHists(chi2s, plotFilename=""):
     """
@@ -49,9 +54,11 @@ def plotChiSquaredHists(chi2s, plotFilename=""):
         plotFilename2 = plotFilename[:-4]+".png"
         plt.savefig(plotFilename2, dpi=300, orientation='landscape')
         s= '\nFigure saved to:\n'+plotFilename2
-        log.write(s+'\n')
+        log.info(s+'\n')
     else: 
         s= '\nWARNING: NO plotFilename provided, so NOT saving it to disk.'
-        log.write(s+'\n')
+        log.warning(s+'\n')
         
     plt.close()
+    
+    
