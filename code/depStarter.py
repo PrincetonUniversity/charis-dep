@@ -98,7 +98,7 @@ def main():
             from TestingAndPlottingFuncs import plotChiSquaredHists
             from TestingAndPlottingFuncs import loadChi2s
             ary = loadChi2s(os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s.txt'))
-            plotChiSquaredHists(ary,os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s'))
+            plotChiSquaredHists(ary,os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s-13PCAcomps'))
             
         log.info("Finished finding PSFs centers.")
     

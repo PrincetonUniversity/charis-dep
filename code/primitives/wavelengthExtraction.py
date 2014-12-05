@@ -370,7 +370,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         # center is found based on the chi squared of the fit.  These fit values are integer based, so they are then fit 
         # again using a secondary stage of least square fitting to find the sub-pixel resolution center.
         ###################################################################################################################
-        nref = 4
+        nref = 13
         nPixSteps = 1.0
         # create a progress bar object for updates to user of progress
         p = ProgressBar('red',width=30,block='=',empty='-',lastblock='>')
@@ -484,7 +484,9 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                         sideStr = sideStr+"\ncenter is too close to bottom!\n"
                     if sideStr=="":
                         sideStr = "Center of this PSF was not near a side or the array.\n"
-                    log.error("\n** Stepping array size under 3x3 **"+preParaSummaryStr+paraSummaryStr+sideStr+"-"*50+"\n")                         
+                    log.error("\n** Stepping array size under 3x3 **"+preParaSummaryStr+paraSummaryStr+sideStr+"-"*50+"\n")  
+                    print '\n\n $$$ broke loop in <3 if statement $$ \n\n'           
+                    break
                 else:
                     #print "about to  call optimize"
                     #print "xPara.shape = "+str(xPara.shape)+", yPara.shape = "+str(yPara.shape)+", chi2Para.shape = "+str(chi2Para.shape)
@@ -493,8 +495,13 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                     yBestOut = bestFitVals[4]
                     xBestOut = bestFitVals[5]
             except:
+                success = False
                 log.error("\nAn error occurred while trying to refine best center from PCA re-centering"+preParaSummaryStr+paraSummaryStr+"-"*50+"\n")
-
+                print '\n\n $$$ broke loop in except statement $$ \n\n'
+                break
+            if success==False:
+                print '\n\n $$$ broke loop in level 2 if statement $$ \n\n'
+                break
             recentSuccess.append(success)
             centersUpdated3.append([centersUpdated2[center][0]+(yBestOut/9.0)-(yStepAry[iBest,jBest]/9.0),centersUpdated2[center][1]+(xBestOut/9.0)-(xStepAry[iBest,jBest]/9.0)])
             
@@ -524,44 +531,52 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 yBestPara1000 = yBestOut
                 xBestPara1000 = xBestOut
                 chi2BestPara1000 = bestFitVals[3]
-        # write total elapsed time to screen and log for both.
-        toc=timeit.default_timer()
-        totalTimeString = tools.timeString(toc - tic2)
-        log.debug('\n\nPCA-based re-centering took '+totalTimeString+' to complete.\n')
-        totalTimeString = tools.timeString(toc - tic1)
-        log.info("\nIteration "+str(iteration)+" of PCA extraction and re-centering took "+totalTimeString+' to complete.\n')
-        
-        ########################################################################################
-        # Calculate mean difference to determine if loop can exit, and update 'centersLast'
-        # with most recently found centers (ie. centersUpdated3).
-        # NOTE: re-centering iterative loop not set up yet!!!!
-        ########################################################################################
-        meanDiff1 = abs(np.mean(centersLast)-np.mean(centersUpdated3))
-        diffAryY = []
-        diffAryX = []
-        for c in range(0,len(centersLast)):
-            diffY = centersLast[c][0]-centersUpdated3[c][0]
-            diffX = centersLast[c][1]-centersUpdated3[c][1]
-            diffAryY.append(diffY)
-            diffAryX.append(diffX)
-        meanDiffY = np.mean(diffAryY)
-        meanDiffX = np.mean(diffAryX)
-        meanDiff = abs(np.mean([meanDiffY,meanDiffX]))
-        
-        chi2BestsTotAry.append(chi2Best2s)
-        
-        log.debug("PSF #50: Original center = "+repr(centersUpdated[50])+", newest ones are = "+repr(centersUpdated3[50]))
-        print "-"*75+"\n"+"\nchi2Ary502:\n"+tools.arrayRepr(chi2Ary502)+"\nBest pre-Para: y = "+str(yBest502)+", x = "+str(xBest502)+", chi2 = "+str(chi2Best502)+"\n"+\
-                "\nchi2Para50:\n"+tools.arrayRepr(chi2Para50)+"\nyPara50:\n"+tools.arrayRepr(yPara50)+"\nxPara50:\n"+tools.arrayRepr(xPara50)+"\n"+\
-            "\nyBestPara50 = "+str(yBestPara50)+"\nxBestPara50 = "+str(xBestPara50)+"\nchi2BestPara50 = "+str(chi2BestPara50)+"\n"+"-"*75
-        
-        log.debug("PSF #1000: Original center = "+repr(centersUpdated[1000])+", newest ones are = "+repr(centersUpdated3[1000]))
-        print "-"*75+"\n"+"\nchi2Ary10002\n"+tools.arrayRepr(chi2Ary10002)+"\nBest pre-Para: y = "+str(yBest10002)+", x = "+str(xBest10002)+", chi2 = "+str(chi2Best10002)+"\n"+\
-            "\nchi2Para1000:\n"+tools.arrayRepr(chi2Para1000)+"\nyPara1000:\n"+tools.arrayRepr(yPara1000)+"\nxPara10000:\n"+tools.arrayRepr(xPara1000)+"\n"+\
-            "\nyBestPara1000 = "+str(yBestPara1000)+"\nxBestPara1000 = "+str(xBestPara1000)+"\nchi2BestPara1000 = "+str(chi2BestPara1000)+"\n"+"-"*75
-        centersLast = centersUpdated3 
-        log.info("Finished iteration "+str(iteration)+" of PCA-based re-centering resulting in a total mean difference of "+str(meanDiff)+\
-                 "\n meanDiff1 = "+str(meanDiff1)+", meanDiffY = "+str(meanDiffY)+", meanDiffX = "+str(meanDiffX)+"\n")
+        if success==False:
+            print '\n\n $$$ broke loop in level 3 if statement $$ \n\n'
+            break
+        else:
+            # write total elapsed time to screen and log for both.
+            toc=timeit.default_timer()
+            totalTimeString = tools.timeString(toc - tic2)
+            log.debug('\n\nPCA-based re-centering took '+totalTimeString+' to complete.\n')
+            totalTimeString = tools.timeString(toc - tic1)
+            log.info("\nIteration "+str(iteration)+" of PCA extraction and re-centering took "+totalTimeString+' to complete.\n')
+            
+            ########################################################################################
+            # Calculate mean difference to determine if loop can exit, and update 'centersLast'
+            # with most recently found centers (ie. centersUpdated3).
+            # NOTE: re-centering iterative loop not set up yet!!!!
+            ########################################################################################
+            meanDiff1 = abs(np.mean(centersLast)-np.mean(centersUpdated3))
+            diffAryY = []
+            diffAryX = []
+            for c in range(0,len(centersLast)):
+                diffY = centersLast[c][0]-centersUpdated3[c][0]
+                diffX = centersLast[c][1]-centersUpdated3[c][1]
+                diffAryY.append(diffY)
+                diffAryX.append(diffX)
+            meanDiffY = np.mean(diffAryY)
+            meanDiffX = np.mean(diffAryX)
+            meanDiff = abs(np.mean([meanDiffY,meanDiffX]))
+            
+            print '\nlen(chi2Best2s) = '+str(len(chi2Best2s))
+            chi2BestsTotAry.append(chi2Best2s)
+            print '\nlen(chi2BestsTotAry) = '+str(len(chi2BestsTotAry))+"\n"
+            
+            log.debug("PSF #50: Original center = "+repr(centersUpdated[50])+", newest ones are = "+repr(centersUpdated3[50]))
+            print "-"*75+"\n"#+"\nchi2Ary502:\n"+tools.arrayRepr(chi2Ary502)+
+            print "\nBest pre-Para: y = "+str(yBest502)+", x = "+str(xBest502)+", chi2 = "+str(chi2Best502)+"\n"+\
+                    "\nchi2Para50:\n"+tools.arrayRepr(chi2Para50)+"\nyPara50:\n"+tools.arrayRepr(yPara50)+"\nxPara50:\n"+tools.arrayRepr(xPara50)+"\n"+\
+                "\nyBestPara50 = "+str(yBestPara50)+"\nxBestPara50 = "+str(xBestPara50)+"\nchi2BestPara50 = "+str(chi2BestPara50)+"\n"+"-"*75
+            
+            log.debug("PSF #1000: Original center = "+repr(centersUpdated[1000])+", newest ones are = "+repr(centersUpdated3[1000]))
+            print "-"*75+"\n"#+"\nchi2Ary10002\n"+tools.arrayRepr(chi2Ary10002)+
+            print "\nBest pre-Para: y = "+str(yBest10002)+", x = "+str(xBest10002)+", chi2 = "+str(chi2Best10002)+"\n"+\
+                "\nchi2Para1000:\n"+tools.arrayRepr(chi2Para1000)+"\nyPara1000:\n"+tools.arrayRepr(yPara1000)+"\nxPara10000:\n"+tools.arrayRepr(xPara1000)+"\n"+\
+                "\nyBestPara1000 = "+str(yBestPara1000)+"\nxBestPara1000 = "+str(xBestPara1000)+"\nchi2BestPara1000 = "+str(chi2BestPara1000)+"\n"+"-"*75
+            centersLast = centersUpdated3 
+            log.info("Finished iteration "+str(iteration)+" of PCA-based re-centering resulting in a total mean difference of "+str(meanDiff)+\
+                     "\n meanDiff1 = "+str(meanDiff1)+", meanDiffY = "+str(meanDiffY)+", meanDiffX = "+str(meanDiffX)+"\n")
     log.info("Finished PCA-based re-centering loop in "+str(iteration)+" iterations\n")
     
     if False:
@@ -575,9 +590,11 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         f.close()
     if True:
         ## write chi2s to file
+        print '\n\n Writing chi2s to file. len(chi2BestsTotAry) = '+str(len(chi2BestsTotAry))
         f = open(os.path.join(outputDir,'iterativePSFcenterChi2s.txt'),'w')
         for i in range(0,len(chi2BestsTotAry)):
-            for j in range(0,len(chi2BestsTotAry[0])):
+            print "len(chi2BestsTotAry["+str(i)+"]) = "+str(len(chi2BestsTotAry[i]))+'\n\n'
+            for j in range(0,len(chi2BestsTotAry[i])):
                 f.write(str(chi2BestsTotAry[i][j])+"\n")
             f.write("\n")
         f.close()
