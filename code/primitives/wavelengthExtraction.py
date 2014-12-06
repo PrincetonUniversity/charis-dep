@@ -269,7 +269,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     xAryHiRes = yAryHiRes
     iteration = 0
     log.info("*"*10+"   Starting to extract PCA comps and use them to re-center in an iterative loop   "+"*"*10)
-    while (meanDiff>0.00003)and(iteration<7):
+    while (meanDiff>0.00003)and(iteration<3):
         #########################################################################
         # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
         #########################################################################
@@ -296,7 +296,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 numAdded += 1
                 yAry2 = yAryHiRes+yCentInit
                 xAry2 = xAryHiRes+xCentInit
-                yAry2,xAry2 = np.meshgrid(yAry2,xAry2) #x/y association was mixed up here
+                xAry2,yAry2 = np.meshgrid(xAry2,yAry2) #x/y association was mixed up here
                 currPSFary = ndimage.map_coordinates(inMonoCorrected,[yAry2,xAry2],order=3)
                 psfStack.append(currPSFary)
             if np.isnan(np.sum(currPSFary)):
@@ -377,8 +377,8 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         ## Create the stepping array for moving around the center
         x = np.arange(int(-9.0*nPixSteps),int(9.0*nPixSteps+1))#$$$$$$$$$$$$$$$$$ make this size a free parameter and make sure to understand it fully
         stepBoxWidth = x.shape[0]
-        yStepAry, xStepAry = np.meshgrid(x, x) 
-        yPara, xPara = np.meshgrid([-1,0,1],[-1,0,1])
+        xStepAry, yStepAry = np.meshgrid(x, x) 
+        xPara, yPara = np.meshgrid([-1,0,1],[-1,0,1])
         yPara = np.reshape(yPara,-1)
         xPara = np.reshape(xPara,-1)
         centersUpdated2 = []
@@ -404,13 +404,15 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             x1FracShift = x1%1
             y1 = int(y1)
             x1 = int(x1)
-            # check if fraction is over 0.5, if so shift 1 whole pix toward bottom left corner
+            #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+            # check if fraction is over 0.5, if so shift 1 whole pix toward bottom left corner  
             if y1FracShift>=0.5:
                 y1 +=1
                 y1FracShift -= 1.0
             if x1FracShift>=0.5:
                 x1 += 1
                 x1FracShift -= 1.0
+            #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
             # crop 9x9 PSF and flatten.  This Ary is in 1pix resolution
             currPSFflat = np.reshape(inMonoCorrected[y1-4:y1+5,x1-4:x1+5],-1)
             #yBestStr = xBestStr = ''
@@ -456,14 +458,16 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             success = True
             initGuess = []
             preParaSummaryStr =  "\n"+"-"*20+" Iteration #"+str(iteration)+", PSF #"+str(center)+"   "+"-"*20+\
-                              "\n[iBest,jBest] = "+"["+str(iBest)+", "+str(jBest)+"]"+\
-                              " -> ("+str(yStepAry[iBest,jBest])+", "+str(xStepAry[iBest,jBest])+")"+\
                               "\nSize of inMono [yMax,xMax] = ["+str(yMax)+", "+str(xMax)+"]"+\
                               "\nInitial COL center = "+repr(centersUpdated[center])+\
                               "\nPrevious center = "+repr(centersLast[center])+\
-                              "\nLatest 1/9 resolution PCA based center = "+repr(centersUpdated2[center])+\
+                              "\n[iBest,jBest] = "+"["+str(iBest)+", "+str(jBest)+"]"+\
+                              " -> ("+str(yStepAry[iBest,jBest])+", "+str(xStepAry[iBest,jBest])+")"+\
                               "\ny1 = "+str(y1)+", x1 = "+str(x1)+\
-                              "\nyFracShift = "+str(y1FracShift)+", xFracShift = "+str(x1FracShift)+"\n"
+                              "\nyFracShift = "+str(y1FracShift)+", xFracShift = "+str(x1FracShift)+\
+                              "\nLatest 1/9 resolution PCA based center = "+repr(centersUpdated2[center])+\
+                              "\nie.["+str(y1)+" + "+str((1.0/9.0)*int(y1FracShift*9.0))+" + "+str((yStepAry[iBest,jBest]/9.0))+" , "+str(x1)+" + "+str((1.0/9.0)*int(x1FracShift*9.0))+" + "+str((xStepAry[iBest,jBest]/9.0))+"]\n"
+                              
             paraSummaryStr = ""
             try:
                 
