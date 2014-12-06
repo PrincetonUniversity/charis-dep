@@ -296,7 +296,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 numAdded += 1
                 yAry2 = yAryHiRes+yCentInit
                 xAry2 = xAryHiRes+xCentInit
-                yAry2,xAry2 = np.meshgrid(yAry2,xAry2)
+                yAry2,xAry2 = np.meshgrid(yAry2,xAry2) #x/y association was mixed up here
                 currPSFary = ndimage.map_coordinates(inMonoCorrected,[yAry2,xAry2],order=3)
                 psfStack.append(currPSFary)
             if np.isnan(np.sum(currPSFary)):
