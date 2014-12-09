@@ -26,16 +26,16 @@ import os
 import glob
 
 #root = '/run/media/kmede/SharedData' # for Kyle's laptop
-root = '/mnt/Data1/Todai_Work' # for Kyle's desktop
+root = '/mnt/Data1/Todai_Work/Data' # for Kyle's desktop
 #inDataDir = "/mnt/Data1/Todai_Work/Data/data_CHARIS/testData"
-inDataDir = root+"/Data/data_CHARIS/testData/"
-outDirSubFolder = "PSFextractTest-nrefTests2-13PCAcomps-1-InsideHalfPix/"
-outDirRoot = root+"/Data/data_CHARIS/testOutputs/"+outDirSubFolder
+inDataDir = root+"/data_CHARIS/testData/"
+outDirSubFolder = "PSFextractTest-nrefTests3-1PixStep-2CAcomps-1/"
+outDirRoot = root+"/data_CHARIS/testOutputs/"+outDirSubFolder
 inDataFilesRaw = ['N20050227S0127.fits']
 # Next line just converts the raw names to full path versions
 inDataFiles = []
-for file in inDataFilesRaw:
-    inDataFiles.append(os.path.join(inDataDir,file))
+for f in inDataFilesRaw:
+    inDataFiles.append(os.path.join(inDataDir,f))
 ndrRoot = '*R*.fits'
 # get data list for NDRs and sort it
 inputNDRs = np.sort(glob.glob(inDataDir +"individual_reads/"+ndrRoot))  

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import pyfits as pf
-import numpy as np
+#import pyfits as pf
+#import numpy as np
 import os
 import shutil
 import sys
@@ -98,7 +98,7 @@ def main():
             from TestingAndPlottingFuncs import plotChiSquaredHists
             from TestingAndPlottingFuncs import loadChi2s
             ary = loadChi2s(os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s.txt'))
-            plotChiSquaredHists(ary,os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s-13PCAcomps'))
+            plotChiSquaredHists(ary,os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s-2PCAcomps'))
             
         log.info("Finished finding PSFs centers.")
     

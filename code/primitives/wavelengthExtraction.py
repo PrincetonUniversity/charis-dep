@@ -262,6 +262,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     meanDiff = np.Inf
     nHiRes = 9.0
     centersLast = centersUpdated
+    finalCentersAll= []
     chi2BestsTotAry = []
     inMonoCorrected = inMono
     np.putmask(inMonoCorrected,np.isnan(inMonoCorrected),0.0)
@@ -269,7 +270,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
     xAryHiRes = yAryHiRes
     iteration = 0
     log.info("*"*10+"   Starting to extract PCA comps and use them to re-center in an iterative loop   "+"*"*10)
-    while (meanDiff>0.00003)and(iteration<3):
+    while (meanDiff>0.00003)and(iteration<7):
         #########################################################################
         # Extract centered and cropped 13x13 PSFs, stack and perform PCA on them.
         #########################################################################
@@ -370,12 +371,12 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
         # center is found based on the chi squared of the fit.  These fit values are integer based, so they are then fit 
         # again using a secondary stage of least square fitting to find the sub-pixel resolution center.
         ###################################################################################################################
-        nref = 13
-        nPixSteps = 1.0
+        nref = 2
+        nPixSteps = 1
         # create a progress bar object for updates to user of progress
         p = ProgressBar('red',width=30,block='=',empty='-',lastblock='>')
         ## Create the stepping array for moving around the center
-        x = np.arange(int(-9.0*nPixSteps),int(9.0*nPixSteps+1))#$$$$$$$$$$$$$$$$$ make this size a free parameter and make sure to understand it fully
+        x = np.arange(int(-9.0*nPixSteps),int(9.0*nPixSteps)+1)#$$$$$$$$$$$$$$$$$ make this size a free parameter and make sure to understand it fully
         stepBoxWidth = x.shape[0]
         xStepAry, yStepAry = np.meshgrid(x, x) 
         xPara, yPara = np.meshgrid([-1,0,1],[-1,0,1])
@@ -449,7 +450,7 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 
             chi2Bests.append(chi2Best)
             offsetsBest.append([yStepAry[iBest,jBest],xStepAry[iBest,jBest]])
-            ##NOTE: PCA shifted and fit outputs are shifted to left/down by FracShift, thus shift back to the right/up
+            ##NOTE: PCA shifted and fit outputs are shifted to by negative FracShift, thus shift back to in the positive FracShift at 1/9 resolution
             centersUpdated2.append([y1+(1.0/9.0)*int(y1FracShift*9.0)+(yStepAry[iBest,jBest]/9.0),x1+(1.0/9.0)*int(x1FracShift*9.0)+(xStepAry[iBest,jBest]/9.0)])
             
             ################################################################################################################################################ 
@@ -459,31 +460,35 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             initGuess = []
             preParaSummaryStr =  "\n"+"-"*20+" Iteration #"+str(iteration)+", PSF #"+str(center)+"   "+"-"*20+\
                               "\nSize of inMono [yMax,xMax] = ["+str(yMax)+", "+str(xMax)+"]"+\
-                              "\nInitial COL center = "+repr(centersUpdated[center])+\
-                              "\nPrevious center = "+repr(centersLast[center])+\
-                              "\n[iBest,jBest] = "+"["+str(iBest)+", "+str(jBest)+"]"+\
+                              "\nInitial COL center = "+repr(centersUpdated[center])
+            if iteration>1:
+                for k in range(0,iteration-1):
+                    #print 'iteration = '+str(iteration)+", k = "+str(k)+", center = "+str(center)
+                    preParaSummaryStr += "\nCenter from Iteration "+str(k+1)+" = "+repr(finalCentersAll[k][center])
+            else:
+                "\nPrevious center = "+repr(centersLast[center])
+            preParaSummaryStr += "\n[iBest,jBest] = "+"["+str(iBest)+", "+str(jBest)+"]"+\
                               " -> ("+str(yStepAry[iBest,jBest])+", "+str(xStepAry[iBest,jBest])+")"+\
-                              "\ny1 = "+str(y1)+", x1 = "+str(x1)+\
-                              "\nyFracShift = "+str(y1FracShift)+", xFracShift = "+str(x1FracShift)+\
-                              "\nLatest 1/9 resolution PCA based center = "+repr(centersUpdated2[center])+\
-                              "\nie.["+str(y1)+" + "+str((1.0/9.0)*int(y1FracShift*9.0))+" + "+str((yStepAry[iBest,jBest]/9.0))+" , "+str(x1)+" + "+str((1.0/9.0)*int(x1FracShift*9.0))+" + "+str((xStepAry[iBest,jBest]/9.0))+"]\n"
+                              "\nShift fit used: y = "+str(y1)+" + "+str(y1FracShift)+", x = "+str(x1)+" + "+str(x1FracShift)+\
+                              "\n=>["+str(y1)+" + "+str((1.0/9.0)*int(y1FracShift*9.0))+" + "+str((yStepAry[iBest,jBest]/9.0))+" , "+\
+                              str(x1)+" + "+str((1.0/9.0)*int(x1FracShift*9.0))+" + "+str((xStepAry[iBest,jBest]/9.0))+"]"+\
+                              "\nSo Latest 1/9 resolution PCA based center = "+repr(centersUpdated2[center])
                               
             paraSummaryStr = ""
             try:
-                
                 #yPara = np.reshape(yStepAry[iBest-1:iBest+2,jBest-1:jBest+2],-1)
                 #xPara = np.reshape(xStepAry[iBest-1:iBest+2,jBest-1:jBest+2],-1)
                 initGuess = [2.0, 2.0, 2.0, chi2Best, 0.0, 0.0]
                 chi2Para = chi2[iBest-1:iBest+2,jBest-1:jBest+2]
                 chi2Para = np.reshape(chi2Para,-1)
                 paraSummaryStr =  "\nyPara.shape[0] = "+repr(yPara.shape[0])+\
-                                "\nyStepAry = "+repr(yPara)+\
-                                "\nxStepAry = "+repr(xPara)+\
+                                "\nyPara = "+repr(yPara)+\
+                                "\nxPara = "+repr(xPara)+\
                                 "\nchi2Para = "+repr(chi2Para)+\
                                 "\ninitGuess = "+repr(initGuess)+"\n"
                 #print paraSummaryStr
                 
-                if (yPara.shape[0]<9) or (xPara.shape[0]<9):
+                if (chi2Para.shape[0]<9):#(yPara.shape[0]<9) or (xPara.shape[0]<9):
                     success = False
                     sideStr = ""
                     if centersUpdated2[center][1]>(xMax-3):
@@ -495,10 +500,10 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                     if centersUpdated2[center][0]<3:
                         sideStr = sideStr+"\ncenter is too close to bottom!\n"
                     if sideStr=="":
-                        sideStr = "Center of this PSF was not near a side or the array.\n"
+                        sideStr = "Center of this PSF was not near any side of the array.\n"
                     log.error("\n** Stepping array size under 3x3 **"+preParaSummaryStr+paraSummaryStr+sideStr+"-"*50+"\n")  
                     print '\n\n $$$ broke loop in <3 if statement $$ \n\n'           
-                    #break
+                    break
                 else:
                     #print "about to  call optimize"
                     #print "xPara.shape = "+str(xPara.shape)+", yPara.shape = "+str(yPara.shape)+", chi2Para.shape = "+str(chi2Para.shape)
@@ -510,16 +515,16 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                 success = False
                 log.error("\nAn error occurred while trying to refine best center from PCA re-centering"+preParaSummaryStr+paraSummaryStr+"-"*50+"\n")
                 print '\n\n $$$ broke loop in except statement $$ \n\n'
-                #break
+                break
             if success==False:
                 print '\n\n $$$ broke loop in level 2 if statement $$ \n\n'
-                #break
+                break
             recentSuccess.append(success)
-            centersUpdated3New.append([centersUpdated2[center][0]+(yBestOut/9.0)-(yStepAry[iBest,jBest]/9.0),centersUpdated2[center][1]+(xBestOut/9.0)-(xStepAry[iBest,jBest]/9.0)])
-            centersUpdated3.append([y1+(1.0/9.0)*int(y1FracShift*9.0)+(yStepAry[iBest,jBest]/9.0)+(yBestOut/9.0), x1+(1.0/9.0)*int(x1FracShift*9.0)+(xStepAry[iBest,jBest]/9.0)+(xBestOut/9.0)])
-            #if (abs(centersUpdated3[-1][0]-centersUpdated3New[-1][0])>0.0001) or (abs(centersUpdated3[-1][1]-centersUpdated3New[-1][1])>0.0001):
-            #    print '\n\n $$ centersUpdated3s did not match!! $$'
-            #    print repr(centersUpdated3[-1])+" != "+repr(centersUpdated3New[-1])+"\n\n"
+            centersUpdated3.append([centersUpdated2[center][0]+(yBestOut/9.0),centersUpdated2[center][1]+(xBestOut/9.0)])
+            centersUpdated3New.append([y1+(1.0/9.0)*int(y1FracShift*9.0)+(yStepAry[iBest,jBest]/9.0)+(yBestOut/9.0), x1+(1.0/9.0)*int(x1FracShift*9.0)+(xStepAry[iBest,jBest]/9.0)+(xBestOut/9.0)])
+            if (abs(centersUpdated3[-1][0]-centersUpdated3New[-1][0])>0.01) or (abs(centersUpdated3[-1][1]-centersUpdated3New[-1][1])>0.01):
+                print '\n\n $$ centersUpdated3s did not match!! $$'
+                print repr(centersUpdated3[-1])+" != "+repr(centersUpdated3New[-1])+"\n\n"
             
             p.render((center+1) * 100 // len(centersLast), 'Centers complete so far.')
             if center==50: #$$$$$$$$$$$$$$
@@ -577,7 +582,9 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
             
             print '\nlen(chi2Best2s) = '+str(len(chi2Best2s))
             chi2BestsTotAry.append(chi2Best2s)
-            print '\nlen(chi2BestsTotAry) = '+str(len(chi2BestsTotAry))+"\n"
+            print 'len(chi2BestsTotAry) = '+str(len(chi2BestsTotAry))
+            finalCentersAll.append(centersUpdated3)
+            print "len(finalCentersAll) = "+str(len(finalCentersAll))+"\n"
             
             log.debug("PSF #50: Original center = "+repr(centersUpdated[50])+", newest ones are = "+repr(centersUpdated3[50]))
             print "-"*75+"\n"#+"\nchi2Ary502:\n"+tools.arrayRepr(chi2Ary502)+

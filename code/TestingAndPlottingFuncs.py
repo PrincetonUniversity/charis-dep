@@ -2,7 +2,7 @@
 Test plotting and such tools to test algorithms during development.  This toolbox and its parent folder should 
 not be pushed into the "master" branch and should always remain in the "devel" branch.
 """
-
+import numpy as np
 import primitives as prims 
 import tools 
 import pylab
@@ -61,4 +61,16 @@ def plotChiSquaredHists(chi2s, plotFilename=""):
         
     plt.close()
     
+def surfacePlot(Z,X=0,Y=0):
+    """
+    Use meshgrid to make X and Y arrays representing pixel locations at 1pix resolution matching.
+    Z is the 2D array of pixel values.
+    assume input array is square.
+    """
+    if not isinstance(Z, np.ndarray):
+        Z = np.array(Z)
     
+    x = np.arange(-1*int((Z.shape[0])/2),int(Z.shape[0]/2)+1)
+    X,Y = np.meshgrid(x,x)
+    
+    # make figure and subplot.  USE Axs3D.plot_surface(X,Y,Z).
