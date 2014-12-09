@@ -2,11 +2,11 @@
 Test plotting and such tools to test algorithms during development.  This toolbox and its parent folder should 
 not be pushed into the "master" branch and should always remain in the "devel" branch.
 """
-import numpy as np
-import primitives as prims 
+import numpy as np 
 import tools 
 import pylab
 plt = pylab.matplotlib.pyplot
+from mpl_toolkits.mplot3d import Axes3D
 
 log = tools.getLogger('main.tools',lvl=0,addFH=False)
 
@@ -61,7 +61,7 @@ def plotChiSquaredHists(chi2s, plotFilename=""):
         
     plt.close()
     
-def surfacePlot(Z,X=0,Y=0):
+def surfacePlotter(Z,X=0,Y=0,plotFilename=""):
     """
     Use meshgrid to make X and Y arrays representing pixel locations at 1pix resolution matching.
     Z is the 2D array of pixel values.
@@ -73,4 +73,20 @@ def surfacePlot(Z,X=0,Y=0):
     x = np.arange(-1*int((Z.shape[0])/2),int(Z.shape[0]/2)+1)
     X,Y = np.meshgrid(x,x)
     
-    # make figure and subplot.  USE Axs3D.plot_surface(X,Y,Z).
+    fig = plt.figure(1, figsize=(40,20) ,dpi=300)
+    ax = fig.add_subplot(111,projection='3d')
+    ax.plot_surface(X,Y,Z)
+    
+    # save plot to file
+    if plotFilename!='':
+        plotFilename2 = plotFilename[:-4]+".png"
+        plt.savefig(plotFilename2, dpi=300, orientation='landscape')
+        s= '\nFigure saved to:\n'+plotFilename2
+        log.info(s+'\n')
+    else: 
+        s= '\nWARNING: NO plotFilename provided, so NOT saving it to disk.'
+        log.warning(s+'\n')
+        
+    plt.close()
+    
+    

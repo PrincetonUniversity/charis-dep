@@ -503,6 +503,9 @@ def findPSFcentersTest(inMonochrom, ncomp = 20,outputDir='',writeFiles=True):
                         sideStr = "Center of this PSF was not near any side of the array.\n"
                     log.error("\n** Stepping array size under 3x3 **"+preParaSummaryStr+paraSummaryStr+sideStr+"-"*50+"\n")  
                     print '\n\n $$$ broke loop in <3 if statement $$ \n\n'           
+                    ## surface plots of cropped mono and chi2s arrays
+                    tools.surfacePlotter(currPSFflat,0,0,plotFilename=os.path.join(outputDir,"mono-cropped_9x9-center_"+str(center)))
+                    tools.surfacePlotter(chi2,0,0,plotFilename=os.path.join(outputDir,"chi2s-1x1_1over9res-center_"+str(center)))
                     break
                 else:
                     #print "about to  call optimize"

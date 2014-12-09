@@ -1,22 +1,27 @@
-from tools.charisLogger import addFitsStyleHandler
-from tools.charisLogger import getLogger
-from tools.charisLogger import setUpLogger
-from tools.charisLogger import logSystemInfo
-from tools.charisLogger import logFileProcessInfo
-from tools.charisLogger import addFileHandler
-from tools.charisLogger import addStreamHandler
-from tools.generalTools import updateOutputFitsHeader
-from tools.generalTools import testToolFunc
-from tools.generalTools import loadDataAry
-from tools.generalTools import loadHDU
-from tools.generalTools import loadListOfHDUs
-from tools.generalTools import hduToFileName
-from tools.generalTools import writeIntermediate
-from tools.generalTools import rebin
-from tools.generalTools import timeString
-from tools.generalTools import arrayRepr
-from tools.destripeTools import horizontal
-from tools.destripeTools import interpbadpix
-from tools.destripeTools import verticalmed
-from tools.destripeTools import verticalref
+from charisLogger import addFitsStyleHandler
+from charisLogger import getLogger
+from charisLogger import setUpLogger
+from charisLogger import logSystemInfo
+from charisLogger import logFileProcessInfo
+from charisLogger import addFileHandler
+from charisLogger import addStreamHandler
+from generalTools import updateOutputFitsHeader
+from generalTools import testToolFunc
+from generalTools import loadDataAry
+from generalTools import loadHDU
+from generalTools import loadListOfHDUs
+from generalTools import hduToFileName
+from generalTools import writeIntermediate
+from generalTools import rebin
+from generalTools import timeString
+from generalTools import arrayRepr
+from destripeTools import horizontal
+from destripeTools import interpbadpix
+from destripeTools import verticalmed
+from destripeTools import verticalref
+
+from testingAndPlottingFuncs import surfacePlotter #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+from testingAndPlottingFuncs import plotChiSquaredHists   #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+from testingAndPlottingFuncs import loadChi2s   #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
 

@@ -95,10 +95,10 @@ def main():
         writeFiles = True
         prims.findPSFcentersTest(configs.DEPconfig.inputPSFs, 20, configs.DEPconfig.outDirRoot, writeFiles)
         if True:
-            from TestingAndPlottingFuncs import plotChiSquaredHists
-            from TestingAndPlottingFuncs import loadChi2s
-            ary = loadChi2s(os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s.txt'))
-            plotChiSquaredHists(ary,os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s-2PCAcomps'))
+            #from TestingAndPlottingFuncs import plotChiSquaredHists
+            #from TestingAndPlottingFuncs import loadChi2s
+            ary = tools.loadChi2s(os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s.txt'))
+            tools.plotChiSquaredHists(ary,os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s-2PCAcomps'))
             
         log.info("Finished finding PSFs centers.")
     
