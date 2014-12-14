@@ -46,6 +46,7 @@ def main():
     tools.logFileProcessInfo(log)
     summaryLog = tools.getLogger("main.summary",addFH=False,addSH=False)
     tools.addFitsStyleHandler(summaryLog)
+    outHDUs = ''
     
     if configs.DEPconfig.applyBPM:
         summaryLog.info("Masking hot pixels with file: "+os.path.basename(configs.DEPconfig.inBPMfile))
@@ -101,16 +102,18 @@ def main():
             tools.plotChiSquaredHists(ary,os.path.join(configs.DEPconfig.outDirRoot,'iterativePSFcenterChi2s-2PCAcomps'))
             
         log.info("Finished finding PSFs centers.")
-    
-    log.info("Writing latest "+str(len(outHDUs))+" data to output files")
-    for outHDU in outHDUs:
-        tools.updateOutputFitsHeader(outHDU, "main.summary.fitsFormat.log")
-        split = os.path.splitext(os.path.basename(outHDU.filename()))
-        outFileNameRoot = split[0]+"_OUT"+split[1]
-        outFileName = os.path.join(configs.DEPconfig.outDirRoot,outFileNameRoot)
-        outHDU.writeto(outFileName)
-        outHDU.close()
-        log.info("output HDUlist written to: "+outFileName)
+        
+    ## write fits files to disk if there are any
+    if isinstance(outHDUs,list):
+        log.info("Writing latest "+str(len(outHDUs))+" data to output files")
+        for outHDU in outHDUs:
+            tools.updateOutputFitsHeader(outHDU, "main.summary.fitsFormat.log")
+            split = os.path.splitext(os.path.basename(outHDU.filename()))
+            outFileNameRoot = split[0]+"_OUT"+split[1]
+            outFileName = os.path.join(configs.DEPconfig.outDirRoot,outFileNameRoot)
+            outHDU.writeto(outFileName)
+            outHDU.close()
+            log.info("output HDUlist written to: "+outFileName)
     
     # move back into original working directory
     os.chdir(pwd)

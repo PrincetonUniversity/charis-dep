@@ -67,16 +67,22 @@ def surfacePlotter(Z,X=0,Y=0,plotFilename=""):
     Z is the 2D array of pixel values.
     assume input array is square.
     """
+    debug = True
+    if debug:
+        print "\n\n in surfacePlotter \n\n" 
     if not isinstance(Z, np.ndarray):
         Z = np.array(Z)
     
-    x = np.arange(-1*int((Z.shape[0])/2),int(Z.shape[0]/2)+1)
+    x = np.arange(-1*int((Z.shape[0])/2),int(Z.shape[1]/2)+1)
     X,Y = np.meshgrid(x,x)
     
     fig = plt.figure(1, figsize=(40,20) ,dpi=300)
+    if debug:
+        print "About to plot surface" 
     ax = fig.add_subplot(111,projection='3d')
     ax.plot_surface(X,Y,Z)
-    
+    if debug:
+        print "Done making surface plot \n\n" 
     # save plot to file
     if plotFilename!='':
         plotFilename2 = plotFilename[:-4]+".png"
