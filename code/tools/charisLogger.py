@@ -294,7 +294,7 @@ def addFitsStyleHandler(log):
     fitsFhLevel = 1
     verbose = False
     if verbose:
-        print 'Setting FITS FileHandler level to '+str(fhLevel)
+        print 'Setting FITS FileHandler level to '+str(fitsFhLevel)
     fh2 = logging.FileHandler(log.name+'.fitsFormat.log')
     fh2.setLevel(fitsFhLevel)
     frmtString2 = '%(asctime)s - %(message)s'

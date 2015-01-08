@@ -3,12 +3,12 @@ Test plotting and such tools to test algorithms during development.  This toolbo
 not be pushed into the "master" branch and should always remain in the "devel" branch.
 """
 import numpy as np 
-import tools 
+import charisLogger 
 import pylab
 plt = pylab.matplotlib.pyplot
 from mpl_toolkits.mplot3d import Axes3D
 
-log = tools.getLogger('main.tools',lvl=0,addFH=False)
+log = charisLogger.getLogger('main.tools',lvl=0,addFH=False)
 
 def loadChi2s(filename):
     

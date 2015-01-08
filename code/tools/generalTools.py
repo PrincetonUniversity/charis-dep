@@ -1,4 +1,5 @@
-import tools
+import charisLogger
+
 import numpy as np
 import pyfits as pf
 import copy
@@ -7,13 +8,13 @@ import sys
 import re
 import warnings
 
-log = tools.getLogger('main.tools',lvl=0,addFH=False)
+log = charisLogger.getLogger('main.tools',lvl=0,addFH=False)
     
 def testToolFunc():
     """
     Just a test tool func.  Will be deleted once more real tools are written.
     """
-    #log = tools.getLogger('main.tools',lvl=100,addFH=False)
+    #log = charisLogger.getLogger('main.tools',lvl=100,addFH=False)
     print 'Inside testToolFunc'
     log.info('InfoMsgInsideTools')
  
@@ -122,7 +123,7 @@ def hduToFileName(hdu):
 def loadDataAry(input):
     """
     """
-    #log = tools.getLogger('main.tools',lvl=100,addFH=False)
+    #log = charisLogger.getLogger('main.tools',lvl=100,addFH=False)
     log.debug("Trying to load input of type: "+repr(type(input)))
     if isinstance(input, np.ndarray):
         log.debug("Input was of type np.ndarray.")
@@ -158,7 +159,7 @@ def loadHDU(input):
                                                     it and close the original 
                                                     file if input is a string.
     """
-    #log = tools.getLogger('main.tools',lvl=100,addFH=False)
+    #log = charisLogger.getLogger('main.tools',lvl=100,addFH=False)
     if isinstance(input, pf.hdu.hdulist.HDUList) or isinstance(input,str):
         if isinstance(input,str):
             log.debug('input was a string, so checking it exists and loading it.')
@@ -181,28 +182,28 @@ def loadHDU(input):
     inHDU.close()
     
     return outHDU
-def loadListOfHDUs(input):
+def loadListOfHDUs(inSci):
     """
     Load a list of strings to a list of HDULists, or just append the HDUList objects into a list if already opened.
     """
     HDUs = []
     if isinstance(inSci,list) and (not isinstance(inSci, pf.hdu.hdulist.HDUList)):
-        for input in inSci:
+        for frame in inSci:
             if isinstance(inSci, pf.hdu.hdulist.HDUList):
                 fluxFits = frame
-                frameName = tools.hduToFileName(fluxFits)
+                frameName = hduToFileName(fluxFits)
                 HDUs.append(fluxFits)
             elif isinstance(inSci,str):
-                fluxFits = tools.loadHDU(frame)
+                fluxFits = loadHDU(frame)
                 frameName = frame
                 HDUs.append(fluxFits)
     elif isinstance(inSci, pf.hdu.hdulist.HDUList):
-        fluxFits = frame
-        frameName = tools.hduToFileName(fluxFits)
+        fluxFits = inSci
+        frameName = hduToFileName(fluxFits)
         HDUs.append(fluxFits)
     elif isinstance(inSci,str):
-        fluxFits = tools.loadHDU(frame)
-        frameName = frame
+        fluxFits = loadHDU(inSci)
+        frameName = hduToFileName(fluxFits)
         HDUs.append(fluxFits)       
     else:
         log.error("input type was not a list, a string or HDUList!!!")
@@ -222,7 +223,7 @@ def updateOutputFitsHeader(hdu, logFileName='main.summary'):
         logFileName (str): Complete path file name of the summary file to copy
                             its lines into the provided HDU's PHU.        
     """
-    #log = tools.getLogger('main.tools',lvl=100,addFH=False)
+    #log = charisLogger.getLogger('main.tools',lvl=100,addFH=False)
     log.info("Loading up HDUlist with lines from log file: "+logFileName)
     #log.setStreamLevel(lvl=0)
     if os.path.exists(logFileName):
