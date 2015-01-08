@@ -1,6 +1,7 @@
 import tools
 import os
 import re
+import sys
 import pyfits as pf
 import numpy as np
 import copy
@@ -27,8 +28,8 @@ def maskHotPixels(inSci, BPM, outputDir='',writeFiles=True):
     #log = tools.getLogger('main.prims',lvl=100,addFH=False)
     log.info("Performing BPM masking on input with input BPM ")
     bpmData = tools.loadHDU(BPM)
-    
     inHDUs = tools.loadListOfHDUs(inSci)
+    outData = []
     
     ## Got the data into a ndarray, now apply the BPM array.
     for i in range(0,len(inHDUs)):
