@@ -30,7 +30,7 @@ def main():
         elif (('n' in YN) or ('N' in YN)):
             sys.exit()
         print '\n'+'$'*100+'\n'
-        print 'outputFolder all ready exists, so just adding new file to it.'
+        print 'outputFolder already exists, so just adding new file to it.'
     else:
         os.mkdir(configs.DEPconfig.outDirRoot)
         
