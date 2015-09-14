@@ -4,7 +4,6 @@ import numpy as np
 from scipy import signal, ndimage, optimize
 from image import Image
 import tools
-import testimage
 
 log = tools.getLogger('main')
 
@@ -246,35 +245,3 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
     good = (_x > 5)*(_x < xdim - 5)*(_y > 5)*(_y < ydim - 5)
 
     return [_x, _y, good, coef] 
-
-    
-def test(norm=1000, rms=10, mode='bkgnd', order=2, prefix = '/home/tbrandt/CHARIS/Strehl80/'):
-
-    """
-    A test function this routine with read noise and Poisson noise
-    added to a uniform background.
-    """
-    
-    lam = 1.150
-    if mode == 'bkgnd':
-        inImage = Image(prefix + 'bkgnd_%.3fum.fits' % (lam))
-    elif mode == 'image':
-        inImage = Image(prefix + 'image_%.3fum.fits' % (lam))
-    else:
-        raise ValueError("mode keyword must be 'bkgnd' or 'image'")
-    inImage.data *= norm/np.amax(inImage.data)
-    inImage.data = testimage.addnoise(inImage.data, darkrms=rms)
-        
-    _x, _y, good, coef = locatePSFlets(inImage, polyorder=order)
-
-    _x = np.reshape(_x, -1)
-    _y = np.reshape(_y, -1)
-    good = np.reshape(good, -1)
-
-    outarr = np.zeros((_x.shape[0], 3))
-    outarr[:, 0] = _x
-    outarr[:, 1] = _y
-    outarr[:, 2] = good
-
-    np.savetxt('test_norm%d_rms%d.dat' % (norm, rms), outarr, fmt="%.5g")
-
