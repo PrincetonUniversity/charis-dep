@@ -1,1 +1,1 @@
-from locate_psflets import locatePSFlets, test
+from locate_psflets import locatePSFlets
