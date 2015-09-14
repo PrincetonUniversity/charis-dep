@@ -1,4 +1,4 @@
-import pyfits as pyf
+from astropy.io import fits
 import tools
 
 log = tools.getLogger('main')
@@ -33,6 +33,7 @@ class Image:
             self.data = None
             self.ivar = None
             self.header = None
+            self.filename = None
                 
     def load(self, filename):
         """
@@ -44,7 +45,8 @@ class Image:
 
         """
         try:
-            hdulist = pyf.open(filename)
+            self.filename = filename
+            hdulist = fits.open(filename)
             self.data = hdulist[0].data
             self.header = hdulist[0].header
             log.info("Read data from HDU 0 of " + filename)
@@ -70,12 +72,12 @@ class Image:
         Creates a primary HDU using self.data and self.header, and
         attempts to write to outfilename.  If self.ivar is not None,
         append self.ivar as a second HDU before writing to a file.       
-        clobber is provided as a  keyword to pyf.HDUList.writeto. 
+        clobber is provided as a  keyword to fits.HDUList.writeto.
         """
         try:
-            out = pyf.HDUList(pyf.PrimaryHDU(self.data, self.header))
+            out = fits.HDUList(fits.PrimaryHDU(self.data, self.header))
             if self.ivar is not None:
-                out.append(pyf.PrimaryHDU(self.ivar))
+                out.append(fits.PrimaryHDU(self.ivar))
             try:
                 out.writeto(filename, clobber=clobber)
                 log.info("Writing data to " + filename)
