@@ -23,17 +23,18 @@ class Image:
     through a call to Image.load().  
     """
 
-    def __init__(self, filename=None, destriped=False, flatfielded=False):
+    def __init__(self, filename=None, data=None, ivar=None, header=None,
+                 destriped=False, flatfielded=False):
         self.destriped = destriped
         self.flatfielded = flatfielded
         
+        self.data = data
+        self.ivar = ivar
+        self.header = header
+        self.filename = filename
+
         if filename is not None:
             self.load(filename)
-        else:
-            self.data = None
-            self.ivar = None
-            self.header = None
-            self.filename = None
                 
     def load(self, filename):
         """
