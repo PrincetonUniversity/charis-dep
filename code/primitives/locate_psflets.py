@@ -227,9 +227,29 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
                 newval = _corrval(coef, x, y, filtered, polyorder, trimfrac)
                 if newval < bestval:
                     bestval = newval
-                    coefbest = coef
+                    coefbest = coef[:]
         coef = coefbest
 
+    #############################################################
+    # If we have coefficients from last time, we assume that we
+    # are now at a slightly higher wavelength, so try out offsets
+    # that are slightly to the right to get a good initial guess.
+    #############################################################
+
+    else:
+        bestval = 0
+        coefsave = coef[:]
+        for ix in np.arange(0, 5, 0.5):
+            for iy in np.arange(-1, 1.5, 0.5):
+                coef = coefsave[:]
+                coef[0] += ix
+                coef[(polyorder + 1)*(polyorder + 2)/2] += iy
+                newval = _corrval(coef, x, y, filtered, polyorder, trimfrac)
+                if newval < bestval:
+                    bestval = newval
+                    coefbest = coef[:]
+        coef = coefbest
+                
     log.info("Optimizing PSFlet location transformation coefficients for frame " + inImage.filename)
     res = optimize.minimize(_corrval, coef, args=(x, y, filtered, polyorder, trimfrac), method='Powell')
 
