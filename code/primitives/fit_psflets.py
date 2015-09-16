@@ -72,6 +72,10 @@ def _get_cutout(im, x0, y0, psflets, dy=3, dx=30):
                 second dimension is spatial, and is the same shape
                 as the flattened subimage.
 
+    Note: both subim and psflet_subarr are scaled by the inverse
+    standard deviation if it is given for the input Image.  This 
+    will make the fit chi2 and properly handle bad/masked pixels.
+
     """
 
     ###################################################################
@@ -81,11 +85,16 @@ def _get_cutout(im, x0, y0, psflets, dy=3, dx=30):
     ###################################################################
 
     subim = im.data[y0 - dy:y0 + dy + 1, x0 - dy:x0 + dx]
+    if im.ivar is not None:
+        isig = np.sqrt(im.ivar[y0 - dy:y0 + dy + 1, x0 - dy:x0 + dx])
+        subim *= isig
 
     subarrshape = tuple([len(psflets)] + list(subim.shape))
     psflet_subarr = np.zeros(subarrshape)
     for i in range(len(psflets)):
         psflet_subarr[i] = psflets[i].data[y0 - dy:y0 + dy + 1, x0 - dy:x0 + dx]
+        if im.ivar is not None:
+            psflet_subarr[i] *= isig
 
     return subim, psflet_subarr
 
