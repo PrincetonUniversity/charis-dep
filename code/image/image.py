@@ -1,4 +1,7 @@
-from astropy.io import fits
+try:
+    from astropy.io import fits
+except:
+    import pyfits as fits
 import tools
 
 log = tools.getLogger('main')
@@ -37,27 +40,33 @@ class Image:
             self.load(filename)
                 
     def load(self, filename):
-        """
-        Image.load(outfilename)
+        """Image.load(outfilename)
         
-        Read the first (index 0) HDU from filename into self.data, and
-        HDU[0].header into self.header.  If there is more than one HDU,
-        attempt to read HDU[1] into self.ivar.
+        Read the first HDU with data from filename into self.data, and
+        HDU[0].header into self.header.  If there is more than one HDU
+        with data, attempt to read the second HDU with data into
+        self.ivar.
 
         """
         try:
             self.filename = filename
             hdulist = fits.open(filename)
-            self.data = hdulist[0].data
             self.header = hdulist[0].header
-            log.info("Read data from HDU 0 of " + filename)
-            if len(hdulist) > 1:
-                self.ivar = hdulist[1].data
+            if hdulist[0].data is not None:
+                i_data = 0
+            else:
+                i_data = 1
+
+            self.data = hdulist[i_data].data
+            log.info("Read data from HDU " + str(i_data) + " of " + filename)
+
+            if len(hdulist) > i_data + 1:
+                self.ivar = hdulist[i_data + 1].data
                 if self.ivar.shape != self.data.shape:
-                    log.error("Error: data (HDU 0) and inverse variance (HDU 1) have different shapes in file " + filename)
+                    log.error("Error: data (HDU " + str(i_data) + ") and inverse variance (HDU " + str(i_data + 1) + ") have different shapes in file " + filename)
                     self.ivar = None
                 else:
-                    log.info("Read inverse variance from HDU 1 of " + filename)
+                    log.info("Read inverse variance from HDU " + str(i_data + 1) + " of " + filename)
             else:
                 self.ivar = None
         except:
