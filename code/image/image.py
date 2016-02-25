@@ -27,20 +27,23 @@ class Image:
     """
 
     def __init__(self, filename=None, data=None, ivar=None, header=None,
-                 destriped=False, flatfielded=False):
+                 reads=None, flags=None, destriped=False, flatfielded=False):
         self.destriped = destriped
         self.flatfielded = flatfielded
         
         self.data = data
         self.ivar = ivar
         self.header = header
+        self.reads = reads
+        self.flags = flags
         self.filename = filename
 
         if filename is not None:
             self.load(filename)
                 
     def load(self, filename):
-        """Image.load(outfilename)
+        """
+        Image.load(outfilename)
         
         Read the first HDU with data from filename into self.data, and
         HDU[0].header into self.header.  If there is more than one HDU
