@@ -46,7 +46,7 @@ def utr(reads, sig_rn=15.0, rn_limit=True, return_a=False):
         a_arr = ymean - c_arr*imean
 
         i_arr = np.arange(1, nreads+1)*np.ones((reads.shape[2], reads.shape[1], nreads))
-        chisq = np.sum((reads - a_arr - c_arr*i_arr.T)**2, axis=0)
+        chisq = np.sum((reads - a_arr - c_arr*i_arr.T)**2/sig_rn**2, axis=0)
 
         return (c_arr, chisq, 1/var_c**2, a_arr) if return_a else (c_arr, chisq, 1/var_c**2)
     else:
