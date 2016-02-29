@@ -1,4 +1,9 @@
 *.py[cod]
+*test*.fits
+*test*.dat
+*~
+\#*
+.*
 
 # C extensions
 *.so
