@@ -3,7 +3,7 @@
 *test*.dat
 *~
 \#*
-.*
+.*.swp
 
 # C extensions
 *.so
