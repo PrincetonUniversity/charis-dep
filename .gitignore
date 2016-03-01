@@ -1,5 +1,16 @@
 *.py[cod]
+*test*.fits
+*test*.dat
+*~
+\#*
 .*.swp
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info
 
 # C extensions
 *.so
