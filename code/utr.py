@@ -1,4 +1,4 @@
-import numpy as p
+import numpy as np
 from image import Image
 
 def utr_rn(reads, sig_rn=15.0, calc_chisq=False):
@@ -19,7 +19,7 @@ def utr_rn(reads, sig_rn=15.0, calc_chisq=False):
                    to generate flags in this function. 
 
     Returns:
-    1. im:       Image class object
+    1. im:         Image class object
     """
     
     assert reads.shape[1:] == (2040, 2040), 'reads is not the correct shape'
