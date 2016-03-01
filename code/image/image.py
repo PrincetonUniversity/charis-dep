@@ -91,6 +91,8 @@ class Image:
             out = fits.HDUList(fits.PrimaryHDU(self.data, self.header))
             if self.ivar is not None:
                 out.append(fits.PrimaryHDU(self.ivar))
+            if self.flags is not None:
+                out.append(fits.PrimaryHDU(self.flags))
             try:
                 out.writeto(filename, clobber=clobber)
                 log.info("Writing data to " + filename)
