@@ -21,11 +21,8 @@ def calcvar(reads):
 
 def calcgain(filename):
     reads = getreads(filename)
-
-    pixmask = (reads[0] < 17000.).flatten()
-
-    diff = (reads[-1] - reads[0]).flatten()[pixmask]/(reads.shape[0]-1)
-    var = calcvar(reads).flatten()[pixmask]
+    diff = (reads[-1] - reads[0]).flatten()/(reads.shape[0]-1)
+    var = calcvar(reads).flatten()
     clip = (var<5000) & (diff>200) & (diff<1500)
     diff = diff[clip]
     var = var[clip]

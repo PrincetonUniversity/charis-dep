@@ -13,7 +13,7 @@ def utr(reads, sig_rn=15.0, rn_limit=True, return_a=False):
 
     Optional inputs:
     1. sig_rn:   float, the std of the read noise. 
-    2. rn_limit  bool, if True, assume read noise limited 
+    2. rn_limit: bool, if True, assume read noise limited 
     3. return_a: bool, if True, return a (the best-fit intercepts)
 
     Returns:
@@ -32,8 +32,8 @@ def utr(reads, sig_rn=15.0, rn_limit=True, return_a=False):
         
         ###################################################################
         # If we are read noise limited, then the count (c = b*dt) is given
-        # by 12/(N^3 - N)*sum((i - (N+1)/2)*y_i). We simply sum the measured
-        # count and weight each read by (i - (N+1)/2). 
+        # by 12/(N^3 - N)*sum((i - (N+1)/2)*y_i). We simply sum the reads, 
+        # weighting each by (i - (N+1)/2). 
         ###################################################################
 
         factor = 12.0/(nreads**3 - nreads)
