@@ -1,7 +1,7 @@
 import numpy as np
 from image import Image
 
-def _interp_coeff(nreads, sig_rn, cmin, cmax, kind='linear'):
+def _interp_coeff(nreads, sig_rn, cmin, cmax, interp_meth='linear'):
     """
     Build interpolation functions for the up-the-ramp coefficients, 
     which are the weights that give the count (c) and intercept (a)
@@ -16,8 +16,8 @@ def _interp_coeff(nreads, sig_rn, cmin, cmax, kind='linear'):
     4. cmax:     float, the maximum possible count rate
 
     Optional inputs:
-    1. kind      string, interpolation method. Possible methods 
-                 are the same as for scipy's interp1d.
+    1. interp_meth: string, interpolation method. Possible methods 
+                    are the same as for scipy's interp1d.
 
     Returns: 
     1. ia_coeff: Interpolation object for the coefficients needed to 
@@ -65,8 +65,8 @@ def _interp_coeff(nreads, sig_rn, cmin, cmax, kind='linear'):
         c_coeff.append(coeff[1])
     a_coeff = np.array(a_coeff)
     c_coeff = np.array(c_coeff)
-    ia_coeff = interpolate.interp1d(cvals, a_coeff, axis=0, kind=kind)
-    ic_coeff = interpolate.interp1d(cvals, c_coeff, axis=0, kind=kind)
+    ia_coeff = interpolate.interp1d(cvals, a_coeff, axis=0, kind=interp_meth)
+    ic_coeff = interpolate.interp1d(cvals, c_coeff, axis=0, kind=interp_meth)
 
     return ia_coeff, ic_coeff
 
@@ -148,7 +148,8 @@ def utr(reads, sig_rn=15.0, interp_meth='linear'):
     # calculate the count (c) and intercept (a) for every pixel
     ###################################################################
 
-    icoeff = _interp_coeff(nreads, sig_rn, c_rn_arr.min(), c_rn_arr.max())
+    icoeff = _interp_coeff(nreads, sig_rn, c_rn_arr.min(),\
+                           c_rn_arr.max(), interp_meth=interp_meth)
 
     c_coeff = icoeff[1](c_rn_arr)
     c_arr = np.sum(c_coeff*reads, axis=2)
