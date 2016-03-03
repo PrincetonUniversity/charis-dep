@@ -132,7 +132,7 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0,\
     if reads is not None:
         assert reads.shape[:2]==(2040, 2040), 'reads is not the correct shape'
     else:
-        reads = _getreads(datadir, filename)
+        reads = _getreads(datadir, filename, refchan)
 
     nreads = reads.shape[2]
 
@@ -202,19 +202,22 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
 
     ###################################################################
     # Generate interpolation objects for the up-the-ramp coefficients,
-    # calculate the count (c) and intercept (a) for every pixel
+    # calculate the count (c) and intercept (a) for every pixel. The
+    # calculation is done per row to conserve memory 
     ###################################################################
 
     icoef = _interp_coef(nreads, sig_rn, c_rn_arr.min(),\
                            c_rn_arr.max(), interp_meth=interp_meth)
 
-    c_coef = icoef[1](c_rn_arr)
-    c_arr = np.sum(c_coef*reads, axis=2)
-    del c_coef
-
-    a_coef = icoef[0](c_rn_arr)
-    a_arr = np.sum(a_coef*reads, axis=2)
+    c_arr = np.zeros(c_rn_arr.shape)
+    a_arr = np.zeros(c_rn_arr.shape)
+    for row in xrange(c_rn_arr.shape[0]):
+        c_coef = icoef[1](c_rn_arr[row,:])
+        c_arr[row,:] = np.sum(c_coef*reads[row,:,:], axis=1)
+        a_coef = icoef[0](c_rn_arr[row,:])
+        a_arr[row,:] = np.sum(a_coef*reads[row,:,:], axis=1)
     del a_coef
+    del c_coef
 
     ###################################################################
     # Calculate chi-squared for every pixel. The flags will be generated
@@ -239,3 +242,4 @@ if __name__=='__main__':
     im.write('test_utr.fits')
     im = utr_rn(reads, return_im=True)
     im.write('test_utr_rn.fits')
+
