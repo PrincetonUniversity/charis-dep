@@ -1,7 +1,34 @@
 import numpy as np
 from image import Image
 
-def _interp_coeff(nreads, sig_rn, cmin, cmax, interp_meth='linear'):
+def _getreads(datadir, filename, refchan=True):
+    """
+    Get reads from fits file and put them in the correct 
+    format for the up-the-ramp functions. 
+
+    Inputs:
+    1. datadir:   string, the data directory 
+    2. filename:  string, name of the fits file
+
+    Optional inputs:
+    1. refchan:   bool, if True, the reference channel
+                  is included in the readouts
+
+    Returns:
+    1. reads:     3D ndarray, shape = (2040, 2040, nreads)
+    """
+    try:
+        from astropy.io import fits
+    except:
+        import pyfits as fits
+    hdulist = fits.open(datadir+filename)
+    reads = np.zeros((2040,2040,len(hdulist[1:])))
+    shift = 64 if refchan else 0
+    for i, read in enumerate(hdulist[1:]):
+        reads[:,:,i] = read.data[4:-4,4+shift:-4]
+    return reads
+
+def _interp_coef(nreads, sig_rn, cmin, cmax, interp_meth='linear'):
     """
     Build interpolation functions for the up-the-ramp coefficients, 
     which are the weights that give the count (c) and intercept (a)
@@ -20,10 +47,10 @@ def _interp_coeff(nreads, sig_rn, cmin, cmax, interp_meth='linear'):
                     are the same as for scipy's interp1d.
 
     Returns: 
-    1. ia_coeff: Interpolation object for the coefficients needed to 
-                 calculate a: ia_coeff(count) = [w1, w2, w3...w_nreads]
-    1. ic_coeff: Interpolation object for the coefficients needed to 
-                 calculate c: ic_coeff(count) = [w1, w2, w3...w_nreads]
+    1. ia_coef: Interpolation object for the coefficients needed to 
+                 calculate a: ia_coef(count) = [w1, w2, w3...w_nreads]
+    1. ic_coef: Interpolation object for the coefficients needed to 
+                 calculate c: ic_coef(count) = [w1, w2, w3...w_nreads]
 
     Note:
     The weights are given by the generalized least squares solution 
@@ -53,45 +80,60 @@ def _interp_coeff(nreads, sig_rn, cmin, cmax, interp_meth='linear'):
     # note: a = intercept and c = count
     ###################################################################
 
-    c_coeff = []
-    a_coeff = []
-    cvals = np.arange(cmin, cmax+1)
+    a_coef = []
+    c_coef = []
+    cvals = np.arange(np.floor(cmin), np.ceil(cmax)+1)
     for c in cvals:
         cov = cov_shot*c + cov_read
         invcov = np.linalg.inv(cov)
-        coeff = np.linalg.inv(np.dot(x.T, invcov).dot(x))
-        coeff = np.dot(coeff, np.dot(x.T, invcov))
-        a_coeff.append(coeff[0])
-        c_coeff.append(coeff[1])
-    a_coeff = np.array(a_coeff)
-    c_coeff = np.array(c_coeff)
-    ia_coeff = interpolate.interp1d(cvals, a_coeff, axis=0, kind=interp_meth)
-    ic_coeff = interpolate.interp1d(cvals, c_coeff, axis=0, kind=interp_meth)
+        coef = np.linalg.inv(np.dot(x.T, invcov).dot(x))
+        coef = np.dot(coef, np.dot(x.T, invcov))
+        a_coef.append(coef[0])
+        c_coef.append(coef[1])
+    a_coef = np.array(a_coef)
+    c_coef = np.array(c_coef)
+    ia_coef = interpolate.interp1d(cvals, a_coef, axis=0, kind=interp_meth)
+    ic_coef = interpolate.interp1d(cvals, c_coef, axis=0, kind=interp_meth)
 
-    return ia_coeff, ic_coeff
+    return ia_coef, ic_coef
 
 
-def utr_rn(reads, sig_rn=15.0, return_im=False):
+def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0,\
+           return_im=False, refchan=True):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
-    where i is an integer from 1 to nreads, and c = b*dt is the count. 
+    where i is an integer from 1 to nreads, and c = b*dt is the count. The 
+    user can either pass the reads directly to this function or give the 
+    data directory and file name containing the reads. 
 
     Inputs:
     1. reads:      3D ndarray, the reads to be read up the ramp. Currently
                    the shape should be (2040, 2040, nreads), i.e. the 
-                   reference pixels have been removed.
+                   reference pixels have been removed. If None, directory
+                   and file name of fits file must be given. 
+    2. datadir:    string, the data directory. Only needed when the reads 
+                   are not given. 
+    3. filename:   string, fits file name. Only needed when the reads 
+                   are not given. 
 
     Optional inputs:
     1. sig_rn:     float, the std of the read noise. 
     2. return_im:  bool, if True, return an Image class object. 
+    3. refchan:    bool, if True, the reference channel is included 
+                   in each read. Not necessary if the reads are passed 
+                   directly to this function. 
 
     Returns:
     1. c_arr       2D ndarry of Image class object, best-fit 
                    count in each pixel
     """
-    
-    assert reads.shape[:2] == (2040, 2040), 'reads is not the correct shape'
+
+    if reads is not None:
+        assert reads.shape[:2]==(2040, 2040), 'reads is not the correct shape'
+    else:
+        reads = _getreads(datadir, filename)
+
     nreads = reads.shape[2]
 
     ###################################################################
@@ -110,30 +152,45 @@ def utr_rn(reads, sig_rn=15.0, return_im=False):
     else:
         return c_arr
 
-def utr(reads, sig_rn=15.0, interp_meth='linear'):
+def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
+        interp_meth='linear', refchan=True):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
     into account. We assume the counts in each pixel obey the linear 
     relation y_i = a + i*b*dt = a + i*c, where i is an integer from 
-    1 to nreads, and c = b*dt is the count. 
+    1 to nreads, and c = b*dt is the count. The user can either pass 
+    the reads directly to this function or give the data directory 
+    and file name containing the reads. 
 
     Inputs:
-    1. reads:         3D ndarray, the reads to be read up the ramp. 
-                      Currently the shape should be (2040, 2040, nreads), 
-                      i.e. the reference pixels have been removed.
+    1. reads:      3D ndarray, the reads to be read up the ramp. Currently
+                   the shape should be (2040, 2040, nreads), i.e. the 
+                   reference pixels have been removed. If None, directory
+                   and file name of fits file must be given. 
+    2. datadir:    string, the data directory. Only needed when the reads 
+                   are not given. 
+    3. filename:   string, fits file name. Only needed when the reads 
+                   are not given. 
 
     Optional inputs:
     1. sig_rn:        float, the std of the read noise. 
     2. interp_meth:   string, the interpolation method to use when 
                       interpolating over the up-the-ramp coefficients.
                       Possible methods are the same as for scipy's interp1d.
+    3. refchan:       bool, if True, the reference channel is included 
+                      in each read. Not necessary if the reads are passed 
+                      directly to this function. 
 
     Returns:
     1. im             Image class object containing the count, ivar (not yet),
                       and flags (not yet) for every pixel in the image. 
     """
 
-    assert reads.shape[:2] == (2040, 2040), 'reads is not the correct shape'
+    if reads is not None:
+        assert reads.shape[:2]==(2040, 2040), 'reads is not the correct shape'
+    else:
+        reads = _getreads(datadir, filename, refchan)
+
     nreads = reads.shape[2]
 
     ###################################################################
@@ -148,16 +205,16 @@ def utr(reads, sig_rn=15.0, interp_meth='linear'):
     # calculate the count (c) and intercept (a) for every pixel
     ###################################################################
 
-    icoeff = _interp_coeff(nreads, sig_rn, c_rn_arr.min(),\
+    icoef = _interp_coef(nreads, sig_rn, c_rn_arr.min(),\
                            c_rn_arr.max(), interp_meth=interp_meth)
 
-    c_coeff = icoeff[1](c_rn_arr)
-    c_arr = np.sum(c_coeff*reads, axis=2)
-    del c_coeff
+    c_coef = icoef[1](c_rn_arr)
+    c_arr = np.sum(c_coef*reads, axis=2)
+    del c_coef
 
-    a_coeff = icoeff[0](c_rn_arr)
-    a_arr = np.sum(a_coeff*reads, axis=2)
-    del a_coeff
+    a_coef = icoef[0](c_rn_arr)
+    a_arr = np.sum(a_coef*reads, axis=2)
+    del a_coef
 
     ###################################################################
     # Calculate chi-squared for every pixel. The flags will be generated
@@ -175,16 +232,9 @@ def utr(reads, sig_rn=15.0, interp_meth='linear'):
     return im
 
 if __name__=='__main__':
-    try:
-        from astropy.io import fits
-    except:
-        import pyfits as fits
     fn = 'CRSA00006343.fits'
     datadir = '/Users/protostar/Dropbox/data/charis/lab/'
-    hdulist = fits.open(datadir+fn)
-    reads = np.zeros((2040,2040,len(hdulist[1:])))
-    for i, read in enumerate(hdulist[1:]):
-        reads[:,:,i] = read.data[4:-4,64+4:-4]
+    reads = _getreads(datadir, fn)
     im = utr(reads)
     im.write('test_utr.fits')
     im = utr_rn(reads, return_im=True)
