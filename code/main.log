@@ -1,0 +1,38 @@
+2016-03-03 22:19:42,205 - main - INFO - Writing data to test_utr.fits
+2016-03-03 22:19:45,957 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-04 10:28:06,586 - main - INFO - Writing data to test_utr.fits
+2016-03-04 10:28:16,653 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-04 11:39:09,775 - main - INFO - Initializing PSFlet location transformation coefficients
+2016-03-04 11:41:06,708 - main - INFO - Initializing PSFlet location transformation coefficients
+2016-03-04 11:42:20,375 - main - INFO - Optimizing PSFlet location transformation coefficients for frame test
+2016-03-04 11:49:02,527 - main - INFO - Initializing PSFlet location transformation coefficients
+2016-03-04 11:50:16,069 - main - INFO - Optimizing PSFlet location transformation coefficients for frame test
+2016-03-04 13:58:43,544 - main - INFO - Writing data to test_utr.fits
+2016-03-04 13:58:46,837 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-04 13:59:28,998 - main - INFO - Writing data to test_utr.fits
+2016-03-04 13:59:32,259 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-04 14:04:36,969 - main - INFO - Writing data to test_utr.fits
+2016-03-04 14:04:39,971 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 14:43:31,609 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:43:53,272 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 14:44:57,898 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:45:15,899 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 14:47:39,602 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:47:54,778 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 14:48:51,273 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:49:04,402 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 14:50:01,136 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:50:57,049 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:51:49,336 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 14:52:23,957 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 14:54:38,212 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 14:55:21,437 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:57:42,222 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:58:45,443 - main - INFO - Writing data to test_utr.fits
+2016-03-07 14:59:29,989 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 15:06:19,450 - main - INFO - Writing data to test_utr.fits
+2016-03-07 15:06:20,903 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 15:11:06,862 - main - INFO - Writing data to test_utr.fits
+2016-03-07 15:11:08,249 - main - INFO - Writing data to test_utr_rn.fits
+2016-03-07 15:12:34,565 - main - INFO - Writing data to test_utr.fits
+2016-03-07 15:12:35,996 - main - INFO - Writing data to test_utr_rn.fits

@@ -1,7 +1,7 @@
 import numpy as np
 from image import Image
 
-def _getreads(datadir, filename, refchan=True):
+def _getreads(datadir, filename):
     """
     Get reads from fits file and put them in the correct 
     format for the up-the-ramp functions. 
@@ -10,25 +10,22 @@ def _getreads(datadir, filename, refchan=True):
     1. datadir:   string, the data directory 
     2. filename:  string, name of the fits file
 
-    Optional inputs:
-    1. refchan:   bool, if True, the reference channel
-                  is included in the readouts
-
     Returns:
-    1. reads:     3D ndarray, shape = (2040, 2040, nreads)
+    1. reads:     3D ndarray, shape = (2048, 2048, nreads)
+                  or (2048, 2112, nreads) 
     """
     try:
         from astropy.io import fits
     except:
         import pyfits as fits
     hdulist = fits.open(datadir+filename)
-    reads = np.zeros((2040,2040,len(hdulist[1:])))
-    shift = 64 if refchan else 0
-    for i, read in enumerate(hdulist[1:]):
-        reads[:,:,i] = read.data[4:-4,4+shift:-4]
+    shape = hdulist[1].data.shape
+    reads = np.zeros((shape[0], shape[1], len(hdulist[1:])))
+    for i, r in enumerate(hdulist[1:]):
+        reads[:,:,i] = r.data
     return reads
 
-def _interp_coef(nreads, sig_rn, cmin, cmax, interp_meth='linear'):
+def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     """
     Build interpolation functions for the up-the-ramp coefficients, 
     which are the weights that give the count (c) and intercept (a)
@@ -37,20 +34,23 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, interp_meth='linear'):
     coefficients needed to calculate a and c. 
 
     Inputs:
-    1. nreads:   int, the number of reads in the ramp
-    2. sig_rn:   float, the std of the read noise
-    3. cmin:     float, the minimum possible count rate
-    4. cmax:     float, the maximum possible count rate
+    1. nreads:      int, the number of reads in the ramp
+    2. sig_rn:      float, the std of the read noise in electrons
+    3. cmin:        float, the minimum possible count rate in electrons
+    4. cmax:        float, the maximum possible count rate in electrons
 
     Optional inputs:
-    1. interp_meth: string, interpolation method. Possible methods 
+    1. cpad:        int, pad for count rate, which may be necessary to
+                    ensure that the interpolation range is large enough
+    2. interp_meth: string, interpolation method. Possible methods 
                     are the same as for scipy's interp1d.
 
     Returns: 
-    1. ia_coef: Interpolation object for the coefficients needed to 
-                 calculate a: ia_coef(count) = [w1, w2, w3...w_nreads]
-    1. ic_coef: Interpolation object for the coefficients needed to 
-                 calculate c: ic_coef(count) = [w1, w2, w3...w_nreads]
+    1. ia_coef:     Interpolation object for the coefficients needed to 
+                    calculate a: ia_coef(count) = [w1, w2, w3...w_nreads]
+    2. ic_coef:     Interpolation object for the coefficients needed to 
+                    calculate c: ic_coef(count) = [w1, w2, w3...w_nreads]
+    3. ic_ivar:     Interpolation object for count rate inverse variance
 
     Note:
     The weights are given by the generalized least squares solution 
@@ -77,29 +77,32 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, interp_meth='linear'):
     ###################################################################
     # Calculate the up-the-ramp coefficients for many count values, 
     # store them, and interpolate using scipy's interp1d function.
-    # note: a = intercept and c = count
+    # note: a = intercept and c = count (all in units of electrons)
     ###################################################################
 
     a_coef = []
     c_coef = []
-    cvals = np.arange(np.floor(cmin), np.ceil(cmax)+1)
+    c_ivar = []
+    cvals = np.arange(np.floor(cmin)-cpad, np.ceil(cmax)+1)
     for c in cvals:
         cov = cov_shot*c + cov_read
         invcov = np.linalg.inv(cov)
-        coef = np.linalg.inv(np.dot(x.T, invcov).dot(x))
-        coef = np.dot(coef, np.dot(x.T, invcov))
+        var = np.linalg.inv(np.dot(x.T, invcov).dot(x))
+        coef = np.dot(var, np.dot(x.T, invcov))
         a_coef.append(coef[0])
         c_coef.append(coef[1])
+        c_ivar.append(1.0/var[1,1])
     a_coef = np.array(a_coef)
     c_coef = np.array(c_coef)
+    c_ivar = np.array(c_ivar)
     ia_coef = interpolate.interp1d(cvals, a_coef, axis=0, kind=interp_meth)
     ic_coef = interpolate.interp1d(cvals, c_coef, axis=0, kind=interp_meth)
+    ic_ivar = interpolate.interp1d(cvals, c_ivar, axis=0, kind=interp_meth)
 
-    return ia_coef, ic_coef
+    return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0,\
-           return_im=False, refchan=True):
+def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0, return_im=False):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -120,19 +123,14 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0,\
     Optional inputs:
     1. sig_rn:     float, the std of the read noise. 
     2. return_im:  bool, if True, return an Image class object. 
-    3. refchan:    bool, if True, the reference channel is included 
-                   in each read. Not necessary if the reads are passed 
-                   directly to this function. 
 
     Returns:
     1. c_arr       2D ndarry of Image class object, best-fit 
                    count in each pixel
     """
 
-    if reads is not None:
-        assert reads.shape[:2]==(2040, 2040), 'reads is not the correct shape'
-    else:
-        reads = _getreads(datadir, filename, refchan)
+    if reads is None:
+        reads = _getreads(datadir, filename)
 
     nreads = reads.shape[2]
 
@@ -143,17 +141,17 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0,\
     ###################################################################
 
     factor = 12.0/(nreads**3 - nreads)
-    weights = (np.arange(1,nreads+1) - (nreads+1)/2.0)*np.ones(reads.shape)
+    weights = np.arange(1,nreads+1) - (nreads+1)/2.0
     c_arr = factor*np.sum(weights*reads, axis=2)
     if return_im:
-        ivar = (factor*sig_rn)**2*np.sum(weights**2, axis=2)
-        ivar = 1/ivar 
+        ivar = (factor*sig_rn)**2*np.sum(weights**2)
+        ivar = (1.0/ivar)*np.ones(c_arr.shape)
         return Image(data=c_arr, ivar=ivar) 
     else:
         return c_arr
 
 def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
-        interp_meth='linear', refchan=True):
+        gain=4.0, interp_meth='linear'):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
     into account. We assume the counts in each pixel obey the linear 
@@ -173,32 +171,32 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
                    are not given. 
 
     Optional inputs:
-    1. sig_rn:        float, the std of the read noise. 
-    2. interp_meth:   string, the interpolation method to use when 
+    1. sig_rn:        float, the std of the read noise in ADU 
+    2. gain:          float, the detector gain (electrons/ADU) 
+    3. interp_meth:   string, the interpolation method to use when 
                       interpolating over the up-the-ramp coefficients.
                       Possible methods are the same as for scipy's interp1d.
-    3. refchan:       bool, if True, the reference channel is included 
-                      in each read. Not necessary if the reads are passed 
-                      directly to this function. 
 
     Returns:
-    1. im             Image class object containing the count, ivar (not yet),
-                      and flags (not yet) for every pixel in the image. 
+    1. im             Image class object containing the count in electrons, 
+                      ivar, and flags (not yet) for every pixel in the image. 
     """
 
-    if reads is not None:
-        assert reads.shape[:2]==(2040, 2040), 'reads is not the correct shape'
-    else:
-        reads = _getreads(datadir, filename, refchan)
+    if reads is None:
+        reads = _getreads(datadir, filename, refchan, maxreads)
 
     nreads = reads.shape[2]
 
     ###################################################################
     # Sample up-the-ramp in the read noise limit to get an estimate of 
-    # the count for the covariance matrix calculation 
+    # the count for the covariance matrix calculation. Convert everthing
+    # from ADU to electrons
     ###################################################################
 
-    c_rn_arr = utr_rn(reads)
+    c_rn_arr = utr_rn(reads, sig_rn=sig_rn)
+    c_rn_arr *= gain
+    sig_rn *= gain
+    reads *= gain
 
     ###################################################################
     # Generate interpolation objects for the up-the-ramp coefficients,
@@ -206,40 +204,41 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
     # calculation is done per row to conserve memory 
     ###################################################################
 
-    icoef = _interp_coef(nreads, sig_rn, c_rn_arr.min(),\
-                           c_rn_arr.max(), interp_meth=interp_meth)
+    interp_objs = _interp_coef(nreads, sig_rn, c_rn_arr.min(),\
+                               c_rn_arr.max(), interp_meth=interp_meth)
 
     c_arr = np.zeros(c_rn_arr.shape)
     a_arr = np.zeros(c_rn_arr.shape)
+    ivar_arr = np.zeros(c_rn_arr.shape)
     for row in xrange(c_rn_arr.shape[0]):
-        c_coef = icoef[1](c_rn_arr[row,:])
-        c_arr[row,:] = np.sum(c_coef*reads[row,:,:], axis=1)
-        a_coef = icoef[0](c_rn_arr[row,:])
+        a_coef = interp_objs[0](c_rn_arr[row,:])
         a_arr[row,:] = np.sum(a_coef*reads[row,:,:], axis=1)
+        c_coef = interp_objs[1](c_rn_arr[row,:])
+        c_arr[row,:] = np.sum(c_coef*reads[row,:,:], axis=1)
+        ivar_arr[row,:] = interp_objs[2](c_rn_arr[row,:])
     del a_coef
     del c_coef
 
     ###################################################################
     # Calculate chi-squared for every pixel. The flags will be generated
-    # here. Also need to add calculation of ivar, but I'm not sure how
-    # to optimize this.
+    # here. Currently, we are calculating this in the read noise limit.
+    # We are still thinking about how to optimize the general case. 
     ###################################################################
 
-    i_arr = np.arange(1, nreads+1)*np.ones(reads.shape)
-    chisq = np.zeros(reads.shape[:2])
+    chisq = np.zeros(c_arr.shape)
     for i in range(nreads):
-        chisq += (reads[:,:,i] - a_arr - c_arr*i_arr[:,:,i])**2/sig_rn**2
+        chisq += (reads[:,:,i] - a_arr - c_arr*(i+1))**2
+    chisq /= sig_rn**2 
 
-    im = Image(data=c_arr)
+    im = Image(data=c_arr, ivar=ivar_arr)
 
     return im
 
 if __name__=='__main__':
     fn = 'CRSA00006343.fits'
-    datadir = '/Users/protostar/Dropbox/data/charis/lab/'
+    datadir = '/scr/depot0/jgreco/Dropbox/data/charis/lab/'
     reads = _getreads(datadir, fn)
     im = utr(reads)
     im.write('test_utr.fits')
     im = utr_rn(reads, return_im=True)
     im.write('test_utr_rn.fits')
-
