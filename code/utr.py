@@ -162,9 +162,8 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
 
     Inputs:
     1. reads:      3D ndarray, the reads to be read up the ramp. Currently
-                   the shape should be (2040, 2040, nreads), i.e. the 
-                   reference pixels have been removed. If None, directory
-                   and file name of fits file must be given. 
+                   the shape should be (2048, 2112, nreads), i.e. with or
+                   without the reference channel
     2. datadir:    string, the data directory. Only needed when the reads 
                    are not given. 
     3. filename:   string, fits file name. Only needed when the reads 
@@ -193,7 +192,7 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
     # from ADU to electrons
     ###################################################################
 
-    c_rn_arr = utr_rn(reads, sig_rn=sig_rn)
+    c_rn_arr = utr_rn(reads, sig_rn=sig_rn) # count rate (ADU) in RN limit
     c_rn_arr *= gain
     sig_rn *= gain
     reads *= gain
