@@ -2,28 +2,42 @@
 
 import numpy as np
 from astropy.io import fits
+import matplotlib.pyplot as plt
+from scipy.stats import norm
 
-datadir = '/Users/protostar/Dropbox/data/charis/lab/2016-02-19/'
-
-fn = 'CRSA00007122.fits'
-hdulist = fits.open(datadir+fn)
-
+#######################
+# script parameters
+#######################
+sig_clip = 8 
+ramp_idx = [2, None]
+fn = 'CRSA00007220.fits'
 refchan = False
+datadir = '/Users/protostar/Dropbox/data/charis/lab/'
+#######################
 
-ramps = hdulist[2:]
+hdulist = fits.open(datadir+fn)
+ramps = hdulist[ramp_idx[0]:ramp_idx[1]]
+
 reads = []
-reads_mean_sub = []
-
 for r in ramps:
     start_col = 64 if refchan else 0
-    refpix = np.concatenate([r.data[:4,start_col:], r.data[-4:,start_col:]])
+    refpix = np.concatenate([r.data[4:-4,start_col:start_col+4].flatten(), r.data[4:-4,start_col+2044:].flatten(),\
+                             r.data[:4,start_col:].flatten(), r.data[-4:,start_col:].flatten()])
     reads.append(refpix)
-    for chan in range(32):
-        refpix[:, 64*chan:64*(1 + chan)] -= refpix[:, 64*chan:64*(1 + chan)].mean()
-    reads_mean_sub.append(refpix)
 reads = np.array(reads)
-reads_mean_sub = np.array(reads_mean_sub)
-print np.mean(np.std(reads_mean_sub, axis=0, ddof=1))
-
 reads = reads - np.mean(reads, axis=0)
-print np.mean(np.std(reads, axis=0, ddof=1))
+mean_sig = np.mean(np.std(reads, axis=0, ddof=1))
+reads = reads[np.abs(reads) < sig_clip*mean_sig]
+
+f, a = plt.subplots(1,1)
+a.hist(reads.flatten(), bins=100, histtype='step', normed=True)
+mu, sigma = norm.fit(reads.flatten())
+x = np.linspace(-sigma*sig_clip, sigma*sig_clip, 100)
+pdf_fitted = norm.pdf(x, loc=mu, scale=sigma)
+a.plot(x, pdf_fitted,'r--', lw=2.)
+a.text(0.2, 0.7, r'$\sigma = '+str(round(sigma,2))+'$', transform=a.transAxes, fontsize=18, color='r')
+a.minorticks_on()
+a.set_xlabel(r'$(C_\mathit{i}\,-\, \mu_\mathit{i})_{refpix}\ [ADU]$')
+
+import RaiseWindow
+plt.show()

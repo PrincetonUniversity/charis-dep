@@ -234,8 +234,8 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
     return im
 
 if __name__=='__main__':
-    fn = 'CRSA00006343.fits'
-    datadir = '/scr/depot0/jgreco/Dropbox/data/charis/lab/'
+    fn = 'CRSA00007300.fits'
+    datadir = '/Users/protostar/Dropbox/data/charis/lab/'
     reads = _getreads(datadir, fn)
     im = utr(reads)
     im.write('test_utr.fits')

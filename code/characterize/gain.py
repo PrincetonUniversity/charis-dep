@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 def getreads(filename):
     hdulist = fits.open(filename)
-    reads = np.array([h.data[4:-4,64+4:-4] for h in hdulist[1:6]])
+    reads = np.array([h.data[4:-4,64+4:-4] for h in hdulist[2:50]])
     return reads
 
 def calcvar(reads):
@@ -23,26 +23,25 @@ def calcgain(filename):
     reads = getreads(filename)
     diff = (reads[-1] - reads[0]).flatten()/(reads.shape[0]-1)
     var = calcvar(reads).flatten()
-    clip = var>0#(var<5000) & (diff>200) & (diff<1500)
-    diff = diff[clip]
-    var = var[clip]
+    #clip = (diff>200) & (diff<1500)
+    #diff = diff[clip]
+    #var = var[clip]
     x = np.array([np.ones(diff.size), diff]).T
     beta = np.dot(np.linalg.inv(np.dot(x.T,x)), np.dot(x.T, var))
-    print np.sqrt(beta[0]/2), beta[1]
+    print beta[0], beta[1]
     testplots(var, diff)
 
 def testplots(var, diff):
     f1, a1 = plt.subplots(1,1)
     a1.scatter(diff, var, marker='x')
-    f2, a2 = plt.subplots(1,1)
-    a2.hist(diff, bins=50)
-    f3, a3 = plt.subplots(1,1)
-    a3.hist(var, bins=50)
+    #f2, a2 = plt.subplots(1,1)
+    #a2.hist(diff, bins=50)
+    #f3, a3 = plt.subplots(1,1)
+    #a3.hist(var, bins=50)
     import RaiseWindow
     plt.show()
 
 if __name__=='__main__':
-    fn = 'CRSA00006343.fits'
-    #fn = 'CRSA00006842.fits'
+    fn = 'CRSA00007219.fits'
     datadir = '/Users/protostar/Dropbox/data/charis/lab/'
     calcgain(datadir+fn)

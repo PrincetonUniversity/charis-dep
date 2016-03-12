@@ -46,8 +46,8 @@ def _test_locate_psflets(norm=1000, rms=10, mode='bkgnd', order=2,
 
 def test_specfit(prefix = '/home/tbrandt/CHARIS/Strehl80/', R=35, norm=1, order=2):
     
-    inBkgnd = Image('testimage/summed_bkgnd_Strehl80.fits')
-    inImage = Image('testimage/summed_image_Strehl80.fits')
+    inBkgnd = Image(prefix+'summed_bkgnd_Strehl80.fits')
+    inImage = Image(prefix+'summed_image_Strehl80.fits')
     inImage.data += inBkgnd.data
 
     loglam = np.arange(np.log(1.15) + 1./(2*R), np.log(2.39), 1./R)
@@ -73,10 +73,11 @@ def test_specfit(prefix = '/home/tbrandt/CHARIS/Strehl80/', R=35, norm=1, order=
 
     np.savetxt('test.dat', outarr.T, fmt="%.5g")
     datacube = primitives.fit_spectra(inImage, psflets, x, y, good)
+    datacube.write('testcube.fits')
 
-    outImage = Image(data=datacube)
-    outImage.write('testcube.fits')
+    #outImage = Image(data=datacube)
+    #outImage.write('testcube.fits')
 
 if __name__ == "__main__":
     #_test_locate_psflets(norm=5, rms=10)
-    test_specfit(R=25, order=2)
+    test_specfit(prefix='/Users/protostar/Dropbox/data/charis/sampledata/', R=25, order=2)
