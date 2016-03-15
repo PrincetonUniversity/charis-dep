@@ -26,13 +26,14 @@ class Image:
     through a call to Image.load().  
     """
 
-    def __init__(self, filename=None, data=None, ivar=None, header=None,
+    def __init__(self, filename=None, data=None, ivar=None, chisq=None, header=None,
                  reads=None, flags=None, destriped=False, flatfielded=False):
         self.destriped = destriped
         self.flatfielded = flatfielded
         
         self.data = data
         self.ivar = ivar
+        self.chisq = chisq
         self.header = header
         self.reads = reads
         self.flags = flags
@@ -66,7 +67,9 @@ class Image:
             if len(hdulist) > i_data + 1:
                 self.ivar = hdulist[i_data + 1].data
                 if self.ivar.shape != self.data.shape:
-                    log.error("Error: data (HDU " + str(i_data) + ") and inverse variance (HDU " + str(i_data + 1) + ") have different shapes in file " + filename)
+                    log.error("Error: data (HDU " + str(i_data) +\
+                              ") and inverse variance (HDU " + str(i_data +\
+                              1) + ") have different shapes in file " + filename)
                     self.ivar = None
                 else:
                     log.info("Read inverse variance from HDU " + str(i_data + 1) + " of " + filename)
@@ -91,6 +94,8 @@ class Image:
             out = fits.HDUList(fits.PrimaryHDU(self.data, self.header))
             if self.ivar is not None:
                 out.append(fits.PrimaryHDU(self.ivar))
+            if self.chisq is not None:
+                out.append(fits.PrimaryHDU(self.chisq))
             if self.flags is not None:
                 out.append(fits.PrimaryHDU(self.flags))
             try:

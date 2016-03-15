@@ -1,7 +1,9 @@
 import numpy as np
 from image import Image
+import tools
+log = tools.getLogger('main')
 
-def _getreads(datadir, filename):
+def getreads(datadir, filename, read_idx=[1,None], biassub=None):
     """
     Get reads from fits file and put them in the correct 
     format for the up-the-ramp functions. 
@@ -10,19 +12,52 @@ def _getreads(datadir, filename):
     1. datadir:   string, the data directory 
     2. filename:  string, name of the fits file
 
+    Optional inputs:
+    1. read_idx:  list, [first index, last index] to extract from
+                  the hdulist: index = 1 is the first read, use 
+                  last index = None to use all reads after the 
+                  first index
+    2. biassub:   string, perform bias subtraction using the
+                  'top', 'bottom', or 'all' (top and bottom)
+                  the reference pixels. If None, do not perform 
+                  the bias subtraction
+
     Returns:
     1. reads:     3D ndarray, shape = (2048, 2048, nreads)
                   or (2048, 2112, nreads) 
+
+    Note: The current return shape feels a bit awkward, but it 
+    works better for broadcasting; we may decide to change this 
+    in the future. 
     """
+
     try:
         from astropy.io import fits
     except:
         import pyfits as fits
+
+    log.info("Getting reads from "+datadir+filename)
+    if biassub is not None:
+        log.info("Subtracting mean from "+biassub+" reference pixels")
+
     hdulist = fits.open(datadir+filename)
     shape = hdulist[1].data.shape
-    reads = np.zeros((shape[0], shape[1], len(hdulist[1:])))
-    for i, r in enumerate(hdulist[1:]):
+    reads = np.zeros((shape[0], shape[1], len(hdulist[read_idx[0]:read_idx[1]])))
+
+    for i, r in enumerate(hdulist[read_idx[0]:read_idx[1]]):
         reads[:,:,i] = r.data
+        if biassub is not None:
+            numchan = shape[1]/64
+            for j in xrange(numchan):
+                if biassub=='top':
+                    refpix = reads[-4:, j*64:(j+1)*64, i]
+                elif biassub=='bottom':
+                    refpix = reads[:4, j*64:(j+1)*64, i]
+                elif biassub=='all':
+                    top = reads[-4:, j*64:(j+1)*64, i]
+                    bottom = reads[:4, j*64:(j+1)*64, i]
+                    refpix = np.concatenate([top, bottom])
+                reads[:, j*64:(j+1)*64, i] -= refpix.mean()
     return reads
 
 def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
@@ -102,7 +137,7 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0, return_im=False):
+def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -112,25 +147,25 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0, return_im=False
 
     Inputs:
     1. reads:      3D ndarray, the reads to be read up the ramp. Currently
-                   the shape should be (2040, 2040, nreads), i.e. the 
-                   reference pixels have been removed. If None, directory
-                   and file name of fits file must be given. 
+                   the shape should be (2048, 2112, nreads) or
+                   (2048, 2048, nreads), i.e. with or without the reference 
+                   channel
     2. datadir:    string, the data directory. Only needed when the reads 
-                   are not given. 
+                   are not given
     3. filename:   string, fits file name. Only needed when the reads 
-                   are not given. 
+                   are not given
 
     Optional inputs:
-    1. sig_rn:     float, the std of the read noise. 
-    2. return_im:  bool, if True, return an Image class object. 
+    1. sig_rn:     float, the std of the read noise in ADU 
+    2. return_im:  bool, if True, return an Image class object
 
     Returns:
-    1. c_arr       2D ndarry of Image class object, best-fit 
+    1. c_arr:      2D ndarry of Image class object, best-fit 
                    count in each pixel
     """
 
     if reads is None:
-        reads = _getreads(datadir, filename)
+        reads = getreads(datadir, filename)
 
     nreads = reads.shape[2]
 
@@ -150,8 +185,8 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=15.0, return_im=False
     else:
         return c_arr
 
-def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
-        gain=4.0, interp_meth='linear'):
+def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
+        interp_meth='linear', calc_chisq=False, **kwargs):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
     into account. We assume the counts in each pixel obey the linear 
@@ -162,8 +197,9 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
 
     Inputs:
     1. reads:      3D ndarray, the reads to be read up the ramp. Currently
-                   the shape should be (2048, 2112, nreads), i.e. with or
-                   without the reference channel
+                   the shape should be (2048, 2112, nreads) or
+                   (2048, 2048, nreads), i.e. with or without the reference 
+                   channel
     2. datadir:    string, the data directory. Only needed when the reads 
                    are not given. 
     3. filename:   string, fits file name. Only needed when the reads 
@@ -182,7 +218,7 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
     """
 
     if reads is None:
-        reads = _getreads(datadir, filename, refchan, maxreads)
+        reads = getreads(datadir, filename, **kwargs)
 
     nreads = reads.shape[2]
 
@@ -224,20 +260,13 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=15.0,\
     # We are still thinking about how to optimize the general case. 
     ###################################################################
 
-    chisq = np.zeros(c_arr.shape)
-    for i in range(nreads):
-        chisq += (reads[:,:,i] - a_arr - c_arr*(i+1))**2
-    chisq /= sig_rn**2 
-
-    im = Image(data=c_arr, ivar=ivar_arr)
+    if calc_chisq:
+        chisq = np.zeros(c_arr.shape)
+        for i in range(nreads):
+            chisq += (reads[:,:,i] - a_arr - c_arr*(i+1))**2
+        chisq /= sig_rn**2 
+        im = Image(data=c_arr, ivar=ivar_arr, chisq=chisq)
+    else:
+        im = Image(data=c_arr, ivar=ivar_arr)
 
     return im
-
-if __name__=='__main__':
-    fn = 'CRSA00007300.fits'
-    datadir = '/Users/protostar/Dropbox/data/charis/lab/'
-    reads = _getreads(datadir, fn)
-    im = utr(reads)
-    im.write('test_utr.fits')
-    im = utr_rn(reads, return_im=True)
-    im.write('test_utr_rn.fits')

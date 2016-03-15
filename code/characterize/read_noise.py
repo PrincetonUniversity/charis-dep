@@ -8,7 +8,7 @@ from scipy.stats import norm
 #######################
 # script parameters
 #######################
-sig_clip = 8 
+sig_clip = 8
 ramp_idx = [2, None]
 fn = 'CRSA00007220.fits'
 refchan = False
