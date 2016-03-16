@@ -4,6 +4,7 @@ from astropy.io import fits
 import numpy as np
 import utr
 import primitives
+from image import Image
 
 datadir = '../../../../data/charis/lab/'
 monochrom_fn = 'CRSA00007408.fits'
@@ -14,6 +15,11 @@ laser_off = utr.utr(datadir=datadir, filename=laser_off_fn, read_idx=[1,21], bia
 monochrom.data = monochrom.data - laser_off.data
 monochrom.filename = 'test_monochrom_1510.fits'
 monochrom.write(monochrom.filename)
+
+#monochrom = Image().load('test_monochrom_1510.fits')
+
+#monochrom.data = monochrom.data[500:-500, 500:-500]
+monochrom.ivar = np.ones(monochrom.data.shape)#monochrom.ivar[500:-500, 500:-500]
 
 order = 2
 _x, _y, good, coef = primitives.locatePSFlets(monochrom, polyorder=order)
@@ -28,5 +34,5 @@ outarr[:, 2] = good
 
 coef = np.asarray(coef)
 
-np.savetxt('test_coef.dat', coef)
-np.savetxt('test_distortion.dat', outarr, fmt="%.5g")
+np.savetxt('test_coef_O'+str(order)+'.dat', coef)
+np.savetxt('test_distortion_O'+str(order)+'.dat', outarr, fmt="%.5g")

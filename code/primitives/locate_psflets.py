@@ -7,7 +7,7 @@ import tools
 
 log = tools.getLogger('main')
 
-def _initcoef(order, scale=13.88, phi=np.arctan(2), x0=0, y0=0):
+def _initcoef(order, scale=15.2, phi=np.arctan2(2,-1), x0=0, y0=0):
     """
     private function _initcoef in locate_psflets
 
@@ -264,4 +264,4 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
 
     good = (_x > 5)*(_x < xdim - 5)*(_y > 5)*(_y < ydim - 5)
 
-    return [_x, _y, good, coef] 
+    return [_x, _y, good, coef_opt] 
