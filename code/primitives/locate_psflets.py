@@ -206,9 +206,23 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
     # x, y: Grid of lenslet IDs, Lenslet (0, 0) is the center.
     #############################################################
 
+    gridfrac = 20  
     ydim, xdim = inImage.data.shape
-    x = np.arange(-(ydim//20), ydim//20 + 1)
+    x = np.arange(-(ydim//gridfrac), ydim//gridfrac + 1)
     x, y = np.meshgrid(x, x)
+
+    #############################################################
+    # Create slice indices for subimages to perform the intial
+    # fits on. The new dimensionality in both x and y is 2*subsize
+    #############################################################
+
+    subsize = 500
+    imslice = np.s_[ydim/2 - subsize:ydim/2 + subsize,\
+                    xdim/2 - subsize:xdim/2 + subsize]
+    xslice = np.s_[x[0].size/2 - subsize//(gridfrac/2):\
+                   x[0].size/2 + subsize//(gridfrac/2) + 1,\
+                   x[0].size/2 - subsize//(gridfrac/2):\
+                   x[0].size/2 + subsize//(gridfrac/2) + 1]
     
     #############################################################
     # Set up polynomial coefficients, convert from lenslet 
@@ -223,8 +237,8 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
         bestval = 0
         for ix in np.arange(0, 10, 0.5):
             for iy in np.arange(0, 10, 0.5):
-                coef = _initcoef(polyorder, x0=xdim/2 + ix, y0=ydim/2 + iy)
-                newval = _corrval(coef, x, y, filtered, polyorder, trimfrac)
+                coef = _initcoef(polyorder, x0=subsize + ix, y0=subsize + iy)
+                newval = _corrval(coef, x[xslice], y[xslice], filtered[imslice], polyorder, trimfrac)
                 if newval < bestval:
                     bestval = newval
                     coefbest = coef[:]
@@ -244,16 +258,20 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
                 coef = coefsave[:]
                 coef[0] += ix
                 coef[(polyorder + 1)*(polyorder + 2)/2] += iy
-                newval = _corrval(coef, x, y, filtered, polyorder, trimfrac)
+                newval = _corrval(coef, x[xslice], y[xslice], filtered[imslice], polyorder, trimfrac)
                 if newval < bestval:
                     bestval = newval
                     coefbest = coef[:]
         coef = coefbest
                 
-    log.info("Optimizing PSFlet location transformation coefficients for frame " + inImage.filename)
-    res = optimize.minimize(_corrval, coef, args=(x, y, filtered, polyorder, trimfrac), method='Powell')
-
+    log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
+    res = optimize.minimize(_corrval, coef, args=(x[xslice], y[xslice], filtered[imslice], polyorder, trimfrac), method='Powell')
     coef_opt = res.x
+
+    log.info("Performing final optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
+    res = optimize.minimize(_corrval, coef_opt, args=(x, y, filtered, polyorder, trimfrac), method='Powell')
+    coef_opt = res.x
+
     if not res.success:
         log.info("Optimizing PSFlet location transformation coefficients may have failed for frame " + inImage.filename)
     _x, _y = _transform(x, y, polyorder, coef_opt)
