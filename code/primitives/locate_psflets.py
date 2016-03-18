@@ -210,19 +210,6 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
     ydim, xdim = inImage.data.shape
     x = np.arange(-(ydim//gridfrac), ydim//gridfrac + 1)
     x, y = np.meshgrid(x, x)
-
-    #############################################################
-    # Create slice indices for subimages to perform the intial
-    # fits on. The new dimensionality in both x and y is 2*subsize
-    #############################################################
-
-    subsize = 500
-    imslice = np.s_[ydim/2 - subsize:ydim/2 + subsize,\
-                    xdim/2 - subsize:xdim/2 + subsize]
-    xslice = np.s_[x[0].size/2 - subsize//(gridfrac/2):\
-                   x[0].size/2 + subsize//(gridfrac/2) + 1,\
-                   x[0].size/2 - subsize//(gridfrac/2):\
-                   x[0].size/2 + subsize//(gridfrac/2) + 1]
     
     #############################################################
     # Set up polynomial coefficients, convert from lenslet 
@@ -230,9 +217,19 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
     # Then optimize the coefficients.
     # We want to start with a decent guess, so we use a grid of 
     # offsets.  Seems to be robust down to SNR/PSFlet ~ 1
+    # Create slice indices for subimages to perform the intial
+    # fits on. The new dimensionality in both x and y is 2*subsize
     #############################################################
 
     if coef is None:
+        subsize = ydim//4
+        imslice = np.s_[ydim/2 - subsize:ydim/2 + subsize,
+                        xdim/2 - subsize:xdim/2 + subsize]
+        xslice = np.s_[x[0].size/2 - subsize//(gridfrac/2):
+                       x[0].size/2 + subsize//(gridfrac/2) + 1,
+                       x[0].size/2 - subsize//(gridfrac/2):
+                       x[0].size/2 + subsize//(gridfrac/2) + 1]
+
         log.info("Initializing PSFlet location transformation coefficients")
         bestval = 0
         for ix in np.arange(0, 10, 0.5):
@@ -243,6 +240,13 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
                     bestval = newval
                     coefbest = coef[:]
         coef = coefbest
+        
+        log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
+        res = optimize.minimize(_corrval, coef, args=(x[xslice], y[xslice], filtered[imslice], polyorder, trimfrac), method='Powell')
+        coef_opt = res.x
+
+        coef_opt[0] += (ydim/2-subsize)
+        coef_opt[(polyorder + 1)*(polyorder + 2)/2] += (xdim/2-subsize)
 
     #############################################################
     # If we have coefficients from last time, we assume that we
@@ -258,15 +262,11 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
                 coef = coefsave[:]
                 coef[0] += ix
                 coef[(polyorder + 1)*(polyorder + 2)/2] += iy
-                newval = _corrval(coef, x[xslice], y[xslice], filtered[imslice], polyorder, trimfrac)
+                newval = _corrval(coef, x, y, filtered, polyorder, trimfrac)
                 if newval < bestval:
                     bestval = newval
                     coefbest = coef[:]
         coef = coefbest
-                
-    log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
-    res = optimize.minimize(_corrval, coef, args=(x[xslice], y[xslice], filtered[imslice], polyorder, trimfrac), method='Powell')
-    coef_opt = res.x
 
     log.info("Performing final optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
     res = optimize.minimize(_corrval, coef_opt, args=(x, y, filtered, polyorder, trimfrac), method='Powell')
