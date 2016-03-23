@@ -245,8 +245,8 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
         res = optimize.minimize(_corrval, coef, args=(x[xslice], y[xslice], filtered[imslice], polyorder, trimfrac), method='Powell')
         coef_opt = res.x
 
-        coef_opt[0] += (ydim/2-subsize)
-        coef_opt[(polyorder + 1)*(polyorder + 2)/2] += (xdim/2-subsize)
+        coef_opt[0] += (xdim/2-subsize)
+        coef_opt[(polyorder + 1)*(polyorder + 2)/2] += (ydim/2-subsize)
 
     #############################################################
     # If we have coefficients from last time, we assume that we
@@ -255,10 +255,11 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
     #############################################################
 
     else:
+        log.info("Initializing transformation coefficients with previous values")
         bestval = 0
         coefsave = coef[:]
-        for ix in np.arange(0, 5, 0.5):
-            for iy in np.arange(-1, 1.5, 0.5):
+        for ix in np.arange(-1., 1.5, 0.5):
+            for iy in np.arange(-3., 3.5, 0.5):
                 coef = coefsave[:]
                 coef[0] += ix
                 coef[(polyorder + 1)*(polyorder + 2)/2] += iy
@@ -266,7 +267,7 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
                 if newval < bestval:
                     bestval = newval
                     coefbest = coef[:]
-        coef = coefbest
+        coef_opt = coefbest
 
     log.info("Performing final optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
     res = optimize.minimize(_corrval, coef_opt, args=(x, y, filtered, polyorder, trimfrac), method='Powell')

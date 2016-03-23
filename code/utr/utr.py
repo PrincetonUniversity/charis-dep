@@ -137,7 +137,7 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False):
+def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False, **kwargs):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -165,7 +165,7 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
     """
 
     if reads is None:
-        reads = getreads(datadir, filename)
+        reads = getreads(datadir, filename, **kwargs)
 
     nreads = reads.shape[2]
 

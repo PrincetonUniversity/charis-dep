@@ -2,6 +2,8 @@ try:
     from astropy.io import fits
 except:
     import pyfits as fits
+
+import numpy as np
 import tools
 
 log = tools.getLogger('main')
@@ -91,11 +93,11 @@ class Image:
         clobber is provided as a  keyword to fits.HDUList.writeto.
         """
         try:
-            out = fits.HDUList(fits.PrimaryHDU(self.data, self.header))
+            out = fits.HDUList(fits.PrimaryHDU(self.data.astype(np.float32), self.header))
             if self.ivar is not None:
-                out.append(fits.PrimaryHDU(self.ivar))
+                out.append(fits.PrimaryHDU(self.ivar.astype(np.float32)))
             if self.chisq is not None:
-                out.append(fits.PrimaryHDU(self.chisq))
+                out.append(fits.PrimaryHDU(self.chisq.astype(np.float32)))
             if self.flags is not None:
                 out.append(fits.PrimaryHDU(self.flags))
             try:
