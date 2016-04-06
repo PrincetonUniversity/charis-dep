@@ -4,7 +4,6 @@ import numpy as np
 from image import Image
 
 
-
 def _fit_cutout(subim, psflets, mode='lstsq'):
     """
     Fit a series of PSFlets to an image, recover the best-fit coefficients.
@@ -44,11 +43,12 @@ def _fit_cutout(subim, psflets, mode='lstsq'):
     return coef
 
 
-def _get_cutout(im, x0, y0, psflets, dy=3, dx=30):
+def _get_cutout(im, x0, y0, psflets, dy=30, dx=3):
     
     """
     Cut out a microspectrum for fitting.  Return the inputs to 
     linalg.lstsq or to whatever regularization scheme we adopt.
+    Assumes that spectra are dispersed in the -y direction.
 
     Inputs:
     1. im:      Image object containing data to be fit
@@ -60,11 +60,12 @@ def _get_cutout(im, x0, y0, psflets, dy=3, dx=30):
                 same shape as image.
          
     Optional inputs:
-    5. dy:      vertical half-length to cut out, default 3.  E.g.
-                cut out from y0-dy to y0+dy (inclusive).
-    6. dx:      horizontal length to cut out, default 30.  This is
-                the length to cut out in the +x direction; the 
-                length cut out in the -x direction is dy.
+    5. dy:      vertical length to cut out, default 30.  E.g.
+                cut out from y0-dy to y0+dx (inclusive).
+    6. dx:      horizontal length to cut out, default 3.  This is
+                the length to cut out in the +/-x direction; the 
+                length cut out in the +y direction (beyond the 
+                shortest wavelength) is also dx.
 
     Returns: 
     1. subim:   a flattened subimage to be fit
@@ -84,15 +85,15 @@ def _get_cutout(im, x0, y0, psflets, dy=3, dx=30):
     # from the spectral length.
     ###################################################################
 
-    subim = im.data[y0 - dy:y0 + dy + 1, x0 - dy:x0 + dx]
+    subim = im.data[y0 - dy:y0 + dx + 1, x0 - dx:x0 + dx + 1]
     if im.ivar is not None:
-        isig = np.sqrt(im.ivar[y0 - dy:y0 + dy + 1, x0 - dy:x0 + dx])
+        isig = np.sqrt(im.ivar[y0 - dy:y0 + dx + 1, x0 - dx:x0 + dx + 1])
         subim *= isig
 
     subarrshape = tuple([len(psflets)] + list(subim.shape))
     psflet_subarr = np.zeros(subarrshape)
     for i in range(len(psflets)):
-        psflet_subarr[i] = psflets[i].data[y0 - dy:y0 + dy + 1, x0 - dy:x0 + dx]
+        psflet_subarr[i] = psflets[i].data[y0 - dy:y0 + dx + 1, x0 - dx:x0 + dx + 1]
         if im.ivar is not None:
             psflet_subarr[i] *= isig
 
@@ -172,11 +173,12 @@ def fit_spectra(im, psflets, x, y, good):
 
     coefs = np.zeros(tuple([len(x)] + list(x[0].shape)))
     resid = im.data.copy()
-
+    
     for i in range(x[0].shape[0]):
         for j in range(x[0].shape[1]):
-            if good[0][i, j]:
-                subim, psflet_subarr = _get_cutout(im, x[0][i, j], y[0][i, j], psflets)
+            if good[0][i, j] and good[-1][i, j]:
+                subim, psflet_subarr = _get_cutout(im, x[0][i, j] + 0.5,
+                                                   y[0][i, j], psflets)
                 coefs[:, i, j] = _fit_cutout(subim, psflet_subarr)
 
     ###################################################################
