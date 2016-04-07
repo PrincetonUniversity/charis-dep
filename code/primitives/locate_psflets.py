@@ -45,11 +45,6 @@ class PSFLets:
         for k in range(self.interporder + 1):
             coef += self.interp_arr[k]*np.log(wavelength)**k
         return _transform(x, y, self.coeforder, coef)
-
-    #def lamtopix(self, wavelength, x, y):
-    #    coef = np.zeros(self.coeforder + 1)
-    #    for k in range(self.interporder + 1):
-    #        coef += self.interp_arr[:, k]*wavelength**k
         
 
 
