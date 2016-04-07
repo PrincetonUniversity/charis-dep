@@ -23,12 +23,9 @@ def getreads(datadir, filename, read_idx=[1,None], biassub=None):
                   the bias subtraction
 
     Returns:
-    1. reads:     3D ndarray, shape = (2048, 2048, nreads)
-                  or (2048, 2112, nreads) 
+    1. reads:     3D ndarray, shape = (nreads, 2048, 2048)
+                  or (nreads, 2048, 2112) 
 
-    Note: The current return shape feels a bit awkward, but it 
-    works better for broadcasting; we may decide to change this 
-    in the future. 
     """
 
     try:
@@ -36,28 +33,28 @@ def getreads(datadir, filename, read_idx=[1,None], biassub=None):
     except:
         import pyfits as fits
 
-    log.info("Getting reads from "+datadir+filename)
+    log.info("Getting reads from " + datadir + filename)
     if biassub is not None:
-        log.info("Subtracting mean from "+biassub+" reference pixels")
+        log.info("Subtracting mean from " + biassub + " reference pixels")
 
-    hdulist = fits.open(datadir+filename)
+    hdulist = fits.open(datadir + filename)
     shape = hdulist[1].data.shape
-    reads = np.zeros((shape[0], shape[1], len(hdulist[read_idx[0]:read_idx[1]])))
+    reads = np.zeros((len(hdulist[read_idx[0]:read_idx[1]]), shape[0], shape[1]))
 
     for i, r in enumerate(hdulist[read_idx[0]:read_idx[1]]):
-        reads[:,:,i] = r.data
+        reads[i] = r.data
         if biassub is not None:
             numchan = shape[1]/64
             for j in xrange(numchan):
                 if biassub=='top':
-                    refpix = reads[-4:, j*64:(j+1)*64, i]
+                    refpix = reads[i, -4:, j*64:(j+1)*64]
                 elif biassub=='bottom':
-                    refpix = reads[:4, j*64:(j+1)*64, i]
+                    refpix = reads[i, :4, j*64:(j+1)*64]
                 elif biassub=='all':
-                    top = reads[-4:, j*64:(j+1)*64, i]
-                    bottom = reads[:4, j*64:(j+1)*64, i]
+                    top = reads[i, -4:, j*64:(j+1)*64]
+                    bottom = reads[i, :4, j*64:(j+1)*64]
                     refpix = np.concatenate([top, bottom])
-                reads[:, j*64:(j+1)*64, i] -= refpix.mean()
+                reads[i, :, j*64:(j+1)*64] -= refpix.mean()
     return reads
 
 def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
@@ -147,8 +144,8 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
 
     Inputs:
     1. reads:      3D ndarray, the reads to be read up the ramp. Currently
-                   the shape should be (2048, 2112, nreads) or
-                   (2048, 2048, nreads), i.e. with or without the reference 
+                   the shape should be (nreads, 2048, 2112) or
+                   (nreads, 2048, 2048), i.e. with or without the reference 
                    channel
     2. datadir:    string, the data directory. Only needed when the reads 
                    are not given
@@ -167,7 +164,7 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
     if reads is None:
         reads = getreads(datadir, filename, **kwargs)
 
-    nreads = reads.shape[2]
+    nreads = reads.shape[0]
 
     ###################################################################
     # If we are read noise limited, then the count (c = b*dt) is given
@@ -177,7 +174,10 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
 
     factor = 12.0/(nreads**3 - nreads)
     weights = np.arange(1,nreads+1) - (nreads+1)/2.0
-    c_arr = factor*np.sum(weights*reads, axis=2)
+    c_arr = np.zeros(reads[0].shape)
+    for i in range(nreads):
+        c_arr += factor*weights[i]*reads[i]
+
     if return_im:
         ivar = (factor*sig_rn)**2*np.sum(weights**2)
         ivar = (1.0/ivar)*np.ones(c_arr.shape)
@@ -239,20 +239,22 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
     # calculation is done per row to conserve memory 
     ###################################################################
 
-    interp_objs = _interp_coef(nreads, sig_rn, c_rn_arr.min(),\
-                               c_rn_arr.max(), interp_meth=interp_meth)
+    if calc_chisq:
 
-    c_arr = np.zeros(c_rn_arr.shape)
-    a_arr = np.zeros(c_rn_arr.shape)
-    ivar_arr = np.zeros(c_rn_arr.shape)
-    for row in xrange(c_rn_arr.shape[0]):
-        a_coef = interp_objs[0](c_rn_arr[row,:])
-        a_arr[row,:] = np.sum(a_coef*reads[row,:,:], axis=1)
-        c_coef = interp_objs[1](c_rn_arr[row,:])
-        c_arr[row,:] = np.sum(c_coef*reads[row,:,:], axis=1)
-        ivar_arr[row,:] = interp_objs[2](c_rn_arr[row,:])
-    del a_coef
-    del c_coef
+        interp_objs = _interp_coef(nreads, sig_rn, c_rn_arr.min(),\
+                                       c_rn_arr.max(), interp_meth=interp_meth)
+        
+        c_arr = np.zeros(c_rn_arr.shape)
+        a_arr = np.zeros(c_rn_arr.shape)
+        ivar_arr = np.zeros(c_rn_arr.shape)
+        for row in xrange(c_rn_arr.shape[0]):
+            a_coef = interp_objs[0](c_rn_arr[row,:])
+            a_arr[row,:] = np.sum(a_coef*reads[row,:,:], axis=1)
+            c_coef = interp_objs[1](c_rn_arr[row,:])
+            c_arr[row,:] = np.sum(c_coef*reads[row,:,:], axis=1)
+            ivar_arr[row,:] = interp_objs[2](c_rn_arr[row,:])
+        del a_coef
+        del c_coef
 
     ###################################################################
     # Calculate chi-squared for every pixel. The flags will be generated
@@ -267,6 +269,7 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
         chisq /= sig_rn**2 
         im = Image(data=c_arr, ivar=ivar_arr, chisq=chisq)
     else:
-        im = Image(data=c_arr, ivar=ivar_arr)
+        #im = Image(data=c_arr, ivar=ivar_arr)
+        im = Image(data=c_rn_arr)
 
     return im
