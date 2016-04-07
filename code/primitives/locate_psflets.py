@@ -4,8 +4,54 @@ import numpy as np
 from scipy import signal, ndimage, optimize
 from image import Image
 import tools
+import glob
 
 log = tools.getLogger('main')
+
+
+class PSFLets:
+    """
+    """
+    
+    def __init__(self, coeffile='wavelength_sol_20160314.dat', order=3):
+
+        #############################################################
+        # Load all of the coefficients for the PSF-let locations at
+        # known wavelengths.  Set up array to get the locations at an
+        # arbitrary wavelength by fitting a polynomial of a given
+        # order in log(lam) to all coefficients.
+        #############################################################
+
+        self.lam = np.loadtxt(coeffile)[:, 0]
+        self.allcoefs = np.loadtxt(coeffile)[:, 1:]
+        self.interporder = order
+        
+        self.interp_arr = np.zeros((order + 1, self.allcoefs.shape[1]))
+        self.xarr = np.ones((self.lam.shape[0], order + 1))
+        for i in range(1, order + 1):
+            self.xarr[:, i] = np.log(self.lam)**i
+
+        for i in range(self.interp_arr.shape[1]):
+            coef = np.linalg.lstsq(self.xarr, self.allcoefs[:, i])[0]
+            self.interp_arr[:, i] = coef
+
+        self.coeforder = int(np.sqrt(self.allcoefs.shape[1])) - 1
+        if not (self.coeforder + 1)*(self.coeforder + 2) == self.allcoefs.shape[1]:
+            raise ValueError("Number of coefficients incorrect for polynomial order.")
+
+    def lamtopix(self, wavelength, x, y):
+        
+        coef = np.zeros((self.coeforder + 1)*(self.coeforder + 2))
+        for k in range(self.interporder + 1):
+            coef += self.interp_arr[k]*np.log(wavelength)**k
+        return _transform(x, y, self.coeforder, coef)
+
+    #def lamtopix(self, wavelength, x, y):
+    #    coef = np.zeros(self.coeforder + 1)
+    #    for k in range(self.interporder + 1):
+    #        coef += self.interp_arr[:, k]*wavelength**k
+        
+
 
 def _initcoef(order, scale=15.2, phi=np.arctan2(2,-1), x0=0, y0=0):
     """
@@ -89,8 +135,8 @@ def _transform(x, y, order, coef):
     except:
             raise ValueError("Polynomial order must be integer")
 
-    _x = np.zeros(x.shape)
-    _y = np.zeros(y.shape)
+    _x = np.zeros(np.asarray(x).shape)
+    _y = np.zeros(np.asarray(y).shape)
     
     i = 0
     for ix in range(order + 1):
