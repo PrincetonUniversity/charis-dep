@@ -106,18 +106,32 @@ class PSFLets:
         return xpos, ypos, lam_interp
 
 
-    def loadpixsol(self, infile='foo2.fits'):
+    def loadpixsol(self, infile=None, infiledir='.'):
+        infilelist = glob.glob(infiledir + '/CHARIS_wavelengthsolution_*.fits')
+        infile = npsort(infilelist)[-1]
         hdulist = fits.open(infile)
-
-        self.xindx = hdulist[0].data #x[:, :, :nlam_max]
-        self.yindx = hdulist[1].data #y[:, :, :nlam_max]
-        self.lam_indx = hdulist[2].data #lam_out[:, :, :nlam_max]
-        self.nlam = hdulist[3].data.astype(int) #nlam
+        
+        try:
+            self.xindx = hdulist[0].data
+            self.yindx = hdulist[1].data
+            self.lam_indx = hdulist[2].data
+            self.nlam = hdulist[3].data.astype(int)
+        except:
+            raise RuntimeError("File " + infile + " does not appear to contain a CHARIS wavelength solution in the appropriate format.")
         self.nlam_max = np.amax(self.nlam)
-        #return x[:, :, :nlam_max], y[:, :, :nlam_max], lam_out[:, :, :nlam_max]
+        
         return None
        
-
+    def savepixsol(self, outfile=None):
+        if outfile is None:
+            today = date.today().timetuple()
+            yyyymmdd = '%04d%02d%02d' % (today[0], today[1], today[2])
+            outfile = 'CHARIS_wavelengthsolution_' + yyyymmdd + '.fits'
+        out = fits.HDUList(fits.PrimaryHDU(self.xindx))
+        out.append(fits.PrimaryHDU(self.yindx))
+        out.append(fits.PrimaryHDU(self.lam_indx))
+        out.append(fits.PrimaryHDU(self.nlam.astype(int)))
+        out.writeto(outfile, clobber=True)
 
     def genpixsol(self, coeffile='wavelength_sol_20160314.dat', order=3,
                   lam1=None, lam2=None):
