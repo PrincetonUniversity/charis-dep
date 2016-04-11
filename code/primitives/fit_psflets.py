@@ -4,7 +4,7 @@ import numpy as np
 from image import Image
 
 
-def _fit_cutout(subim, psflets, mode='lstsq'):
+def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     """
     Fit a series of PSFlets to an image, recover the best-fit coefficients.
     This is currently little more than a wrapper for np.linalg.lstsq, but 
@@ -37,13 +37,21 @@ def _fit_cutout(subim, psflets, mode='lstsq'):
         subim_flat = np.reshape(subim, -1)
         psflets_flat = np.reshape(psflets, (psflets.shape[0], -1))
         coef = np.linalg.lstsq(psflets_flat.T, subim_flat)[0]
+    elif mode == 'ext':
+        coef = np.zeros(psflets.shape[0])
+        for i in range(psflets.shape[0]):
+            coef[i] = np.sum(psflets[i]*subim)/np.sum(psflets[i])
+    elif mode == 'apphot':
+        coef = np.zeros((subim.shape[0]))
+        for i in range(subim.shape[0]):
+            coef[i] = np.sum(subim[i])
     else:
         raise ValueError("mode " + mode + " to fit microspectra is not currently implemented.")
 
     return coef
 
 
-def _get_cutout(im, x0, y0, psflets, dy=30, dx=3):
+def _get_cutout(im, x, y, psflets, dx=3):
     
     """
     Cut out a microspectrum for fitting.  Return the inputs to 
@@ -85,19 +93,22 @@ def _get_cutout(im, x0, y0, psflets, dy=30, dx=3):
     # from the spectral length.
     ###################################################################
 
-    subim = im.data[y0 - dy:y0 + dx + 1, x0 - dx:x0 + dx + 1]
+    y0, y1 = [int(np.amin(y)) - dx, int(np.amax(y)) + dx + 1]
+    x0, x1 = [int(np.amin(x)) - dx, int(np.amax(x)) + dx + 1]
+
+    subim = im.data[y0:y1, x0:x1]
     if im.ivar is not None:
-        isig = np.sqrt(im.ivar[y0 - dy:y0 + dx + 1, x0 - dx:x0 + dx + 1])
+        isig = np.sqrt(im.ivar[y0:y1, x0:x1])
         subim *= isig
 
     subarrshape = tuple([len(psflets)] + list(subim.shape))
     psflet_subarr = np.zeros(subarrshape)
     for i in range(len(psflets)):
-        psflet_subarr[i] = psflets[i].data[y0 - dy:y0 + dx + 1, x0 - dx:x0 + dx + 1]
+        psflet_subarr[i] = psflets[i].data[y0:y1, x0:x1]
         if im.ivar is not None:
             psflet_subarr[i] *= isig
 
-    return subim, psflet_subarr
+    return subim, psflet_subarr, [y0, y1, x0, x1]
 
 
 def _tag_psflets(shape, x, y, good):
@@ -116,7 +127,7 @@ def _tag_psflets(shape, x, y, good):
     Output:
     1. psflet_indx: ndarray of the requested input shape (matching the
                PSFlet image).  The array contains the indices of the
-               closest lenslet to each pixel at the avelength of x and y
+               closest lenslet to each pixel at the wavelength of x and y
 
     The output, psflet_indx, is to be used as follows:
     coefs[psflet_indx] will give the scaling of the monochromatic PSF-let
@@ -174,12 +185,17 @@ def fit_spectra(im, psflets, x, y, good):
     coefs = np.zeros(tuple([len(x)] + list(x[0].shape)))
     resid = im.data.copy()
     
+    x = np.asarray(x)
+    y = np.asarray(y)
+
     for i in range(x[0].shape[0]):
         for j in range(x[0].shape[1]):
             if good[0][i, j] and good[-1][i, j]:
-                subim, psflet_subarr = _get_cutout(im, x[0][i, j] + 0.5,
-                                                   y[0][i, j], psflets)
-                coefs[:, i, j] = _fit_cutout(subim, psflet_subarr)
+                subim, psflet_subarr, bounds = _get_cutout(im, x[:, i, j] + 0.5,
+                                                           y[:, i, j], psflets)
+                coefs[:, i, j] = _fit_cutout(subim, psflet_subarr, bounds,
+                                             x=x[:, i, j], y=y[:, i, j],
+                                             mode='ext')
 
     ###################################################################
     # Subtract the best fit spectrum to include crosstalk
@@ -194,4 +210,55 @@ def fit_spectra(im, psflets, x, y, good):
         
     datacube = Image(data=coefs)
 
+    return datacube
+
+
+def fitspec_intpix(im, PSFlet_tool, delt_x=7):
+#def fitspec_intpix(im, xindx, yindx, lam_indx):
+
+    xindx = PSFlet_tool.xindx
+    yindx = PSFlet_tool.yindx
+    Nmax = PSFlet_tool.nlam_max
+
+    x = np.arange(im.data.shape[1])
+    y = np.arange(im.data.shape[0])
+    x, y = np.meshgrid(x, y)
+
+    coefs = np.zeros(tuple([Nmax] + list(xindx.shape)[:-1]))
+    lam = np.zeros(coefs.shape)
+    
+    xarr, yarr = np.meshgrid(np.arange(delt_x), np.arange(Nmax))
+
+    for i in range(xindx.shape[0]):
+        for j in range(yindx.shape[1]):
+            #_x, _y, _lam = PSFlet_tool.get_lenslet_arrays(i, j)
+            _x = xindx[i, j, :PSFlet_tool.nlam[i, j]]
+            _y = yindx[i, j, :PSFlet_tool.nlam[i, j]]
+            _lam = PSFlet_tool.lam_indx[i, j, :PSFlet_tool.nlam[i, j]]
+
+            if not (np.all(_x > x[0, 10]) and np.all(_x < x[0, -10]) and 
+                    np.all(_y > y[10, 0]) and np.all(_y < y[-10, 0])):
+                #print _x, _y
+                continue
+
+
+            i1 = int(np.mean(_x) - delt_x/2.)
+            dx = _x[yarr[:len(_lam)]] - x[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
+            #var = _var[yarr[:len(_lam)]] - x[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
+            weight = np.exp(-dx**2/2.)
+            weight /= np.sum(weight, axis=1, keepdims=True)
+            coefs[:len(_lam), i, j] = np.sum(weight*im.data[_y[0]:_y[-1] + 1, i1:i1 + delt_x], axis=1)
+
+            #for k in range(0): #_lam.shape[0]):
+            #    i1 = int(_x[k] - 3.5)
+            #    dx = x[_y[k], i1:i1 + 7] - _x[k]
+            #    weight = np.exp(-dx**2/2.)
+            #    weight /= np.sum(weight)
+            #    #print weight
+
+            #    lam[k, i, j] = _lam[k]
+            #    coefs[k, i, j] = np.sum(weight*im.data[_y[k], i1:i1 + 7])
+
+
+    datacube = Image(data=coefs)
     return datacube
