@@ -13,16 +13,15 @@ import primitives
 import utr
 from image import Image
 
-def getcube(datadir, filename, read_idx=[2, None],
+def getcube(filename, read_idx=[2, None],
             calibdir='calibrations/20160408/', R=25, method='lstsq'):
 
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
 
     Inputs:
-    1. datadir:  directory containing file to be reduced
-    2. filename: name of the file within datadir containing the 
-                 up-the-ramp reads
+    1. filename: name of the file containing the up-the-ramp reads. 
+                 Should include the full path/to/file.
     Optional inputs:
     1. read_idx: list of two numbers, the first and last reads to use in
                  the up-the-ramp combination.  Default [2, None], i.e., 
@@ -68,7 +67,7 @@ def getcube(datadir, filename, read_idx=[2, None],
     # background and apply a bad pixel mask.
     ################################################################
 
-    inImage = utr.utr(datadir=datadir, filename=filename,
+    inImage = utr.utr(filename=filename,
                       read_idx=[2,None], biassub='all')
     inImage.data -= fits.open(calibdir + 'background.fits')[0].data
     inImage.ivar *= fits.open(calibdir + 'mask.fits')[0].data
@@ -100,10 +99,10 @@ def getcube(datadir, filename, read_idx=[2, None],
 
 if __name__ == "__main__":
     datadir = '/scratch/tbrandt/CHARIS_reads/wavelength_stability/'
-    filenames = ['CRSA00008191.fits']
+    filenames = [datadir + 'CRSA00008191.fits']
     calibdir = 'calibrations/20160408/'
 
     for filename in filenames:
-        cube = getcube(datadir=datadir, filename=filename, read_idx=[2, None],
+        cube = getcube(filename=filename, read_idx=[2, None],
                        calibdir=calibdir, R=25, method='lstsq')
         cube.write(re.sub('.fits', '_cube.fits', filename))
