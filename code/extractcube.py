@@ -13,6 +13,7 @@ import primitives
 import utr
 from image import Image
 import sys
+import os
 
 def getcube(filename, read_idx=[2, None],
             calibdir='calibrations/20160408/', R=25, method='lstsq'):
