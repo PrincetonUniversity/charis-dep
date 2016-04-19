@@ -12,6 +12,7 @@ from astropy.io import fits
 import primitives
 import utr
 from image import Image
+import sys
 
 def getcube(filename, read_idx=[2, None],
             calibdir='calibrations/20160408/', R=25, method='lstsq'):
@@ -104,7 +105,12 @@ if __name__ == "__main__":
     #calibdir = 'calibrations/20160408/'
     calibdir = '/home/data/calibrations/20160408/'
 
+    if len(sys.argv) > 1:
+        if os.path.isfile(sys.argv[1]):
+            filenames = [sys.argv[1]]
+
     for filename in filenames:
         cube = getcube(filename=filename, read_idx=[2, None],
                        calibdir=calibdir, R=25, method='lstsq')
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
+
