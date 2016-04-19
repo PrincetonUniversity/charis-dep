@@ -5,15 +5,14 @@ import re
 from collections import OrderedDict
 log = tools.getLogger('main')
 
-def getreads(datadir, filename, header=OrderedDict(), 
+def getreads(filename, header=OrderedDict(), 
              read_idx=[1,None], biassub=None):
     """
     Get reads from fits file and put them in the correct 
     format for the up-the-ramp functions. 
 
     Inputs:
-    1. datadir:   string, the data directory 
-    2. filename:  string, name of the fits file
+    1. filename:  string, name of the fits file
 
     Optional inputs:
     1. read_idx:  list, [first index, last index] to extract from
@@ -36,11 +35,11 @@ def getreads(datadir, filename, header=OrderedDict(),
     except:
         import pyfits as fits
 
-    log.info("Getting reads from " + datadir + filename)
+    log.info("Getting reads from " + filename)
     if biassub is not None:
         log.info("Subtracting mean from " + biassub + " reference pixels")
 
-    hdulist = fits.open(datadir + filename)
+    hdulist = fits.open(filename)
     shape = hdulist[1].data.shape
     reads = np.zeros((len(hdulist[read_idx[0]:read_idx[1]]), shape[0], shape[1]))
     
@@ -140,7 +139,7 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False, header=OrderedDict(), **kwargs):
+def utr_rn(reads=None, filename=None, sig_rn=20.0, return_im=False, header=OrderedDict(), **kwargs):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -153,10 +152,8 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
                    the shape should be (nreads, 2048, 2112) or
                    (nreads, 2048, 2048), i.e. with or without the reference 
                    channel
-    2. datadir:    string, the data directory. Only needed when the reads 
-                   are not given
-    3. filename:   string, fits file name. Only needed when the reads 
-                   are not given
+    2. filename:   string, fits file name. Only needed when the reads 
+                   are not given. Should include the full path to file.
 
     Optional inputs:
     1. sig_rn:     float, the std of the read noise in ADU 
@@ -168,7 +165,7 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
     """
 
     if reads is None:
-        reads = getreads(datadir, filename, header, **kwargs)
+        reads = getreads(filename, header, **kwargs)
 
     nreads = reads.shape[0]
 
@@ -191,7 +188,7 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
     else:
         return c_arr
 
-def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
+def utr(reads=None, filename=None, sig_rn=20.0, gain=4.0,\
         interp_meth='linear', calc_chisq=False, header=OrderedDict(), **kwargs):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
@@ -206,10 +203,8 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
                    the shape should be (2048, 2112, nreads) or
                    (2048, 2048, nreads), i.e. with or without the reference 
                    channel
-    2. datadir:    string, the data directory. Only needed when the reads 
-                   are not given. 
-    3. filename:   string, fits file name. Only needed when the reads 
-                   are not given. 
+    2. filename:   string, fits file name. Only needed when the reads 
+                   are not given. Should include the full path to file.
 
     Optional inputs:
     1. sig_rn:        float, the std of the read noise in ADU 
@@ -224,7 +219,7 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
     """
 
     if reads is None:
-        reads = getreads(datadir, filename, header, **kwargs)
+        reads = getreads(filename, header, **kwargs)
 
     nreads = reads.shape[2]
 
