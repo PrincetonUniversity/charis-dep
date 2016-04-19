@@ -99,7 +99,7 @@ def getcube(filename, read_idx=[2, None],
 
 if __name__ == "__main__":
     #datadir = '/scratch/tbrandt/CHARIS_reads/wavelength_stability/'
-    datadir = '/home/data/charis/20160408/'
+    datadir = '/home/data/charis/2016-04-08/'
     filenames = [datadir + 'CRSA00008191.fits']
     #calibdir = 'calibrations/20160408/'
     calibdir = '/home/data/calibrations/20160408/'
