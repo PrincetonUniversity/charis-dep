@@ -1,83 +1,108 @@
 #!/usr/bin/env python
 
 #########################################################################
-# Note: this file contains a bunch of routines for real-time testing
-# during development. 
-# It is not designed to be clean or useful for anything else.
+# A provisional routine for actually producing and returning data cubes.
 #########################################################################
 
 import numpy as np
+import time
+import glob
+import re
+from astropy.io import fits
 import primitives
-import testimage
+import utr
 from image import Image
 
-def _test_locate_psflets(norm=1000, rms=10, mode='bkgnd', order=2, 
-                         prefix = '/home/tbrandt/CHARIS/Strehl80/'):
-    
+
+def getcube(datadir, filename, read_idx=[2, None],
+            calibdir='calibrations/20160408/', R=25, method='lstsq'):
+    """Provisional routine getcube.  Construct and return a data cube
+    from a set of reads.
+
+    Inputs:
+    1. datadir:  directory containing file to be reduced
+    2. filename: name of the file within datadir containing the 
+                 up-the-ramp reads
+    Optional inputs:
+    1. read_idx: list of two numbers, the first and last reads to use in
+                 the up-the-ramp combination.  Default [2, None], i.e., 
+                 discard the first read and use all of the rest.
+    2. calibdir: name of the directory containing the calibration files.  
+                 Default calibrations/20160408/
+    3. R:        integer, approximate resolution lam/delta(lam) of the
+                 extracted data cube.  Resolutions higher than ~25 or 30
+                 are comparable to or finer than the pixel sampling and 
+                 are not recommended--there is very strong covariance.
+    4. method:   string, method used to extract data cube.  Should be 
+                 either 'lstsq' for a least-squares extraction or 
+                 'optext' for a quasi-optimal extraction.
+    Returns:
+    1. datacube: an instance of the Image class containing the data cube.
+
+    Steps performed: 
+
+    1. Up-the-ramp combination.  As of yet no special read noise
+    suppression (just a channel-by-channel correction of the reference
+    voltages), no nonlinearity correction.
+    2. Subtraction of thermal background from file in calibration 
+    directory.
+    3. Application of hot pixel mask (as zero inverse variances).
+    4. Load calibration files from calibration directory for the data
+    cube extraction.
+    5. Extract the data cube.
+
+    Notes for now: the quasi-optimal extraction isn't really an
+    optimal extraction.  Every lenslet's spectrum natively samples a
+    different set of wavelengths, so right now they are all simply
+    interpolated onto the same wavelength array.  This is certainly
+    not optimal, but I don't see any particularly good alternatives
+    (other than maybe convolving to a lower, but uniform, resolution).
+    The lstsq extraction can include all errors and covariances, and
+    soon will.
+
     """
-    A test function this routine with read noise and Poisson noise
-    added to a uniform background to try out the recovery of the 
-    PSFlet locations.
-    """
     
-    lam = 1.150
-    if mode == 'bkgnd':
-        inImage = Image(prefix + 'bkgnd_%.3fum.fits' % (lam))
-    elif mode == 'image':
-        inImage = Image(prefix + 'image_%.3fum.fits' % (lam))
+    ################################################################
+    # Read in file and return an instance of the Image class with the
+    # up-the-ramp combination of reads.  Subtract the thermal
+    # background and apply a bad pixel mask.
+    ################################################################
+
+    inImage = utr.utr(datadir=datadir, filename=filename,
+                      read_idx=[2,None], biassub='all')
+    inImage.data -= fits.open(calibdir + 'background.fits')[0].data
+    inImage.ivar *= fits.open(calibdir + 'mask.fits')[0].data
+
+    calibdir = re.sub('//', '/', calibdir + '/')
+
+    ################################################################
+    # Read in necessary calibration files and extract the data cube.
+    ################################################################
+
+    if method == 'lstsq':
+        psflets = fits.open(calibdir + 'polychromeR%d.fits' % (R))[0].data
+        keyfile = fits.open(calibdir + 'polychromekeyR%d.fits' % (R))
+        lam_midpts = keyfile[0].data
+        x = keyfile[1].data
+        y = keyfile[2].data
+        good = keyfile[3].data
+
+        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header)
+
+    elif method == 'optext':
+        loc = primitives.PSFLets(load=True, infiledir=calibdir)
+        lam_midpts = fits.open(calibdir + 'polychromekeyR%d.fits' % (R))[0].data
+        datacube = primitives.fitspec_intpix(inImage, loc, lam_midpts, header=inImage.header)
+    
     else:
-        raise ValueError("mode keyword must be 'bkgnd' or 'image'")
-    inImage.data *= norm/np.amax(inImage.data)
-    inImage.data = testimage.addnoise(inImage.data, darkrms=rms)
-        
-    _x, _y, good, coef = primitives.locatePSFlets(inImage, polyorder=order)
-
-    _x = np.reshape(_x, -1)
-    _y = np.reshape(_y, -1)
-    good = np.reshape(good, -1)
-
-    outarr = np.zeros((_x.shape[0], 3))
-    outarr[:, 0] = _x
-    outarr[:, 1] = _y
-    outarr[:, 2] = good
-
-    np.savetxt('test_norm%d_rms%d.dat' % (norm, rms), outarr, fmt="%.5g")
-
-
-def test_specfit(prefix = '/home/tbrandt/CHARIS/Strehl80/', R=35, norm=1, order=2):
-    
-    inBkgnd = Image(prefix+'summed_bkgnd_Strehl80.fits')
-    inImage = Image(prefix+'summed_image_Strehl80.fits')
-    inImage.data += inBkgnd.data
-
-    loglam = np.arange(np.log(1.15) + 1./(2*R), np.log(2.39), 1./R)
-    lam = np.exp(loglam)
-
-    psflets = [Image(prefix + 'bkgnd_%.3fum.fits' % (l)) for l in lam]
-    x = []
-    y = []
-    good = []
-    coef = None
-    for psflet in psflets:
-        psflet.data *= norm/np.amax(psflet.data)
-        _x, _y, _good, coef = primitives.locatePSFlets(psflet, polyorder=order,
-                                                       coef=coef)
-        x += [_x]
-        y += [_y]
-        good += [_good]
-
-    outarr = np.zeros((len(x)*2, np.prod(x[0].shape)))
-    for i in range(len(x)):
-        outarr[2*i] = np.reshape(x[i], -1)
-        outarr[2*i + 1] = np.reshape(y[i], -1)
-
-    np.savetxt('test.dat', outarr.T, fmt="%.5g")
-    datacube = primitives.fit_spectra(inImage, psflets, x, y, good)
-    datacube.write('testcube.fits')
-
-    #outImage = Image(data=datacube)
-    #outImage.write('testcube.fits')
+        raise ValueError("Datacube extraction method " + method + " not implemented.")
+    return datacube
 
 if __name__ == "__main__":
-    #_test_locate_psflets(norm=5, rms=10)
-    test_specfit(prefix='/Users/protostar/Dropbox/data/charis/sampledata/', R=25, order=2)
+    datadir = '/scratch/tbrandt/CHARIS_reads/wavelength_stability/'
+    filename = 'CRSA00008191.fits'
+    calibdir = 'calibrations/20160408/'
+
+    cube = getcube(datadir=datadir, filename=filename, read_idx=[2, None],
+                   calibdir=calibdir, R=25, method='lstsq')
+    cube.write(re.sub('.fits', '_cube.fits', filename))
