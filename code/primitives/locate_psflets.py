@@ -6,6 +6,8 @@ from scipy import signal, ndimage, optimize, interpolate
 from image import Image
 import tools
 import glob
+import re
+import os
 
 log = tools.getLogger('main')
 
@@ -14,101 +16,23 @@ class PSFLets:
     """
     """
 
-    def __init__(self, coeffile='wavelength_sol_20160314.dat', order=3,
-                  lam1=None, lam2=None, x=None, y=None, n_spline=100):
+    def __init__(self, load=False, infile=None, infiledir='.'):
 
-        #############################################################
-        # Load all of the coefficients for the PSF-let locations at
-        # known wavelengths.  Set up array to get the locations at an
-        # arbitrary wavelength by fitting a polynomial of a given
-        # order in log(lam) to all coefficients.  Also get the
-        # wavelength limits of the solution.
-        #############################################################
+        self.xindx = None
+        self.yindx = None 
+        self.lam_indx = None
+        self.nlam = None
+        self.nlam_max = None
+        self.interp_arr = None
+        self.order = None
 
-        self.lam = np.loadtxt(coeffile)[:, 0]
-        if lam1 is None:
-            self.lam1 = np.amin(lam)/1.04
-        else:
-            self.lam1 = lam1
-        if lam2 is None:
-            self.lam2 = np.amax(lam)*1.03
-        else:
-            self.lam2 = lam2
-        self.allcoefs = np.loadtxt(coeffile)[:, 1:]
-        self.interporder = order
-
-        ###################################################################
-        # Set up array to solve for best-fit polynomial fits to the
-        # coefficients of the wavelength solution.  These will be used
-        # to smooth/interpolate the wavelength solution, and
-        # ultimately to compute its inverse.
-        ###################################################################
-        
-        self.interp_arr = np.zeros((order + 1, self.allcoefs.shape[1]))
-        xarr = np.ones((self.lam.shape[0], order + 1))
-        for i in range(1, order + 1):
-            xarr[:, i] = np.log(self.lam)**i
-
-        for i in range(self.interp_arr.shape[1]):
-            coef = np.linalg.lstsq(xarr, self.allcoefs[:, i])[0]
-            self.interp_arr[:, i] = coef
-
-        self.coeforder = int(np.sqrt(self.allcoefs.shape[1])) - 1
-        if not (self.coeforder + 1)*(self.coeforder + 2) == self.allcoefs.shape[1]:
-            raise ValueError("Number of coefficients incorrect for polynomial order.")
-
-        ###################################################################
-        # Now solve for all of the fitted and/or interpolated
-        # coefficients.  After this step, the getarr method 
-        ###################################################################
-
-        x = np.arange(-100, 101)
-        self.xindx, self.yindx = np.meshgrid(x, x)
-
-        fullarr_x = np.zeros(tuple([n_spline] + list(self.xindx.shape)))
-        fullarr_y = np.zeros(fullarr_x.shape)
-        self.interp_lam = np.linspace(lam1, lam2, n_spline)
-        for i in range(n_spline):
-            coef = self.interp_arr[0].copy()
-            for k in range(1, self.interporder + 1):
-                coef += self.interp_arr[k]*np.log(self.interp_lam[i])**k
-            fullarr_x[i], fullarr_y[i] = _transform(self.xindx, self.yindx, self.coeforder, coef)
-
-            #fullarr_x[i], fullarr_y[i] = self.lamtopix(self.interp_lam[i], x, y)
-        self.interp_x = fullarr_x
-        self.interp_y = fullarr_y
+        if load:
+            self.loadpixsol(infile, infiledir)
 
 
-    #def lamtopix(self, wavelength, x, y):
-    #    coef = np.zeros((self.coeforder + 1)*(self.coeforder + 2))
-    #    for k in range(self.interporder + 1):
-    #        coef += self.interp_arr[k]*np.log(wavelength)**k
-    #    return _transform(x, y, self.coeforder, coef)
-
-    def get_lenslet_arrays(self, ix, iy):
-
-        pix_x = self.interp_x[:, ix, iy]
-        pix_y = self.interp_y[:, ix, iy]
-        lam = self.interp_lam
-        
-        if pix_y[-1] < pix_y[0]:
-            pix_y = pix_y[::-1]
-            pix_x = pix_x[::-1]
-            lam = lam[::-1]
-            
-        tck = interpolate.splrep(pix_y, lam, k=1, s=0)
-        y1, y2 = [int(np.amin(pix_y)) + 1, int(np.amax(pix_y))]
-        ypos = np.arange(y1, y2 + 1)
-        lam_interp = interpolate.splev(ypos, tck)
-        
-        tck_x = interpolate.splrep(lam[::-1], pix_x[::-1], k=1, s=0)
-        xpos = interpolate.splev(lam_interp, tck_x)
-        return xpos, ypos, lam_interp
-
-
-    def loadpixsol(self, infile=None, infiledir='.'):
-        infilelist = glob.glob(infiledir + '/CHARIS_wavelengthsolution_*.fits')
-        infile = npsort(infilelist)[-1]
+    def loadpixsol(self, infile=None, infiledir='./calibrations'):
+        if infile is None:
+            infile = re.sub('//', '/', infiledir + '/PSFloc.fits')
         hdulist = fits.open(infile)
         
         try:
@@ -119,22 +43,56 @@ class PSFLets:
         except:
             raise RuntimeError("File " + infile + " does not appear to contain a CHARIS wavelength solution in the appropriate format.")
         self.nlam_max = np.amax(self.nlam)
-        
-        return None
        
-    def savepixsol(self, outfile=None):
-        if outfile is None:
-            today = date.today().timetuple()
-            yyyymmdd = '%04d%02d%02d' % (today[0], today[1], today[2])
-            outfile = 'CHARIS_wavelengthsolution_' + yyyymmdd + '.fits'
+    def savepixsol(self, outdir="calibrations/"):
+        if not os.path.isdir(outdir):
+            raise IOError("Attempting to save pixel solution to directory " + outdir + ".  Directory does not exist.")
+        outfile = re.sub('//', '/', outdir + '/PSFloc.fits')
         out = fits.HDUList(fits.PrimaryHDU(self.xindx))
         out.append(fits.PrimaryHDU(self.yindx))
         out.append(fits.PrimaryHDU(self.lam_indx))
         out.append(fits.PrimaryHDU(self.nlam.astype(int)))
-        out.writeto(outfile, clobber=True)
+        try:
+            out.writeto(outfile, clobber=True)
+        except:
+            raise
 
-    def genpixsol(self, coeffile='wavelength_sol_20160314.dat', order=3,
-                  lam1=None, lam2=None):
+    def geninterparray(self, lam, allcoef, order=3):
+
+        ###################################################################
+        # Set up array to solve for best-fit polynomial fits to the
+        # coefficients of the wavelength solution.  These will be used
+        # to smooth/interpolate the wavelength solution, and
+        # ultimately to compute its inverse.
+        ###################################################################
+
+        self.interp_arr = np.zeros((order + 1, allcoef.shape[1]))
+        self.order = order
+        xarr = np.ones((lam.shape[0], order + 1))
+        for i in range(1, order + 1):
+            xarr[:, i] = np.log(lam)**i
+
+        for i in range(self.interp_arr.shape[1]):
+            coef = np.linalg.lstsq(xarr, allcoef[:, i])[0]
+            self.interp_arr[:, i] = coef
+
+
+    def return_locations(self, lam, allcoef, xindx, yindx):
+        if self.interp_arr is None:
+            self.geninterparray(lam, allcoef)
+
+        coeforder = int(np.sqrt(allcoef.shape[1])) - 1
+        if not (coeforder + 1)*(coeforder + 2) == allcoef.shape[1]:
+            raise ValueError("Number of coefficients incorrect for polynomial order.")
+
+        coef = np.zeros((coeforder + 1)*(coeforder + 2))
+        for k in range(self.order + 1):
+            coef += self.interp_arr[k]*np.log(lam)**k
+        interp_x, interp_y = _transform(xindx, yindx, coeforder, coef)
+
+        return interp_x, interp_y
+
+    def genpixsol(self, lam, allcoef, order=3, lam1=None, lam2=None):
         """
         """
 
@@ -145,32 +103,16 @@ class PSFLets:
         # default.
         ###################################################################
 
-        lam = np.loadtxt(coeffile)[:, 0]
         if lam1 is None:
             lam1 = np.amin(lam)/1.04
         if lam2 is None:
             lam2 = np.amax(lam)*1.03
-        allcoefs = np.loadtxt(coeffile)[:, 1:]
         interporder = order
-        
-        ###################################################################
-        # Set up array to solve for best-fit polynomial fits to the
-        # coefficients of the wavelength solution.  These will be used
-        # to smooth/interpolate the wavelength solution, and
-        # ultimately to compute its inverse.
-        ###################################################################
 
-        interp_arr = np.zeros((order + 1, self.allcoefs.shape[1]))
-        xarr = np.ones((self.lam.shape[0], order + 1))
-        for i in range(1, order + 1):
-            xarr[:, i] = np.log(self.lam)**i
+        self.geninterparray(lam, allcoef, order=order)
 
-        for i in range(interp_arr.shape[1]):
-            coef = np.linalg.lstsq(xarr, allcoefs[:, i])[0]
-            interp_arr[:, i] = coef
-
-        coeforder = int(np.sqrt(allcoefs.shape[1])) - 1
-        if not (coeforder + 1)*(coeforder + 2) == self.allcoefs.shape[1]:
+        coeforder = int(np.sqrt(allcoef.shape[1])) - 1
+        if not (coeforder + 1)*(coeforder + 2) == allcoef.shape[1]:
             raise ValueError("Number of coefficients incorrect for polynomial order.")
 
         xindx = np.arange(-100, 101)
@@ -185,12 +127,12 @@ class PSFLets:
         for i in range(n_spline):
             coef = np.zeros((coeforder + 1)*(coeforder + 2))
             for k in range(interporder + 1):
-                coef += interp_arr[k]*np.log(interp_lam[i])**k
-                interp_x[i], interp_y[i] = _transform(xindx, yindx, coeforder, coef)
+                coef += self.interp_arr[k]*np.log(interp_lam[i])**k
+            interp_x[i], interp_y[i] = _transform(xindx, yindx, coeforder, coef)
 
         x = np.zeros(tuple(list(xindx.shape) + [100]))
         y = np.zeros(x.shape)
-        nlam = np.zeros(xindx.shape)
+        nlam = np.zeros(xindx.shape, np.int)
         lam_out = np.zeros(y.shape)
         good = np.zeros(xindx.shape)
 
@@ -221,16 +163,11 @@ class PSFLets:
         self.nlam = nlam
         self.lam_indx = lam_out[:, :, :nlam_max]
         self.nlam_max = np.amax(nlam)
-        #return x[:, :, :nlam_max], y[:, :, :nlam_max], lam_out[:, :, :nlam_max]
-        return None
-    
-        
 
 
 
 
-
-def _initcoef(order, scale=15.2, phi=np.arctan2(2,-1), x0=0, y0=0):
+def _initcoef(order, scale=15.02, phi=np.arctan2(1.926,-1), x0=0, y0=0):
     """
     private function _initcoef in locate_psflets
 
@@ -421,12 +358,12 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
     gaussian = np.exp(-(x**2 + y**2)/(2*sig**2))
 
     if inImage.ivar is None:
-        filtered = signal.convolve2d(inImage.data, gaussian, mode='same')
+        unfiltered = signal.convolve2d(inImage.data, gaussian, mode='same')
     else:
-        filtered = signal.convolve2d(inImage.data*inImage.ivar, gaussian, mode='same')
-        filtered /= signal.convolve2d(inImage.ivar, gaussian, mode='same')
+        unfiltered = signal.convolve2d(inImage.data*inImage.ivar, gaussian, mode='same')
+        unfiltered /= signal.convolve2d(inImage.ivar, gaussian, mode='same') + 1e-10
 
-    filtered = ndimage.interpolation.spline_filter(filtered)
+    filtered = ndimage.interpolation.spline_filter(unfiltered)
 
     #############################################################
     # x, y: Grid of lenslet IDs, Lenslet (0, 0) is the center.
@@ -451,21 +388,26 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
 
         log.info("Initializing PSFlet location transformation coefficients")
         bestval = 0
+        subshape = xdim//3
+        _s = x.shape[0]//3
+        subfiltered = ndimage.interpolation.spline_filter(unfiltered[subshape:-subshape, subshape:-subshape])
         for ix in np.arange(0, 10, 0.5):
             for iy in np.arange(0, 10, 0.5):
-                coef = _initcoef(polyorder, x0=ix, y0=iy)
-                newval = _corrval(coef, x, y, filtered, polyorder, trimfrac)
+                coef = _initcoef(polyorder, x0=ix+xdim/2.-subshape,
+                                 y0=iy+ydim/2.-subshape)
+                newval = _corrval(coef, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], 
+                                  subfiltered, polyorder, trimfrac)
                 if newval < bestval:
                     bestval = newval
                     coefbest = coef[:]
-        coef = coefbest
-        
+        coef_opt = coefbest
+
         log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
-        res = optimize.minimize(_corrval, coef, args=(x, y, filtered, polyorder, trimfrac), method='Powell')
+        res = optimize.minimize(_corrval, coef, args=(x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac), method='Powell')
         coef_opt = res.x
 
-        coef_opt[0] += (xdim/2. - subsize)
-        coef_opt[(polyorder + 1)*(polyorder + 2)/2] += (ydim/2. - subsize)
+        coef_opt[0] += subshape
+        coef_opt[(polyorder + 1)*(polyorder + 2)/2] += subshape
 
     #############################################################
     # If we have coefficients from last time, we assume that we
@@ -479,7 +421,7 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
         coefsave = list(coef[:])
 
         for ix in np.arange(-0.2, 0.3, 0.1):
-            for iy in np.arange(-1, 2, 0.1):
+            for iy in np.arange(-2, 1, 0.1):
                 coef = coefsave[:]
                 coef[0] += ix
                 coef[(polyorder + 1)*(polyorder + 2)/2] += iy
