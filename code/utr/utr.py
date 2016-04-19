@@ -1,9 +1,12 @@
 import numpy as np
 from image import Image
 import tools
+import re
+from collections import OrderedDict
 log = tools.getLogger('main')
 
-def getreads(datadir, filename, read_idx=[1,None], biassub=None):
+def getreads(datadir, filename, header=OrderedDict(), 
+             read_idx=[1,None], biassub=None):
     """
     Get reads from fits file and put them in the correct 
     format for the up-the-ramp functions. 
@@ -40,8 +43,11 @@ def getreads(datadir, filename, read_idx=[1,None], biassub=None):
     hdulist = fits.open(datadir + filename)
     shape = hdulist[1].data.shape
     reads = np.zeros((len(hdulist[read_idx[0]:read_idx[1]]), shape[0], shape[1]))
-
+    
+    header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
+    header['firstrd'] = (read_idx[0], 'First HDU of original file used')
     for i, r in enumerate(hdulist[read_idx[0]:read_idx[1]]):
+        header['lastrd'] = (i, 'Last HDU of original file used')
         reads[i] = r.data
         if biassub is not None:
             numchan = shape[1]/64
@@ -134,7 +140,7 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False, **kwargs):
+def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False, header=OrderedDict(), **kwargs):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -162,7 +168,7 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
     """
 
     if reads is None:
-        reads = getreads(datadir, filename, **kwargs)
+        reads = getreads(datadir, filename, header, **kwargs)
 
     nreads = reads.shape[0]
 
@@ -186,7 +192,7 @@ def utr_rn(reads=None, datadir=None, filename=None, sig_rn=20.0, return_im=False
         return c_arr
 
 def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
-        interp_meth='linear', calc_chisq=False, **kwargs):
+        interp_meth='linear', calc_chisq=False, header=OrderedDict(), **kwargs):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
     into account. We assume the counts in each pixel obey the linear 
@@ -218,7 +224,7 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
     """
 
     if reads is None:
-        reads = getreads(datadir, filename, **kwargs)
+        reads = getreads(datadir, filename, header, **kwargs)
 
     nreads = reads.shape[2]
 
@@ -229,9 +235,7 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
     ###################################################################
 
     c_rn_arr = utr_rn(reads, sig_rn=sig_rn) # count rate (ADU) in RN limit
-    c_rn_arr *= gain
-    sig_rn *= gain
-    reads *= gain
+    ivar_arr = np.ones(c_rn_arr.shape)
 
     ###################################################################
     # Generate interpolation objects for the up-the-ramp coefficients,
@@ -241,6 +245,9 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
 
     if calc_chisq:
 
+        c_rn_arr *= gain
+        sig_rn *= gain
+        reads *= gain
         interp_objs = _interp_coef(nreads, sig_rn, c_rn_arr.min(),\
                                        c_rn_arr.max(), interp_meth=interp_meth)
         
@@ -249,9 +256,9 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
         ivar_arr = np.zeros(c_rn_arr.shape)
         for row in xrange(c_rn_arr.shape[0]):
             a_coef = interp_objs[0](c_rn_arr[row,:])
-            a_arr[row,:] = np.sum(a_coef*reads[row,:,:], axis=1)
+            a_arr[row,:] = np.sum(a_coef*reads[:,row,:], axis=2)
             c_coef = interp_objs[1](c_rn_arr[row,:])
-            c_arr[row,:] = np.sum(c_coef*reads[row,:,:], axis=1)
+            c_arr[row,:] = np.sum(c_coef*reads[:,row,:], axis=2)
             ivar_arr[row,:] = interp_objs[2](c_rn_arr[row,:])
         del a_coef
         del c_coef
@@ -267,9 +274,11 @@ def utr(reads=None, datadir=None, filename=None, sig_rn=20.0, gain=4.0,\
         for i in range(nreads):
             chisq += (reads[:,:,i] - a_arr - c_arr*(i+1))**2
         chisq /= sig_rn**2 
-        im = Image(data=c_arr, ivar=ivar_arr, chisq=chisq)
+        im = Image(data=c_arr, ivar=ivar_arr, chisq=chisq, header=header)
     else:
-        #im = Image(data=c_arr, ivar=ivar_arr)
-        im = Image(data=c_rn_arr)
+        im = Image(data=c_rn_arr, ivar=ivar_arr, header=header)
+
+    origname = re.sub('.*CRSA', '', re.sub('.fits', '', filename))
+    im.header['origname'] = (origname, 'Original file ID number')
 
     return im
