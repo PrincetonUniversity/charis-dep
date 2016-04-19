@@ -5,6 +5,8 @@ except:
 
 import numpy as np
 import tools
+from collections import OrderedDict
+from datetime import date
 
 log = tools.getLogger('main')
 
@@ -28,7 +30,8 @@ class Image:
     through a call to Image.load().  
     """
 
-    def __init__(self, filename=None, data=None, ivar=None, chisq=None, header=None,
+    def __init__(self, filename=None, data=None, ivar=None, chisq=None, 
+                 header=OrderedDict(),
                  reads=None, flags=None, destriped=False, flatfielded=False):
         self.destriped = destriped
         self.flatfielded = flatfielded
@@ -44,7 +47,7 @@ class Image:
         if filename is not None:
             self.load(filename)
                 
-    def load(self, filename):
+    def load(self, filename, loadbadpixmap=True):
         """
         Image.load(outfilename)
         
@@ -75,6 +78,8 @@ class Image:
                     self.ivar = None
                 else:
                     log.info("Read inverse variance from HDU " + str(i_data + 1) + " of " + filename)
+            elif loadbadpixmap:
+                self.ivar = fits.open('calibrations/mask.fits')[0].data
             else:
                 self.ivar = None
         except:
@@ -92,19 +97,27 @@ class Image:
         append self.ivar as a second HDU before writing to a file.       
         clobber is provided as a  keyword to fits.HDUList.writeto.
         """
+        
+        hdr = fits.PrimaryHDU().header
+        today = date.today().timetuple()
+        yyyymmdd = '%d%02d%02d' % (today[0], today[1], today[2])
+        hdr['date'] = (yyyymmdd, 'File creation date (yyyymmdd)')
+
+        for key in self.header:
+            hdr[key] = self.header[key]
+        out = fits.HDUList(fits.PrimaryHDU(None, hdr))
+        out.append(fits.PrimaryHDU(self.data.astype(np.float32)))
+        if self.ivar is not None:
+            out.append(fits.PrimaryHDU(self.ivar.astype(np.float32)))
+        if self.chisq is not None:
+            out.append(fits.PrimaryHDU(self.chisq.astype(np.float32)))
+        if self.flags is not None:
+            out.append(fits.PrimaryHDU(self.flags))
         try:
-            out = fits.HDUList(fits.PrimaryHDU(self.data.astype(np.float32), self.header))
-            if self.ivar is not None:
-                out.append(fits.PrimaryHDU(self.ivar.astype(np.float32)))
-            if self.chisq is not None:
-                out.append(fits.PrimaryHDU(self.chisq.astype(np.float32)))
-            if self.flags is not None:
-                out.append(fits.PrimaryHDU(self.flags))
-            try:
-                out.writeto(filename, clobber=clobber)
-                log.info("Writing data to " + filename)
+            out.writeto(filename, clobber=clobber)
+            log.info("Writing data to " + filename)
                 
-            except:
-                log.error("Unable to write FITS file " + filename)
         except:
-            log.error("Unable to create HDU from data and header")
+            log.error("Unable to write FITS file " + filename)
+        #except:
+        #    log.error("Unable to create HDU from data and header")
