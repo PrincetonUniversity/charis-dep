@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import numpy as np
+from scipy import interpolate
 from image import Image
-
+import copy
+from collections import OrderedDict
 
 def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     """
@@ -104,7 +106,7 @@ def _get_cutout(im, x, y, psflets, dx=3):
     subarrshape = tuple([len(psflets)] + list(subim.shape))
     psflet_subarr = np.zeros(subarrshape)
     for i in range(len(psflets)):
-        psflet_subarr[i] = psflets[i].data[y0:y1, x0:x1]
+        psflet_subarr[i] = psflets[i][y0:y1, x0:x1]
         if im.ivar is not None:
             psflet_subarr[i] *= isig
 
@@ -141,7 +143,7 @@ def _tag_psflets(shape, x, y, good):
     y_int = (np.reshape(y + 0.5, -1)).astype(int)
     good = np.reshape(good, -1)
 
-    for i in range(x.shape[0]):
+    for i in range(x_int.shape[0]):
         if good[i]:
             psflet_indx[y_int[i] - 6:y_int[i] + 7, x_int[i] - 6:x_int[i] + 7] = i
 
@@ -150,7 +152,7 @@ def _tag_psflets(shape, x, y, good):
     return psflet_indx
 
 
-def fit_spectra(im, psflets, x, y, good):
+def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict()):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -163,10 +165,17 @@ def fit_spectra(im, psflets, x, y, good):
     1. im:      Image class, im.data is the data to be fit.
     2. psflets: list of Image classes, each one having data of the same 
                 shape as im.data.  These are the monochromatic spots.
-    3. x:       list of ndarrays, x position of each lenslet spot at 
+    3. lam:     array of wavelengths extracted.  Should match the first
+                dimension of psflets.
+    4. x:       list of ndarrays, x position of each lenslet spot at 
                 each wavelength
-    4. y:       list of ndarrays, y position of each lenslet spot at 
+    5. y:       list of ndarrays, y position of each lenslet spot at 
                 each wavelength
+    6. good:    list of boolean arrays, true if lenslet spot lies 
+                within the H2RG
+    Optional input:
+    1. header:  ordered dictionary or FITS header class, to store some
+                information about the reduction.
     
     Note: the 'x', 'y', and 'good' inputs are assumed to be the
           outputs from the function locatePSFlets.
@@ -174,16 +183,16 @@ def fit_spectra(im, psflets, x, y, good):
     Output:
     1. coefs:   An Image class containing the data cube.
 
-    Note: these routines are very much a work in progress.  
+    Note: these routines remain a work in progress.  
 
     """
     
     ###################################################################
-    # Fit the spectrum
+    # Fit the spectrum by minimizing chi squared
     ###################################################################
 
     coefs = np.zeros(tuple([len(x)] + list(x[0].shape)))
-    resid = im.data.copy()
+    resid = copy.deepcopy(im)
     
     x = np.asarray(x)
     y = np.asarray(y)
@@ -195,7 +204,7 @@ def fit_spectra(im, psflets, x, y, good):
                                                            y[:, i, j], psflets)
                 coefs[:, i, j] = _fit_cutout(subim, psflet_subarr, bounds,
                                              x=x[:, i, j], y=y[:, i, j],
-                                             mode='ext')
+                                             mode='lstsq')
 
     ###################################################################
     # Subtract the best fit spectrum to include crosstalk
@@ -204,17 +213,32 @@ def fit_spectra(im, psflets, x, y, good):
     ###################################################################
     
     for i in range(len(psflets)):
-        psflet_indx = _tag_psflets(psflets[i].data.shape, x[i], y[i], good[i])
+        psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
         coefs_flat = np.reshape(coefs[i], -1)
-        resid -= psflets[i].data*coefs_flat[psflet_indx]
+        resid.data -= psflets[i]*coefs_flat[psflet_indx]
         
-    datacube = Image(data=coefs)
+    for i in range(x[0].shape[0]):
+        for j in range(x[0].shape[1]):
+            if good[0][i, j] and good[-1][i, j]:
+                subim, psflet_subarr, bounds = _get_cutout(resid, x[:, i, j] + 0.5,
+                                                           y[:, i, j], psflets)
+                coefs[:, i, j] -= _fit_cutout(subim, psflet_subarr, bounds,
+                                             x=x[:, i, j], y=y[:, i, j],
+                                             mode='lstsq')
+
+    header['cubemode'] = ('leastsq', 'Method used to extract data cube')
+    header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
+    header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
+    header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
+    header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
+    datacube = Image(data=coefs, header=header)
 
     return datacube
 
 
-def fitspec_intpix(im, PSFlet_tool, delt_x=7):
-#def fitspec_intpix(im, xindx, yindx, lam_indx):
+def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, header=OrderedDict()):
+    """
+    """
 
     xindx = PSFlet_tool.xindx
     yindx = PSFlet_tool.yindx
@@ -224,41 +248,45 @@ def fitspec_intpix(im, PSFlet_tool, delt_x=7):
     y = np.arange(im.data.shape[0])
     x, y = np.meshgrid(x, y)
 
-    coefs = np.zeros(tuple([Nmax] + list(xindx.shape)[:-1]))
-    lam = np.zeros(coefs.shape)
+    coefs = np.zeros(tuple([max(Nmax, lam.shape[0])] + list(xindx.shape)[:-1]))
     
     xarr, yarr = np.meshgrid(np.arange(delt_x), np.arange(Nmax))
 
+    loglam = np.log(lam)
+
     for i in range(xindx.shape[0]):
         for j in range(yindx.shape[1]):
-            #_x, _y, _lam = PSFlet_tool.get_lenslet_arrays(i, j)
             _x = xindx[i, j, :PSFlet_tool.nlam[i, j]]
             _y = yindx[i, j, :PSFlet_tool.nlam[i, j]]
             _lam = PSFlet_tool.lam_indx[i, j, :PSFlet_tool.nlam[i, j]]
 
             if not (np.all(_x > x[0, 10]) and np.all(_x < x[0, -10]) and 
                     np.all(_y > y[10, 0]) and np.all(_y < y[-10, 0])):
-                #print _x, _y
                 continue
 
 
             i1 = int(np.mean(_x) - delt_x/2.)
             dx = _x[yarr[:len(_lam)]] - x[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
             #var = _var[yarr[:len(_lam)]] - x[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
-            weight = np.exp(-dx**2/2.)
-            weight /= np.sum(weight, axis=1, keepdims=True)
-            coefs[:len(_lam), i, j] = np.sum(weight*im.data[_y[0]:_y[-1] + 1, i1:i1 + delt_x], axis=1)
+            sig = 0.7
+            weight = np.exp(-dx**2/2./sig**2)
+            data = im.data[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
+            if im.ivar is not None:
+                ivar = im.ivar[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
+            else:
+                ivar = np.ones(data.shape)
 
-            #for k in range(0): #_lam.shape[0]):
-            #    i1 = int(_x[k] - 3.5)
-            #    dx = x[_y[k], i1:i1 + 7] - _x[k]
-            #    weight = np.exp(-dx**2/2.)
-            #    weight /= np.sum(weight)
-            #    #print weight
+            coefs[:len(_lam), i, j] = np.sum(weight*data*ivar, axis=1)[::-1]
+            coefs[:len(_lam), i, j] /= np.sum(weight**2*ivar, axis=1)[::-1]
 
-            #    lam[k, i, j] = _lam[k]
-            #    coefs[k, i, j] = np.sum(weight*im.data[_y[k], i1:i1 + 7])
+            tck = interpolate.splrep(np.log(_lam[::-1]), coefs[:len(_lam), i, j], s=0, k=3)
+            coefs[:loglam.shape[0], i, j] = interpolate.splev(loglam, tck, ext=1)
 
-
-    datacube = Image(data=coefs)
+    header['cubemode'] = ('optext', 'Method used to extract data cube')
+    header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
+    header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
+    header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
+    header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
+    datacube = Image(data=coefs[:loglam.shape[0]], header=header)
     return datacube
+
