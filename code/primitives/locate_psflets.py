@@ -2,6 +2,7 @@
 
 import numpy as np
 from astropy.io import fits
+import copy
 from scipy import signal, ndimage, optimize, interpolate
 from image import Image
 import tools
@@ -76,6 +77,41 @@ class PSFLets:
             coef = np.linalg.lstsq(xarr, allcoef[:, i])[0]
             self.interp_arr[:, i] = coef
 
+    def return_locations_short(self, coef, xindx, yindx):
+        coeforder = int(np.sqrt(coef.shape[0])) - 1
+        interp_x, interp_y = _transform(xindx, yindx, coeforder, coef)
+        return interp_x, interp_y
+
+    def return_res(self, lam, allcoef, xindx, yindx,
+                   order=3, lam1=None, lam2=None):
+        
+        if lam1 is None:
+            lam1 = np.amin(lam)/1.04
+        if lam2 is None:
+            lam2 = np.amax(lam)*1.03
+
+        interporder = order
+
+        self.geninterparray(lam, allcoef, order=order)
+
+        coeforder = int(np.sqrt(allcoef.shape[1])) - 1
+        n_spline = 100
+
+        interp_lam = np.linspace(lam1, lam2, n_spline)
+        dy = []
+        dx = []
+
+        for i in range(n_spline):
+            coef = np.zeros((coeforder + 1)*(coeforder + 2))
+            for k in range(1, interporder + 1):
+                coef += k*self.interp_arr[k]*np.log(interp_lam[i])**(k - 1)
+            _dx, _dy = _transform(xindx, yindx, coeforder, coef)
+
+            dx += [_dx]
+            dy += [_dy]
+
+        return interp_lam, np.asarray(dy)
+
 
     def return_locations(self, lam, allcoef, xindx, yindx):
         if self.interp_arr is None:
@@ -130,7 +166,7 @@ class PSFLets:
                 coef += self.interp_arr[k]*np.log(interp_lam[i])**k
             interp_x[i], interp_y[i] = _transform(xindx, yindx, coeforder, coef)
 
-        x = np.zeros(tuple(list(xindx.shape) + [100]))
+        x = np.zeros(tuple(list(xindx.shape) + [1000]))
         y = np.zeros(x.shape)
         nlam = np.zeros(xindx.shape, np.int)
         lam_out = np.zeros(y.shape)
@@ -140,9 +176,15 @@ class PSFLets:
             for iy in range(xindx.shape[1]):
                 pix_x = interp_x[:, ix, iy]
                 pix_y = interp_y[:, ix, iy]
+                if np.all(pix_x < 0) or np.all(pix_x > 2048) or np.all(pix_y < 0) or np.all(pix_y > 2048):
+                    continue
 
                 if pix_y[-1] < pix_y[0]:
-                    tck_y = interpolate.splrep(pix_y[::-1], interp_lam[::-1], k=1, s=0)
+                    try:
+                        tck_y = interpolate.splrep(pix_y[::-1], interp_lam[::-1], k=1, s=0)
+                    except:
+                        print pix_x, pix_y
+                        raise
                 else:
                     tck_y = interpolate.splrep(pix_y, interp_lam, k=1, s=0)
 
@@ -168,6 +210,7 @@ class PSFLets:
 
 
 def _initcoef(order, scale=15.02, phi=np.arctan2(1.926,-1), x0=0, y0=0):
+
     """
     private function _initcoef in locate_psflets
 
@@ -306,7 +349,8 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1):
     return score
 
 
-def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
+def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
+                  phi=np.arctan2(1.926,-1), scale=15.02):
     """
     function locatePSFlets takes an Image class, assumed to be a
     monochromatic grid of spots with read noise and shot noise, and
@@ -391,19 +435,19 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
         subshape = xdim//3
         _s = x.shape[0]//3
         subfiltered = ndimage.interpolation.spline_filter(unfiltered[subshape:-subshape, subshape:-subshape])
-        for ix in np.arange(0, 10, 0.5):
-            for iy in np.arange(0, 10, 0.5):
+        for ix in np.arange(0, 14, 0.5):
+            for iy in np.arange(0, 25, 0.5):
                 coef = _initcoef(polyorder, x0=ix+xdim/2.-subshape,
-                                 y0=iy+ydim/2.-subshape)
+                                 y0=iy+ydim/2.-subshape, scale=scale, phi=phi)
                 newval = _corrval(coef, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], 
                                   subfiltered, polyorder, trimfrac)
                 if newval < bestval:
                     bestval = newval
-                    coefbest = coef[:]
+                    coefbest = copy.deepcopy(coef)
         coef_opt = coefbest
 
         log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
-        res = optimize.minimize(_corrval, coef, args=(x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac), method='Powell')
+        res = optimize.minimize(_corrval, coef_opt, args=(x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac), method='Powell')
         coef_opt = res.x
 
         coef_opt[0] += subshape
@@ -420,8 +464,8 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
         bestval = 0
         coefsave = list(coef[:])
 
-        for ix in np.arange(-0.2, 0.3, 0.1):
-            for iy in np.arange(-2, 1, 0.1):
+        for ix in np.arange(-0.3, 0.4, 0.1):
+            for iy in np.arange(-10, 1, 0.1):
                 coef = coefsave[:]
                 coef[0] += ix
                 coef[(polyorder + 1)*(polyorder + 2)/2] += iy
@@ -429,7 +473,7 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1):
                 newval = _corrval(coef, x, y, filtered, polyorder, trimfrac)
                 if newval < bestval:
                     bestval = newval
-                    coefbest = coef[:]
+                    coefbest = copy.deepcopy(coef)
         coef_opt = coefbest
 
     log.info("Performing final optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
