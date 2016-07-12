@@ -6,7 +6,7 @@ from collections import OrderedDict
 log = tools.getLogger('main')
 
 def getreads(filename, header=OrderedDict(), 
-             read_idx=[1,None], biassub=None):
+             read_idx=[1,None]): #, biassub=None):
     """
     Get reads from fits file and put them in the correct 
     format for the up-the-ramp functions. 
@@ -36,30 +36,30 @@ def getreads(filename, header=OrderedDict(),
         import pyfits as fits
 
     log.info("Getting reads from " + filename)
-    if biassub is not None:
-        log.info("Subtracting mean from " + biassub + " reference pixels")
+    #if biassub is not None:
+    #    log.info("Subtracting mean from " + biassub + " reference pixels")
 
     hdulist = fits.open(filename)
     shape = hdulist[1].data.shape
     reads = np.zeros((len(hdulist[read_idx[0]:read_idx[1]]), shape[0], shape[1]))
     
-    header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
+    #header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
     header['firstrd'] = (read_idx[0], 'First HDU of original file used')
     for i, r in enumerate(hdulist[read_idx[0]:read_idx[1]]):
         header['lastrd'] = (i, 'Last HDU of original file used')
         reads[i] = r.data
-        if biassub is not None:
-            numchan = shape[1]/64
-            for j in xrange(numchan):
-                if biassub=='top':
-                    refpix = reads[i, -4:, j*64:(j+1)*64]
-                elif biassub=='bottom':
-                    refpix = reads[i, :4, j*64:(j+1)*64]
-                elif biassub=='all':
-                    top = reads[i, -4:, j*64:(j+1)*64]
-                    bottom = reads[i, :4, j*64:(j+1)*64]
-                    refpix = np.concatenate([top, bottom])
-                reads[i, :, j*64:(j+1)*64] -= refpix.mean()
+        #if biassub is not None:
+        #    numchan = shape[1]/64
+        #    for j in xrange(numchan):
+        #        if biassub=='top':
+        #            refpix = reads[i, -4:, j*64:(j+1)*64]
+        #        elif biassub=='bottom':
+        #            refpix = reads[i, :4, j*64:(j+1)*64]
+        #        elif biassub=='all':
+        #            top = reads[i, -4:, j*64:(j+1)*64]
+        #            bottom = reads[i, :4, j*64:(j+1)*64]
+        #            refpix = np.concatenate([top, bottom])
+        #        reads[i, :, j*64:(j+1)*64] -= refpix.mean()
     return reads
 
 def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
@@ -139,7 +139,7 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, filename=None, sig_rn=20.0, return_im=False, header=OrderedDict(), **kwargs):
+def utr_rn(reads=None, filename=None, sig_rn=20.0, return_im=False, header=OrderedDict(), biassub='all', **kwargs):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -181,6 +181,24 @@ def utr_rn(reads=None, filename=None, sig_rn=20.0, return_im=False, header=Order
     for i in range(nreads):
         c_arr += factor*weights[i]*reads[i]
 
+    if biassub is not None:
+        numchan = c_arr.shape[1]/64
+        for j in xrange(numchan):
+            if biassub=='top':
+                refpix = c_arr[-4:, j*64:(j+1)*64]
+            elif biassub=='bottom':
+                refpix = c_arr[:4, j*64:(j+1)*64]
+            elif biassub=='all':
+                top = c_arr[-4:, j*64:(j+1)*64]
+                bottom = c_arr[:4, j*64:(j+1)*64]
+                refpix = np.concatenate([top, bottom])
+            else:
+                raise ValueError("Bias subtraction method must be one of 'top', 'bottom', or 'all'.")
+            
+            header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
+            c_arr[:, j*64:(j+1)*64] -= refpix.mean()
+        
+
     if return_im:
         ivar = (factor*sig_rn)**2*np.sum(weights**2)
         ivar = (1.0/ivar)*np.ones(c_arr.shape)
@@ -188,7 +206,7 @@ def utr_rn(reads=None, filename=None, sig_rn=20.0, return_im=False, header=Order
     else:
         return c_arr
 
-def utr(reads=None, filename=None, sig_rn=20.0, gain=4.0,\
+def utr(reads=None, filename=None, sig_rn=20.0, gain=4.0, biassub='all',
         interp_meth='linear', calc_chisq=False, header=OrderedDict(), **kwargs):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
@@ -229,7 +247,7 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=4.0,\
     # from ADU to electrons
     ###################################################################
 
-    c_rn_arr = utr_rn(reads, sig_rn=sig_rn) # count rate (ADU) in RN limit
+    c_rn_arr = utr_rn(reads, sig_rn=sig_rn, biassub=biassub) # count rate (ADU) in RN limit
     ivar_arr = np.ones(c_rn_arr.shape)
 
     ###################################################################
@@ -273,7 +291,10 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=4.0,\
     else:
         im = Image(data=c_rn_arr, ivar=ivar_arr, header=header)
 
-    origname = re.sub('.*CRSA', '', re.sub('.fits', '', filename))
-    im.header['origname'] = (origname, 'Original file ID number')
+    try:
+        origname = re.sub('.*CRSA', '', re.sub('.fits', '', filename))
+        im.header['origname'] = (origname, 'Original file ID number')
+    except:
+        pass
 
     return im
