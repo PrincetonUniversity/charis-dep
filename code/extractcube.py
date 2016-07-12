@@ -14,9 +14,11 @@ import utr
 from image import Image
 import sys
 import os
+import ConfigParser
 
-def getcube(filename, read_idx=[2, None],
-            calibdir='calibrations/20160408/', R=25, method='lstsq'):
+def getcube(filename, read_idx=[2, None], biassub=None, 
+            calibdir='calibrations/20160408/', bgsub=True, mask=True,
+            R=25, method='lstsq', refine=True):
 
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
@@ -70,29 +72,28 @@ def getcube(filename, read_idx=[2, None],
     ################################################################
 
     inImage = utr.utr(filename=filename,
-                      read_idx=[2,None], biassub='all')
-    inImage.data -= fits.open(calibdir + 'background.fits')[0].data
-    inImage.ivar *= fits.open(calibdir + 'mask.fits')[0].data
-
-    calibdir = re.sub('//', '/', calibdir + '/')
+                      read_idx=read_idx, biassub=biassub)
+    if bgsub:
+        inImage.data -= fits.open(calibdir + '/background.fits')[0].data
+    if mask:
+        inImage.ivar *= fits.open(calibdir + '/mask.fits')[0].data
 
     ################################################################
     # Read in necessary calibration files and extract the data cube.
     ################################################################
 
     if method == 'lstsq':
-        psflets = fits.open(calibdir + 'polychromeR%d.fits' % (R))[0].data
-        keyfile = fits.open(calibdir + 'polychromekeyR%d.fits' % (R))
+        psflets = fits.open(calibdir + '/polychromeR%d.fits' % (R))[0].data
+        keyfile = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))
         lam_midpts = keyfile[0].data
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
-
-        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header)
+        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, refine=refine)
 
     elif method == 'optext':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
-        lam_midpts = fits.open(calibdir + 'polychromekeyR%d.fits' % (R))[0].data
+        lam_midpts = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))[0].data
         datacube = primitives.fitspec_intpix(inImage, loc, lam_midpts, header=inImage.header)
     
     else:
@@ -100,18 +101,38 @@ def getcube(filename, read_idx=[2, None],
     return datacube
 
 if __name__ == "__main__":
-    #datadir = '/scratch/tbrandt/CHARIS_reads/wavelength_stability/'
-    datadir = '/home/jhl/data/charis/cal/'
-    filenames = [datadir + 'CRSA00008189.fits']
-    #calibdir = 'calibrations/20160408/'
-    calibdir = './calibrations/20160408/'
 
-    if len(sys.argv) > 1:
-        if os.path.isfile(sys.argv[1]):
-            filenames = [sys.argv[1]]
+    if len(sys.argv) < 3:
+        print "Must call extractcube.py with two arguments:"
+        print "1: a string parsed by glob matching files to be turned into data cubes"
+        print "2: a .ini configuration file processed by ConfigParser"
+        exit()
+
+    filenames = glob.glob(sys.argv[1])
+    Config = ConfigParser.ConfigParser()
+    Config.read(sys.argv[2])
+
+    read_0 = Config.getint('Ramp', 'read_0')
+    try:
+        read_1 = Config.getint('Ramp', 'read_f')
+    except:
+        read_1 = None
+    read_idx = [read_0, read_1]
+    biassub = Config.get('Ramp', 'biassub')
+    if biassub == 'None':
+        biassub = None
+
+    bgsub = Config.getboolean('Calib', 'bgsub')
+    mask = Config.getboolean('Calib', 'mask')
+
+    calibdir = Config.get('Calib', 'calibdir')
+    R = Config.getint('Extract', 'R')
+    method = Config.get('Extract', 'method')
+    refine = Config.getboolean('Extract', 'refine')
 
     for filename in filenames:
-        cube = getcube(filename=filename, read_idx=[2, None],
-                       calibdir=calibdir, R=30, method='lstsq')
+        cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
+                       mask=mask, biassub=biassub, refine=refine,
+                       calibdir=calibdir, R=R, method=method)
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
 
