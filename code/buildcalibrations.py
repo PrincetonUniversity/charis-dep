@@ -121,7 +121,7 @@ def buildcalibrations(filelist, lamlist, date="20160408",
     print "Total time elapsed: %.0f" % (time.time() - tstart)
 
 if __name__ == "__main__":
-    datadir = '/scratch/tbrandt/CHARIS_reads/wavelength_stability/'
+    datadir = '/home/jhl/data/charis/cal/'
 
     filelist = np.sort(glob.glob(datadir + "monochrom*bgsub.fits"))
     lamlist = []

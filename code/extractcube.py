@@ -101,10 +101,10 @@ def getcube(filename, read_idx=[2, None],
 
 if __name__ == "__main__":
     #datadir = '/scratch/tbrandt/CHARIS_reads/wavelength_stability/'
-    datadir = '/home/data/charis/2016-04-08/'
-    filenames = [datadir + 'CRSA00008191.fits']
+    datadir = '/home/jhl/data/charis/cal/'
+    filenames = [datadir + 'CRSA00008189.fits']
     #calibdir = 'calibrations/20160408/'
-    calibdir = '/home/data/calibrations/20160408/'
+    calibdir = './calibrations/20160408/'
 
     if len(sys.argv) > 1:
         if os.path.isfile(sys.argv[1]):
@@ -112,6 +112,6 @@ if __name__ == "__main__":
 
     for filename in filenames:
         cube = getcube(filename=filename, read_idx=[2, None],
-                       calibdir=calibdir, R=25, method='lstsq')
+                       calibdir=calibdir, R=30, method='lstsq')
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
 
