@@ -5,6 +5,8 @@ from scipy import interpolate
 from image import Image
 import copy
 from collections import OrderedDict
+import matutils
+import multiprocessing
 
 def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     """
@@ -152,7 +154,8 @@ def _tag_psflets(shape, x, y, good):
     return psflet_indx
 
 
-def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict()):
+def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(), 
+                refine=True):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -191,40 +194,53 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict()):
     # Fit the spectrum by minimizing chi squared
     ###################################################################
 
-    coefs = np.zeros(tuple([len(x)] + list(x[0].shape)))
-    resid = copy.deepcopy(im)
+    coefshape = tuple([len(x)] + list(x[0].shape))
     
     x = np.asarray(x)
     y = np.asarray(y)
 
-    for i in range(x[0].shape[0]):
-        for j in range(x[0].shape[1]):
-            if good[0][i, j] and good[-1][i, j]:
-                subim, psflet_subarr, bounds = _get_cutout(im, x[:, i, j] + 0.5,
-                                                           y[:, i, j], psflets)
-                coefs[:, i, j] = _fit_cutout(subim, psflet_subarr, bounds,
-                                             x=x[:, i, j], y=y[:, i, j],
-                                             mode='lstsq')
+    xint = np.reshape((x + 0.5).astype(np.int64), (x.shape[0], -1))
+    yint = np.reshape((y + 0.5).astype(np.int64), (y.shape[0], -1))
+    goodint = np.reshape(np.prod(good.astype(np.int64), axis=0), -1)
+    if im.ivar is not None:
+        isig = np.sqrt(im.ivar)
+    else:
+        isig = np.ones(im.data.shape)
 
     ###################################################################
-    # Subtract the best fit spectrum to include crosstalk
+    # Need to make copies of the data arrays because FITS is
+    # big-endian, but this not necessarily the native order on the
+    # machine and can cause errors with cython code.
+    ###################################################################
+
+    data = np.empty(im.data.shape)
+    data[:] = im.data
+    psflets2 = np.empty(psflets.shape)
+    psflets2[:] = psflets
+
+    ###################################################################
+    # Call cython implementations of _get_cutouts and _fit_cutouts.
+    # Factor of 5 or so speedup on a 16 core machine.
+    ###################################################################
+
+    ncpus = multiprocessing.cpu_count()
+    A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=ncpus)
+    coefs = matutils.lstsq(A, b, goodint, maxproc=ncpus).T.reshape(coefshape)
+
+    ###################################################################
+    # Subtract the best fit spectrum to include crosstalk.
     # Run the above routine again to get the perturbations to the
     # intial guesses of the coefficients.
     ###################################################################
     
-    for i in range(len(psflets)):
-        psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
-        coefs_flat = np.reshape(coefs[i], -1)
-        resid.data -= psflets[i]*coefs_flat[psflet_indx]
-        
-    for i in range(x[0].shape[0]):
-        for j in range(x[0].shape[1]):
-            if good[0][i, j] and good[-1][i, j]:
-                subim, psflet_subarr, bounds = _get_cutout(resid, x[:, i, j] + 0.5,
-                                                           y[:, i, j], psflets)
-                coefs[:, i, j] -= _fit_cutout(subim, psflet_subarr, bounds,
-                                             x=x[:, i, j], y=y[:, i, j],
-                                             mode='lstsq')
+    if refine:
+        for i in range(len(psflets)):
+            psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
+            coefs_flat = np.reshape(coefs[i], -1)
+            data -= psflets[i]*coefs_flat[psflet_indx]
+
+        A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=ncpus)
+        coefs -= matutils.lstsq(A, b, goodint, maxproc=ncpus).T.reshape(coefshape)
 
     header['cubemode'] = ('leastsq', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
