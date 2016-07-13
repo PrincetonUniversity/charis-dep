@@ -15,6 +15,7 @@ from image import Image
 import sys
 import os
 import ConfigParser
+import multiprocessing
 
 def getcube(filename, read_idx=[2, None], biassub=None, 
             calibdir='calibrations/20160408/', bgsub=True, mask=True,
@@ -132,7 +133,10 @@ if __name__ == "__main__":
 
     try:
         maxcpus = Config.getint('Extract', 'maxcpus')
-        assert maxcpus > 0
+        if maxcpus <= 0:
+            maxcpus = multiprocessing.cpu_count() + maxcpus
+        if maxcpus < 1:
+            maxcpus = 1
     except:
         maxcpus = None
 
