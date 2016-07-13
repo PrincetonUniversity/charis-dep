@@ -18,7 +18,7 @@ import ConfigParser
 
 def getcube(filename, read_idx=[2, None], biassub=None, 
             calibdir='calibrations/20160408/', bgsub=True, mask=True,
-            R=25, method='lstsq', refine=True):
+            maxcpus=None, R=25, method='lstsq', refine=True):
 
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
@@ -89,7 +89,7 @@ def getcube(filename, read_idx=[2, None], biassub=None,
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
-        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, refine=refine)
+        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, refine=refine, maxcpus=maxcpus)
 
     elif method == 'optext':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
@@ -130,9 +130,15 @@ if __name__ == "__main__":
     method = Config.get('Extract', 'method')
     refine = Config.getboolean('Extract', 'refine')
 
+    try:
+        maxcpus = Config.getint('Extract', 'maxcpus')
+        assert maxcpus > 0
+    except:
+        maxcpus = None
+
     for filename in filenames:
         cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
-                       mask=mask, biassub=biassub, refine=refine,
-                       calibdir=calibdir, R=R, method=method)
+                       mask=mask, biassub=biassub, refine=refine, 
+                       maxcpus=maxcpus, calibdir=calibdir, R=R, method=method)
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
 
