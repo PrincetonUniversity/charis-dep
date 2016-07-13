@@ -214,10 +214,10 @@ def make_polychrome(lam1, lam2, hires_arrs, lam_arr, psftool, allcoef,
             weight21 = max(0, (i2 - x_hires)*(y_hires - j1))
             weight11 = max(0, (i2 - x_hires)*(j2 - y_hires))
             totweight = weight11 + weight21 + weight12 + weight22
-            weight11 /= totweight/nlam
-            weight12 /= totweight/nlam
-            weight21 /= totweight/nlam
-            weight22 /= totweight/nlam
+            weight11 /= totweight*nlam
+            weight12 /= totweight*nlam
+            weight21 /= totweight*nlam
+            weight22 /= totweight*nlam
 
             image[iy1:iy2, ix1:ix2] += weight11*ndimage.map_coordinates(hires[j1, i1], [yinterp, xinterp], prefilter=False)
             image[iy1:iy2, ix1:ix2] += weight12*ndimage.map_coordinates(hires[j1, i2], [yinterp, xinterp], prefilter=False)
