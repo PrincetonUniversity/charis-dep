@@ -109,9 +109,11 @@ if __name__ == "__main__":
         print "2: a .ini configuration file processed by ConfigParser"
         exit()
 
-    filenames = glob.glob(sys.argv[1])
+    filenames = []
+    for i in range(1, len(sys.argv) - 1):
+        filenames += glob.glob(sys.argv[i])
     Config = ConfigParser.ConfigParser()
-    Config.read(sys.argv[2])
+    Config.read(sys.argv[len(sys.argv) - 1])
 
     read_0 = Config.getint('Ramp', 'read_0')
     try:
