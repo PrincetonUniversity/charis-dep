@@ -155,7 +155,7 @@ def _tag_psflets(shape, x, y, good):
 
 
 def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(), 
-                refine=True):
+                refine=True, maxcpus=None):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -224,8 +224,13 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     ###################################################################
 
     ncpus = multiprocessing.cpu_count()
-    A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=ncpus)
-    coefs = matutils.lstsq(A, b, goodint, maxproc=ncpus).T.reshape(coefshape)
+    if maxcpus is not None:
+        maxcpus = min(maxcpus, ncpus)
+    else:
+        maxcpus = ncpus
+    
+    A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=maxcpus)
+    coefs = matutils.lstsq(A, b, goodint, maxproc=maxcpus).T.reshape(coefshape)
 
     ###################################################################
     # Subtract the best fit spectrum to include crosstalk.
@@ -239,8 +244,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
             coefs_flat = np.reshape(coefs[i], -1)
             data -= psflets[i]*coefs_flat[psflet_indx]
 
-        A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=ncpus)
-        coefs += matutils.lstsq(A, b, goodint, maxproc=ncpus).T.reshape(coefshape)
+        A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=maxcpus)
+        coefs += matutils.lstsq(A, b, goodint, maxproc=maxcpus).T.reshape(coefshape)
 
     header['cubemode'] = ('leastsq', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
