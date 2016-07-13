@@ -240,7 +240,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
             data -= psflets[i]*coefs_flat[psflet_indx]
 
         A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=ncpus)
-        coefs -= matutils.lstsq(A, b, goodint, maxproc=ncpus).T.reshape(coefshape)
+        coefs += matutils.lstsq(A, b, goodint, maxproc=ncpus).T.reshape(coefshape)
 
     header['cubemode'] = ('leastsq', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
