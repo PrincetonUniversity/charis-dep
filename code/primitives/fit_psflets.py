@@ -7,6 +7,7 @@ import copy
 from collections import OrderedDict
 import matutils
 import multiprocessing
+import time
 
 def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     """
@@ -202,6 +203,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     xint = np.reshape((x + 0.5).astype(np.int64), (x.shape[0], -1))
     yint = np.reshape((y + 0.5).astype(np.int64), (y.shape[0], -1))
     goodint = np.reshape(np.prod(good.astype(np.int64), axis=0), -1)
+    indx = np.where(goodint)[0]
     if im.ivar is not None:
         isig = np.sqrt(im.ivar)
     else:
@@ -229,8 +231,9 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     else:
         maxcpus = ncpus
     
-    A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=maxcpus)
-    coefs = matutils.lstsq(A, b, goodint, maxproc=maxcpus).T.reshape(coefshape)
+    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
+    nlens = xint.shape[1]
+    coefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
 
     ###################################################################
     # Subtract the best fit spectrum to include crosstalk.
@@ -244,8 +247,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
             coefs_flat = np.reshape(coefs[i], -1)
             data -= psflets[i]*coefs_flat[psflet_indx]
 
-        A, b = matutils.allcutouts(data, isig, xint, yint, goodint, psflets2, maxproc=maxcpus)
-        coefs += matutils.lstsq(A, b, goodint, maxproc=maxcpus).T.reshape(coefshape)
+        A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
+        coefs += matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
 
     header['cubemode'] = ('leastsq', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
