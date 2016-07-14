@@ -8,19 +8,16 @@ import numpy as np
 @cython.boundscheck(False)
 
 def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x, 
-               long [:, :] y, long [:] good, double [:, :, :] psflets, 
+               long [:, :] y, long [:] indx, double [:, :, :] psflets, 
                int dx=3, int maxproc=4):
 
     cdef int maxsize, nlam, ix, iy, x0, x1, y0, y1, dx0, dy0, xdim, ydim
-    cdef int ii, j, k, nlens
-    
-    cdef extern from "math.h" nogil:
-        double sqrt(double _x)
-        double fabs(double _x)
+    cdef int ii, j, k, nlens, n, jj
 
     # How large must the arrays be? 
     
-    nlens = x.shape[1]
+    #nlens = x.shape[1]
+    nlens = indx.shape[0]
     nlam = psflets.shape[0]
     xdim = im.shape[1]
     ydim = im.shape[0]
@@ -29,9 +26,8 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
     cdef long [:] size = size_np
 
     with nogil, parallel(num_threads=maxproc):
-        for ii in prange(nlens, schedule='dynamic'):
-            if not good[ii]:
-                continue
+        for jj in prange(nlens, schedule='dynamic'):
+            ii = indx[jj]
 
             x0 = xdim + 1
             x1 = -1
@@ -54,7 +50,7 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
             dy0 = y1 - y0
             dx0 = x1 - x0
             
-            size[ii] = dy0*dx0
+            size[jj] = dy0*dx0
 
     maxsize = np.amax(size_np)
     A_np = np.zeros((nlens, maxsize, nlam))
@@ -64,9 +60,8 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
     cdef double [:, :] b = b_np
 
     with nogil, parallel(num_threads=maxproc):
-        for ii in prange(nlens, schedule='dynamic'):
-            if not good[ii]:
-                continue
+        for jj in prange(nlens, schedule='dynamic'):
+            ii = indx[jj]
 
             x0 = xdim + 1
             x1 = -1
@@ -89,26 +84,30 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
             dy0 = y1 - y0
             dx0 = x1 - x0
 
-            for iy in range(y0, y1):
-                for ix in range(x0, x1):
-                    k = (iy - y0)*dx0 + ix - x0
-                    b[ii, k] = im[iy, ix]*isig[iy, ix]
-                    for j in range(nlam):
-                        A[ii, k, j] = psflets[j, iy, ix]*isig[iy, ix]
 
-    return A_np, b_np
+            for j in range(nlam):
+                k = 0
+                for iy in range(y0, y1):
+                    for ix in range(x0, x1):
+                        #k = (iy - y0)*dx0 + ix - x0
+                        if j == 0:
+                            b[jj, k] = im[iy, ix]*isig[iy, ix]
+                        A[jj, k, j] = psflets[j, iy, ix]*isig[iy, ix]
+                        k = k + 1
+
+    return A_np, b_np, size_np
 
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
 
-def lstsq(double [:, :, :] A, double [:, :] b, long [:] good, int maxproc=4):
+def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int ncoef, int maxproc=4):
 
     """
 
     """
 
-    cdef int flag, its, jj, j, ii, i, l, k, nm, n, m, inc, di
+    cdef int flag, its, jj, j, ii, i, l, k, nm, n, mm, m, inc, di
     cdef double c, f, h, s, x, y, z, tmp, tmp1, tmp2, sw, eps, tsh
     cdef double anorm, g, scale
 
@@ -116,7 +115,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] good, int maxproc=4):
         double sqrt(double _x)
         double fabs(double _x)
 
-    m = A.shape[1]
+    mm = A.shape[1]
     n = A.shape[2]
     inc = 1
     eps = 2.3e-16
@@ -129,7 +128,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] good, int maxproc=4):
 
     tmparr_np = np.empty((di, n))
     cdef double [:, :] tmparr = tmparr_np
-    su_np = np.empty((di, m))
+    su_np = np.empty((di, mm))
     cdef double [:, :] su = su_np
     sv_np = np.empty((di, n))
     cdef double [:, :] sv = sv_np
@@ -138,7 +137,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] good, int maxproc=4):
     rv1_np = np.empty((di, n))
     cdef double [:, :] rv1 = rv1_np
 
-    v_np = np.empty((di, m, m))
+    v_np = np.empty((di, mm, mm))
     cdef double [:, :, :] v = v_np
     
     ###############################################################
@@ -146,7 +145,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] good, int maxproc=4):
     # It will be returned by the function.
     ###############################################################
 
-    coef_np = np.zeros((di, n))
+    coef_np = np.zeros((ncoef, n))
     cdef double [:, :] coef = coef_np
 
     ###############################################################
@@ -157,8 +156,10 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] good, int maxproc=4):
     with nogil, parallel(num_threads=maxproc):
 
         for ii in prange(di, schedule='dynamic'):
-            if not good[ii]:
-                continue
+            #if not good[ii]:
+            #    continue
+            m = size[ii]
+            
             scale = 0.
             g = 0.
             anorm = 0.
@@ -419,7 +420,8 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] good, int maxproc=4):
                 s = 0.
                 for jj in range(n):
                     s = s + v[ii, j, jj]*tmparr[ii, jj]
-                coef[ii, j] = s*1.
+                #coef[ii, j] = s*1.
+                coef[indx[ii], j] = s*1.
     
     return coef_np
     
