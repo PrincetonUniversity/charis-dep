@@ -98,6 +98,85 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
     return A_np, b_np, size_np
 
 
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+
+def dot(double [:, :] A, double [:, :] B, int maxproc=4):
+    
+    """
+    Compute and return the simple dot product of the input matrices
+    A and B, performing operations in parallel.  Return the product
+    A*B.  If A is n x m and B is m x l, the output will be n x l.
+
+    The input matrices should be double precision, the output will
+    also be double precision.
+    """
+
+    cdef int i, j, k, n1, n2, n3
+    cdef double x
+
+    n1 = A.shape[0]
+    n2 = A.shape[1]
+    n3 = B.shape[1]
+    assert A.shape[1] == B.shape[0]
+
+    result_np = np.empty((n1, n3))
+    cdef double [:, :] result = result_np
+
+    with nogil, parallel(num_threads=maxproc):
+        for i in prange(n1, schedule='dynamic'):
+            for j in range(n3):
+                x = 0
+                for k in range(n2):
+                    x = x + A[i, k]*B[k, j]
+                result[i, j] = x
+
+    return result_np
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+
+
+
+def dot_3d(double [:, :, :] A, double [:, :, :] B, int maxproc=4):
+    
+    """
+    Compute and return the simple dot product of the input matrices
+    A and B, performing operations in parallel.  Return the product
+    A*B.  If A is n x m and B is m x l, the output will be n x l.
+
+    The input matrices should be double precision, the output will
+    also be double precision.
+    """
+
+    cdef int i, j, k, ii, n1, n2, n3, nmat
+    cdef double x
+
+    nmat = A.shape[0]
+    n1 = A.shape[1]
+    n2 = A.shape[2]
+    n3 = B.shape[2]
+    assert A.shape[2] == B.shape[1]
+
+    result_np = np.empty((nmat, n1, n3))
+    cdef double [:, :, :] result = result_np
+
+    with nogil, parallel(num_threads=maxproc):
+        for ii in prange(nmat, schedule='dynamic'):
+            for i in range(n1):
+                for j in range(n3):
+                    x = 0
+                    for k in range(n2):
+                        x = x + A[ii, i, k]*B[ii, k, j]
+                    result[ii, i, j] = x
+
+    return result_np
+
+
+
+
 @cython.wraparound(False)
 @cython.boundscheck(False)
 
