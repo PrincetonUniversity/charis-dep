@@ -238,7 +238,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     cov = matutils.dot_3d(AT, A, maxproc=maxcpus)
     for i in range(cov.shape[0]):
         cov[i] = np.linalg.pinv(cov[i])
-    cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1]))
+    cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
     
     cov_full = np.empty((nlens, cov.shape[1]))
     cov_full[indx] = cov
