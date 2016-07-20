@@ -202,7 +202,7 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
     allrefpix = np.concatenate([c_arr[:4], c_arr[-4:], c_arr[4:-4, :4].T, 
                                 c_arr[4:-4, -4:].T], axis=1)
     # Directly measure the read noise
-    readnoise = np.var(np.sort(allrefpix)[5:-5])
+    readnoise = np.var(np.sort(allrefpix, axis=None)[5:-5])
     header['readnois'] = (np.sqrt(readnoise), 'Effective read noise in the full ramp, ADU')
     var = np.ones(c_arr.shape)*readnoise
     # Now add photon noise.  The factor of 1.3 is approximate and is from
