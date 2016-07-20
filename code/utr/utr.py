@@ -45,7 +45,7 @@ def getreads(filename, header=OrderedDict(),
     
     #header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
     header['firstrd'] = (read_idx[0], 'First HDU of original file used')
-    print header['firstrd']
+
     for i, r in enumerate(hdulist[read_idx[0]:read_idx[1]]):
         header['lastrd'] = (i, 'Last HDU of original file used')
         reads[i] = r.data
@@ -61,7 +61,7 @@ def getreads(filename, header=OrderedDict(),
         #            bottom = reads[i, :4, j*64:(j+1)*64]
         #            refpix = np.concatenate([top, bottom])
         #        reads[i, :, j*64:(j+1)*64] -= refpix.mean()
-    return reads, header
+    return reads
 
 def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     """
@@ -166,9 +166,8 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
     """
 
     if reads is None:
-        reads, header = getreads(filename, header, **kwargs)
+        reads = getreads(filename, header, **kwargs)
 
-    print header['firstrd']
     nreads = reads.shape[0]
 
     ###################################################################
@@ -254,8 +253,8 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
     """
 
     if reads is None:
-        reads, header = getreads(filename, header, **kwargs)
-    print header['firstrd']
+        reads = getreads(filename, header, **kwargs)
+
     nreads = reads.shape[2]
 
     ###################################################################
@@ -264,7 +263,7 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
     # from ADU to electrons
     ###################################################################
 
-    im = utr_rn(reads, biassub=biassub, gain=gain, return_im=True) # count rate (ADU) in RN limit
+    im = utr_rn(reads, header=header, biassub=biassub, gain=gain, return_im=True) # count rate (ADU) in RN limit
     #ivar_arr = np.ones(c_rn_arr.shape)
     
     ###################################################################
