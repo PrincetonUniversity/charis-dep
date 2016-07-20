@@ -240,7 +240,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     AT[:] = np.transpose(A, (0, 2, 1))
     t1 = time.time()
     print "Matrix multiplication"
-    cov = matutils.dot_3d(AT, A, maxproc=maxcpus)
+    #cov = matutils.dot_3d(AT, A, maxproc=maxcpus)
+    cov = matutils.dot_3d(np.transpose(A, (0, 2, 1)), A, maxproc=maxcpus)
     t2 = time.time()
     print "Matrix inversions"
     for i in range(cov.shape[0]):
