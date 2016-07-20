@@ -241,7 +241,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
         cov[i] = np.linalg.pinv(cov[i])
     cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
     
-    cov_full = np.empty((nlens, cov.shape[1]))
+    cov_full = np.ones((nlens, cov.shape[1]))*np.inf
     cov_full[indx] = cov
     cov = cov_full.T.reshape(coefshape)
 
