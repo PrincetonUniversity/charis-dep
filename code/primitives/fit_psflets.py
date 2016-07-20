@@ -232,6 +232,18 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
         maxcpus = ncpus
     
     A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
+
+    AT = np.empty((A.shape[0], A.shape[2], A.shape[1]))
+    AT[:] = np.transpose(A, (0, 2, 1))
+    cov = matutils.dot_3d(AT, A, maxproc=maxcpus)
+    for i in range(cov.shape[0]):
+        cov[i] = np.linalg.pinv(cov[i])
+    cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1]))
+    
+    cov_full = np.empty((nlens, cov.shape[1]))
+    cov_full[indx] = cov
+    cov = cov_full.T.reshape(coefshape)
+
     nlens = xint.shape[1]
     coefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
 
@@ -255,7 +267,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
     header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
-    datacube = Image(data=coefs, header=header)
+    datacube = Image(data=coefs, ivar=1./cov, header=header)
 
     return datacube
 
