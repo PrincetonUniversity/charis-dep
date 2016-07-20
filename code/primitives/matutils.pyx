@@ -227,7 +227,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
     coef_np = np.zeros((ncoef, n))
     cdef double [:, :] coef = coef_np
 
-    cov_np = np.zeros((ncoef, n, n))
+    cov_np = np.ones((ncoef, n, n))*np.inf
     cdef double [:, :, :] cov = cov_np
 
     ###############################################################
@@ -511,7 +511,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
                 for j in range(i + 1):
                     s = 0.
                     for k in range(m):
-                        if w[ii, j] > tsh:
+                        if w[ii, k] > tsh:
                             s = s + v[ii, i, k]*v[ii, j, k]/(w[ii, k]*w[ii, k])
                     cov[indx[ii], j, i] = s
                     cov[indx[ii], i, j] = s
