@@ -45,6 +45,7 @@ def getreads(filename, header=OrderedDict(),
     
     #header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
     header['firstrd'] = (read_idx[0], 'First HDU of original file used')
+    print header['firstrd']
     for i, r in enumerate(hdulist[read_idx[0]:read_idx[1]]):
         header['lastrd'] = (i, 'Last HDU of original file used')
         reads[i] = r.data
