@@ -180,7 +180,7 @@ def dot_3d(double [:, :, :] A, double [:, :, :] B, int maxproc=4):
 @cython.wraparound(False)
 @cython.boundscheck(False)
 
-def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int ncoef, returncov=0, int maxproc=4):
+def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int ncoef, int returncov=0, int maxproc=4):
 
     """
 
