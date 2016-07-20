@@ -505,6 +505,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
                 #coef[ii, j] = s*1.
                 coef[indx[ii], j] = s*1.
 
+            # Compute the covariance matrix if needed.
             for i in range(n):
                 if returncov == 0:
                     continue
