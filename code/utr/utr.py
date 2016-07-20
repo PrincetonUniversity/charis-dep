@@ -181,6 +181,7 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
     for i in range(nreads):
         c_arr += factor*weights[i]*reads[i]
 
+    var = np.zeros((c_arr.shape))
     if biassub is not None:
         numchan = c_arr.shape[1]/64
         for j in xrange(numchan):
@@ -196,15 +197,17 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
                 raise ValueError("Bias subtraction method must be one of 'top', 'bottom', or 'all'.")
             
             header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
-            c_arr[:, j*64:(j+1)*64] -= refpix.mean()
+            sortedref = np.sort(refpix, axis=None)
+            c_arr[:, j*64:(j+1)*64] -= np.mean(sortedref[1:-1])
+            var[:, j*64:(j+1)*64] = np.var(sortedref[1:-1])
         
     
-    allrefpix = np.concatenate([c_arr[:4], c_arr[-4:], c_arr[4:-4, :4].T, 
-                                c_arr[4:-4, -4:].T], axis=1)
+    #allrefpix = np.concatenate([c_arr[:4], c_arr[-4:], c_arr[4:-4, :4].T, 
+    #                            c_arr[4:-4, -4:].T], axis=1)
     # Directly measure the read noise
-    readnoise = np.var(np.sort(allrefpix, axis=None)[5:-5])
-    header['readnois'] = (np.sqrt(readnoise), 'Effective read noise in the full ramp, ADU')
-    var = np.ones(c_arr.shape)*readnoise
+    #readnoise = np.var(np.sort(allrefpix, axis=None)[5:-5])
+    #header['readnois'] = (np.sqrt(readnoise), 'Effective read noise in the full ramp, ADU')
+    #var = np.ones(c_arr.shape)*readnoise
     # Now add photon noise.  The factor of 1.3 is approximate and is from
     # the asymptotic performance of up-the-ramp sampling.  Divide by
     # nreads because we are using units of ADU per read.
