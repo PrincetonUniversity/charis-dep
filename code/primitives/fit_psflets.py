@@ -232,6 +232,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
         maxcpus = ncpus
     
     A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
+    nlens = xint.shape[1]
 
     AT = np.empty((A.shape[0], A.shape[2], A.shape[1]))
     AT[:] = np.transpose(A, (0, 2, 1))
@@ -244,7 +245,6 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     cov_full[indx] = cov
     cov = cov_full.T.reshape(coefshape)
 
-    nlens = xint.shape[1]
     coefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
 
     ###################################################################
