@@ -234,9 +234,15 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
     nlens = xint.shape[1]
 
+    print "Starting covariance calculation"
+    t0 = time.time()
     AT = np.empty((A.shape[0], A.shape[2], A.shape[1]))
     AT[:] = np.transpose(A, (0, 2, 1))
+    t1 = time.time()
+    print "Matrix multiplication"
     cov = matutils.dot_3d(AT, A, maxproc=maxcpus)
+    t2 = time.time()
+    print "Matrix inversions"
     for i in range(cov.shape[0]):
         cov[i] = np.linalg.pinv(cov[i])
     cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
@@ -244,6 +250,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     cov_full = np.ones((nlens, cov.shape[1]))*np.inf
     cov_full[indx] = cov
     cov = cov_full.T.reshape(coefshape)
+    print "Done"
+    print "Times: " + "%5.2f"*4 % (t1 - t0, t2 - t1, time.time() - t2, time.time() - t0)
 
     coefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
 
