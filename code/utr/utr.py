@@ -139,7 +139,7 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, filename=None, sig_rn=20.0, return_im=False, header=OrderedDict(), biassub='all', **kwargs):
+def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDict(), biassub='all', **kwargs):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -198,15 +198,27 @@ def utr_rn(reads=None, filename=None, sig_rn=20.0, return_im=False, header=Order
             header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
             c_arr[:, j*64:(j+1)*64] -= refpix.mean()
         
+    
+    allrefpix = np.concatenate([c_arr[:-4], c_arr[:4], c_arr[4:-4, :4].T, 
+                                c_arr[4:-4, -4:].T], axis=1)
+    # Directly measure the read noise
+    readnoise = np.var(np.sort(allrefpix)[5:-5])
+    header['readnois'] = (np.sqrt(readnoise), 'Effective read noise in the full ramp, ADU')
+    var = np.ones(c_arr.shape)*readnoise
+    # Now add photon noise.  The factor of 1.3 is approximate and is from
+    # the asymptotic performance of up-the-ramp sampling.  Divide by
+    # nreads because we are using units of ADU per read.
+    var[4:-4, 4:-4] += 1.3*np.abs(c_arr[4:-4, 4:-4])/gain/nreads
+    ivar = 1./var
 
     if return_im:
-        ivar = (factor*sig_rn)**2*np.sum(weights**2)
-        ivar = (1.0/ivar)*np.ones(c_arr.shape)
-        return Image(data=c_arr, ivar=ivar) 
+        #ivar = (factor*sig_rn)**2*np.sum(weights**2)
+        #ivar = (1.0/ivar)*np.ones(c_arr.shape)
+        return Image(data=c_arr, ivar=ivar, header=header) 
     else:
         return c_arr
 
-def utr(reads=None, filename=None, sig_rn=20.0, gain=4.0, biassub='all',
+def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
         interp_meth='linear', calc_chisq=False, header=OrderedDict(), **kwargs):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
@@ -247,16 +259,16 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=4.0, biassub='all',
     # from ADU to electrons
     ###################################################################
 
-    c_rn_arr = utr_rn(reads, sig_rn=sig_rn, biassub=biassub) # count rate (ADU) in RN limit
-    ivar_arr = np.ones(c_rn_arr.shape)
-
+    im = utr_rn(reads, biassub=biassub, gain=gain, return_im=True) # count rate (ADU) in RN limit
+    #ivar_arr = np.ones(c_rn_arr.shape)
+    
     ###################################################################
     # Generate interpolation objects for the up-the-ramp coefficients,
     # calculate the count (c) and intercept (a) for every pixel. The
     # calculation is done per row to conserve memory 
     ###################################################################
 
-    if calc_chisq:
+    if False: #calc_chisq:
 
         c_rn_arr *= gain
         sig_rn *= gain
@@ -282,14 +294,14 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=4.0, biassub='all',
     # We are still thinking about how to optimize the general case. 
     ###################################################################
 
-    if calc_chisq:
+    if False: #calc_chisq:
         chisq = np.zeros(c_arr.shape)
         for i in range(nreads):
             chisq += (reads[:,:,i] - a_arr - c_arr*(i+1))**2
         chisq /= sig_rn**2 
         im = Image(data=c_arr, ivar=ivar_arr, chisq=chisq, header=header)
     else:
-        im = Image(data=c_rn_arr, ivar=ivar_arr, header=header)
+        pass #im = Image(data=c_rn_arr, ivar=ivar_arr, header=header)
 
     try:
         origname = re.sub('.*CRSA', '', re.sub('.fits', '', filename))
