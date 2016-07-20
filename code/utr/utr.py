@@ -199,7 +199,7 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
             c_arr[:, j*64:(j+1)*64] -= refpix.mean()
         
     
-    allrefpix = np.concatenate([c_arr[:-4], c_arr[:4], c_arr[4:-4, :4].T, 
+    allrefpix = np.concatenate([c_arr[:4], c_arr[-4:], c_arr[4:-4, :4].T, 
                                 c_arr[4:-4, -4:].T], axis=1)
     # Directly measure the read noise
     readnoise = np.var(np.sort(allrefpix)[5:-5])
