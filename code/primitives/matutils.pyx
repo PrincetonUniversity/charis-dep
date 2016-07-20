@@ -512,7 +512,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
                     s = 0.
                     for k in range(n):
                         if w[ii, k] > tsh:
-                            s = s + v[ii, i, k]*A[ii, j, k]/w[ii, k]
+                            s = s + v[ii, i, k]*v[ii, j, k]/(w[ii, k]*w[ii, k])
                     cov[indx[ii], j, i] = s
                     cov[indx[ii], i, j] = s
 
