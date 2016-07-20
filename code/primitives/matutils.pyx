@@ -180,7 +180,7 @@ def dot_3d(double [:, :, :] A, double [:, :, :] B, int maxproc=4):
 @cython.wraparound(False)
 @cython.boundscheck(False)
 
-def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int ncoef, int maxproc=4):
+def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int ncoef, returncov=0, int maxproc=4):
 
     """
 
@@ -226,6 +226,9 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
 
     coef_np = np.zeros((ncoef, n))
     cdef double [:, :] coef = coef_np
+
+    cov_np = np.zeros((ncoef, n, n))
+    cdef double [:, :, :] cov = cov_np
 
     ###############################################################
     # The code below is largely copied from Numerical Recipes and from
@@ -501,7 +504,20 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
                     s = s + v[ii, j, jj]*tmparr[ii, jj]
                 #coef[ii, j] = s*1.
                 coef[indx[ii], j] = s*1.
-    
-    return coef_np
-    
+
+            for i in range(m):
+                if returncov == 0:
+                    continue
+                for j in range(i + 1):
+                    s = 0.
+                    for k in range(m):
+                        if w[ii, j] > tsh:
+                            s = s + v[ii, i, k]*v[ii, j, k]/(w[ii, k]*w[ii, k])
+                    cov[indx[ii], j, i] = s
+                    cov[indx[ii], i, j] = s
+
+    if returncov == 0:
+        return coef_np
+    else:
+        return coef_np, cov_np
     
