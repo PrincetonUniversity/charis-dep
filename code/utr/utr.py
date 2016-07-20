@@ -167,6 +167,7 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
     if reads is None:
         reads, header = getreads(filename, header, **kwargs)
 
+    print header['firstrd']
     nreads = reads.shape[0]
 
     ###################################################################
@@ -253,7 +254,7 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
 
     if reads is None:
         reads, header = getreads(filename, header, **kwargs)
-
+    print header['firstrd']
     nreads = reads.shape[2]
 
     ###################################################################
