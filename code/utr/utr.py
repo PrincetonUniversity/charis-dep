@@ -254,10 +254,8 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
                       ivar, and flags (not yet) for every pixel in the image. 
     """
     
-    t0 = time.time()
     if reads is None:
         reads = getreads(filename, header, **kwargs)
-    t1 = time.time()
 
     nreads = reads.shape[2]
 
@@ -317,5 +315,4 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
     except:
         pass
 
-    print '%8.2f'*2 % (t1 - t0, time.time() - t1)
     return im
