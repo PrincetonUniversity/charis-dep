@@ -2,6 +2,7 @@ import numpy as np
 from image import Image
 import tools
 import re
+import time
 from collections import OrderedDict
 log = tools.getLogger('main')
 
@@ -140,7 +141,7 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDict(), biassub='all', **kwargs):
+def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDict(), biassub='all', phnoise=1.3, **kwargs):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -212,7 +213,7 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
     # Now add photon noise.  The factor of 1.3 is approximate and is from
     # the asymptotic performance of up-the-ramp sampling.  Divide by
     # nreads because we are using units of ADU per read.
-    var[4:-4, 4:-4] += 1.3*np.abs(c_arr[4:-4, 4:-4])/gain/nreads
+    var[4:-4, 4:-4] += phnoise*np.abs(c_arr[4:-4, 4:-4])/gain/nreads
     ivar = 1./var
 
     if return_im:
@@ -223,7 +224,8 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
         return c_arr
 
 def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
-        interp_meth='linear', calc_chisq=False, header=OrderedDict(), **kwargs):
+        interp_meth='linear', calc_chisq=False, phnoise=1.3,
+        header=OrderedDict(), **kwargs):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
     into account. We assume the counts in each pixel obey the linear 
@@ -251,9 +253,11 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
     1. im             Image class object containing the count in electrons, 
                       ivar, and flags (not yet) for every pixel in the image. 
     """
-
+    
+    t0 = time.time()
     if reads is None:
         reads = getreads(filename, header, **kwargs)
+    t1 = time.time()
 
     nreads = reads.shape[2]
 
@@ -263,7 +267,7 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
     # from ADU to electrons
     ###################################################################
 
-    im = utr_rn(reads, header=header, biassub=biassub, gain=gain, return_im=True) # count rate (ADU) in RN limit
+    im = utr_rn(reads, header=header, biassub=biassub, gain=gain, phnoise=phnoise, return_im=True) # count rate (ADU) in RN limit
     #ivar_arr = np.ones(c_rn_arr.shape)
     
     ###################################################################
@@ -313,4 +317,5 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
     except:
         pass
 
+    print '%8.2f'*2 % (t1 - t0, time.time() - t1)
     return im
