@@ -17,7 +17,7 @@ import os
 import ConfigParser
 import multiprocessing
 
-def getcube(filename, read_idx=[2, None], biassub=None, 
+def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3, 
             calibdir='calibrations/20160408/', bgsub=True, mask=True,
             maxcpus=None, R=25, method='lstsq', refine=True):
 
@@ -72,8 +72,8 @@ def getcube(filename, read_idx=[2, None], biassub=None,
     # background and apply a bad pixel mask.
     ################################################################
 
-    inImage = utr.utr(filename=filename,
-                      read_idx=read_idx, biassub=biassub)
+    inImage = utr.utr(filename=filename, read_idx=read_idx, 
+                      biassub=biassub, phnoise=phnoise)
     if bgsub:
         inImage.data -= fits.open(calibdir + '/background.fits')[0].data
     if mask:
@@ -124,6 +124,14 @@ if __name__ == "__main__":
     biassub = Config.get('Ramp', 'biassub')
     if biassub == 'None':
         biassub = None
+    try:
+        phnoise = Config.getfloat('Ramp', 'phnoise')
+        if phnoise < 0:
+            phnoise = 0
+    except:
+        phnoise = 1.3  # approximate factor for photon  noise (!= 1 as
+                      # the  asymptotic  ratio  of  up-the-ramp  noise
+                      # weighting to CDS weighting)
 
     bgsub = Config.getboolean('Calib', 'bgsub')
     mask = Config.getboolean('Calib', 'mask')
@@ -144,7 +152,8 @@ if __name__ == "__main__":
 
     for filename in filenames:
         cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
-                       mask=mask, biassub=biassub, refine=refine, 
-                       maxcpus=maxcpus, calibdir=calibdir, R=R, method=method)
+                       mask=mask, biassub=biassub, phnoise=phnoise,
+                       refine=refine, maxcpus=maxcpus, calibdir=calibdir,
+                       R=R, method=method)
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
 
