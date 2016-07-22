@@ -9,7 +9,7 @@ import matutils
 import multiprocessing
 import time
 
-def _smoothandmask(cube, ivar, header, good):
+def _smoothandmask(datacube, good):
     """
     Set bad spectral measurements to an inverse variance of zero.  The
     threshold for effectively discarding data is an inverse variance
@@ -23,6 +23,9 @@ def _smoothandmask(cube, ivar, header, good):
     zero.
     
     """
+    ivar = datacube.ivar
+    cube = datacube.data
+
     x = np.arange(7) - 3
     x, y = np.meshgrid(x, x)
     widewindow = np.exp(-(x**2 + y**2))
@@ -39,7 +42,7 @@ def _smoothandmask(cube, ivar, header, good):
         indx = np.where(np.all([ivar[i] == 0, good], axis=0))
         cube[i][indx] = mask[indx]
     
-    header['maskivar'] = (True, 'Set poor ivar to 0, smoothed I for cosmetics')
+    datacube.header['maskivar'] = (True, 'Set poor ivar to 0, smoothed I for cosmetics')
 
     return None
 
@@ -309,8 +312,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     datacube = Image(data=coefs, ivar=1./cov, header=header)
 
     if smoothandmask:
-        _smoothandmask(datacube.data, datacube.ivar, datacube.header, 
-                       np.reshape(goodint, tuple(list(coefshape)[1:])))
+        _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
 
     return datacube
 
