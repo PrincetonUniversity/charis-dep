@@ -1,13 +1,35 @@
 #!/usr/bin/env python
 
 import numpy as np
-from scipy import interpolate
+from scipy import interpolate, signal
 from image import Image
 import copy
 from collections import OrderedDict
 import matutils
 import multiprocessing
 import time
+
+def _smoothandmask(cube, ivar, good):
+    """
+    
+    """
+    x = np.arange(7) - 3
+    x, y = np.meshgrid(x, x)
+    widewindow = np.exp(-(x**2 + y**2))
+    narrowwindow = np.exp(-3*(x**2 + y**2))
+    widewindow /= np.sum(widewindow)
+    narrowwindow /= np.sum(narrowwindow)
+
+    for i in range(cube.shape[0]):
+        ivar_thresh = signal.convolve2d(ivar[i], widewindow, mode='same')
+        ivar[i] *= ivar[i] > ivar_smooth/4.
+        
+        mask = signal.convolve2d(cube[i]*ivar[i], narrowwindow, mode='same')
+        mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same')
+        indx = np.where(np.all([ivar == 0, good], axis=0))
+        cube[i][indx] = mask[indx]
+
+    return None
 
 def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     """
@@ -273,6 +295,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
     datacube = Image(data=coefs, ivar=1./cov, header=header)
+
+    _smoothandmask(datacube.data, datacube.ivar, np.reshape(goodint, coefshape))
 
     return datacube
 
