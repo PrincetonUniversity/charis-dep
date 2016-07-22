@@ -296,8 +296,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
     datacube = Image(data=coefs, ivar=1./cov, header=header)
 
-    print goodint.shape, coefshape
-    _smoothandmask(datacube.data, datacube.ivar, np.reshape(goodint, coefshape))
+    _smoothandmask(datacube.data, datacube.ivar, 
+                   np.reshape(goodint, tuple(list(coefshape)[1:])))
 
     return datacube
 
