@@ -26,7 +26,7 @@ def _smoothandmask(cube, ivar, good):
         
         mask = signal.convolve2d(cube[i]*ivar[i], narrowwindow, mode='same')
         mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same')
-        indx = np.where(np.all([ivar == 0, good], axis=0))
+        indx = np.where(np.all([ivar[i] == 0, good], axis=0))
         cube[i][indx] = mask[indx]
 
     return None
