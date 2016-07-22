@@ -244,6 +244,12 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     coefs = coefs.T.reshape(coefshape)
     cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
     cov = cov.T.reshape(coefshape)
+
+    ###################################################################
+    # Zero covariance = no data.  Set to infinity so that ivar = 0.
+    ###################################################################
+
+    cov[np.where(cov == 0)] = np.inf
     #coefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
 
     ###################################################################
