@@ -21,7 +21,7 @@ def _smoothandmask(cube, ivar, good):
     narrowwindow /= np.sum(narrowwindow)
 
     for i in range(cube.shape[0]):
-        ivar_thresh = signal.convolve2d(ivar[i], widewindow, mode='same')
+        ivar_smooth = signal.convolve2d(ivar[i], widewindow, mode='same')
         ivar[i] *= ivar[i] > ivar_smooth/4.
         
         mask = signal.convolve2d(cube[i]*ivar[i], narrowwindow, mode='same')
