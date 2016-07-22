@@ -9,8 +9,18 @@ import matutils
 import multiprocessing
 import time
 
-def _smoothandmask(cube, ivar, good):
+def _smoothandmask(cube, ivar, header, good):
     """
+    Set bad spectral measurements to an inverse variance of zero.  The
+    threshold for effectively discarding data is an inverse variance
+    less than 10% of the smoothed inverse variance, i.e., a
+    measurement much worse than the surrounding ones.  This rejection
+    is done separately at each wavelength.  
+
+    Then use a smoothed, inverse-variance-weighted map to replace the
+    values of the masked spectral measurements.  Note that this last
+    step is purely cosmetic as the inverse variances are, in any case,
+    zero.
     
     """
     x = np.arange(7) - 3
@@ -28,6 +38,8 @@ def _smoothandmask(cube, ivar, good):
         mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same')
         indx = np.where(np.all([ivar[i] == 0, good], axis=0))
         cube[i][indx] = mask[indx]
+    
+    header['maskivar'] = (True, 'Set poor ivar to 0, smoothed I for cosmetics')
 
     return None
 
@@ -178,7 +190,7 @@ def _tag_psflets(shape, x, y, good):
 
 
 def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(), 
-                refine=True, maxcpus=None):
+                refine=True, smoothandmask=True, maxcpus=None):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -296,8 +308,9 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
     datacube = Image(data=coefs, ivar=1./cov, header=header)
 
-    _smoothandmask(datacube.data, datacube.ivar, 
-                   np.reshape(goodint, tuple(list(coefshape)[1:])))
+    if smoothandmask:
+        _smoothandmask(datacube.data, datacube.ivar, header, 
+                       np.reshape(goodint, tuple(list(coefshape)[1:])))
 
     return datacube
 
