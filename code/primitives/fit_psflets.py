@@ -44,7 +44,7 @@ def _smoothandmask(datacube, good):
     
     datacube.header['maskivar'] = (True, 'Set poor ivar to 0, smoothed I for cosmetics')
 
-    return None
+    return datacube
 
 def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     """
@@ -312,7 +312,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     datacube = Image(data=coefs, ivar=1./cov, header=header)
 
     if smoothandmask:
-        _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
+        datacube = _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
 
     return datacube
 
