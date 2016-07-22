@@ -309,7 +309,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     datacube = Image(data=coefs, ivar=1./cov, header=header)
 
     if smoothandmask:
-        _smoothandmask(datacube.data, datacube.ivar, header, 
+        _smoothandmask(datacube.data, datacube.ivar, datacube.header, 
                        np.reshape(goodint, tuple(list(coefshape)[1:])))
 
     return datacube
