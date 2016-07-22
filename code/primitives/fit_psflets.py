@@ -22,7 +22,7 @@ def _smoothandmask(cube, ivar, good):
 
     for i in range(cube.shape[0]):
         ivar_smooth = signal.convolve2d(ivar[i], widewindow, mode='same')
-        ivar[i] *= ivar[i] > ivar_smooth/4.
+        ivar[i] *= ivar[i] > ivar_smooth/10.
         
         mask = signal.convolve2d(cube[i]*ivar[i], narrowwindow, mode='same')
         mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same')
