@@ -19,7 +19,8 @@ import multiprocessing
 
 def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3, 
             calibdir='calibrations/20160408/', bgsub=True, mask=True,
-            maxcpus=None, R=25, method='lstsq', refine=True):
+            maxcpus=None, R=25, method='lstsq', refine=True,
+            smoothandmask=True):
 
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
@@ -90,7 +91,7 @@ def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3,
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
-        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, refine=refine, maxcpus=maxcpus)
+        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, refine=refine, smoothandmask=smoothandmask, maxcpus=maxcpus)
 
     elif method == 'optext':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
@@ -154,6 +155,6 @@ if __name__ == "__main__":
         cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
                        mask=mask, biassub=biassub, phnoise=phnoise,
                        refine=refine, maxcpus=maxcpus, calibdir=calibdir,
-                       R=R, method=method)
+                       R=R, method=method, smoothandmask=smoothandmask)
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
 
