@@ -16,7 +16,7 @@ def _smoothandmask(cube, ivar, good):
     x = np.arange(7) - 3
     x, y = np.meshgrid(x, x)
     widewindow = np.exp(-(x**2 + y**2))
-    narrowwindow = np.exp(-3*(x**2 + y**2))
+    narrowwindow = np.exp(-2*(x**2 + y**2))
     widewindow /= np.sum(widewindow)
     narrowwindow /= np.sum(narrowwindow)
 
