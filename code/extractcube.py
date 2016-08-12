@@ -151,6 +151,11 @@ if __name__ == "__main__":
     except:
         maxcpus = None
 
+    try:
+        smoothandmask = Config.getboolean('Extract', 'smoothandmask')
+    except:
+        smoothandmask = True
+
     for filename in filenames:
         cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
                        mask=mask, biassub=biassub, phnoise=phnoise,
