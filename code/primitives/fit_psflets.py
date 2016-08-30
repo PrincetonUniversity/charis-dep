@@ -193,7 +193,8 @@ def _tag_psflets(shape, x, y, good):
 
 
 def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(), 
-                refine=True, smoothandmask=True, maxcpus=None):
+                refine=True, smoothandmask=True, returnresid=False,
+                maxcpus=None):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -295,14 +296,22 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     # intial guesses of the coefficients.
     ###################################################################
     
-    if refine:
+    if refine or returnresid:
         for i in range(len(psflets)):
             psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
             coefs_flat = np.reshape(coefs[i], -1)
             data -= psflets[i]*coefs_flat[psflet_indx]
+        if returnresid:
+            resid = Image(data=data, ivar=im.ivar)
 
-        A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
-        coefs += matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
+        if refine:
+            A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, 
+                                             psflets2, maxproc=maxcpus)
+            coefs += matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
+            if returnresid:
+                coefs_flat = np.reshape(coefs[i], -1)                
+                data = im.data - psflets[i]*coefs_flat[psflet_indx]
+                resid = Image(data=data, ivar=im.ivar)
 
     header['cubemode'] = ('leastsq', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
@@ -314,7 +323,10 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     if smoothandmask:
         datacube = _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
 
-    return datacube
+    if returnresid:
+        return datacube, resid
+    else:
+        return datacube
 
 
 def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, header=OrderedDict()):
