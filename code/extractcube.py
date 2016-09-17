@@ -91,7 +91,7 @@ def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3,
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
-        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, refine=refine, suppressrn=suppressrn, smoothandmask=smoothandmask, maxcpus=maxcpus)
+        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, maxcpus=maxcpus)
 
     elif method == 'optext':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
