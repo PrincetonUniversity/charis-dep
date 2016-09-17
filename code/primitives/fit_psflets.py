@@ -46,6 +46,86 @@ def _smoothandmask(datacube, good):
 
     return datacube
 
+def _trimmed_mean(arr, n=2, axis=None, maskval=0):
+    """
+    """
+
+    arr_sorted = arr.copy()
+
+    ########################################################
+    # Sort with masked values at the end,
+    # Trim the lowest n unmasked entries
+    ########################################################
+
+    arr_sorted[np.where(arr == maskval)] = np.inf
+    arr_sorted = np.sort(arr_sorted, axis=axis)
+    arr_sorted = arr_sorted[n:]
+
+    ########################################################
+    # Move masked values to the beginning, 
+    # trim the largest n unmasked entries
+    ########################################################
+
+    arr_sorted[np.where(np.isinf(arr_sorted))] *= -1
+    arr_sorted = np.sort(arr_sorted, axis=axis)[:-n]
+
+    ########################################################
+    # Replace mask with zero and return trimmed mean.
+    # No data --> return zero
+    ########################################################
+
+    arr_sorted[np.where(np.isinf(arr_sorted))] = 0
+    return np.sum(arr_sorted, axis=axis)/(np.sum(arr_sorted != 0, axis=axis) + 1e-100)
+
+
+def _get_corrnoise(resid, ivar):
+    """
+    """
+    mask = np.zeros(ivar.shape)
+    corrnoise = np.zeros(resid.shape)
+    
+    for i in range(32):
+        ivar_ref = np.median(ivar[:4, i*64:(i + 1)*64])
+        mask[:, i*64:(i + 1)*64] = ivar[:, i*64:(i + 1)*64] > 0.3*ivar_ref
+     
+    masked = resid*mask
+    stripe = np.zeros((16, 2048, 64))
+
+    ##################################################################
+    # Do the even channels (j=0) and odd channels (j=64) separately.
+    # Correlated read noise is very different between even and odd
+    # channels.  Compute the trimmed mean of the <=16 unmasked pixels
+    # in each set.  Each channel has its own coupling to this shared
+    # noise, which is estimated by corr.
+    ##################################################################
+
+    for j in [0, 64]:
+        for i in range(0, 2048, 128):
+            stripe[i//128] = masked[:, i+j:i+j+64]
+        noisemed = _trimmed_mean(stripe, axis=0)
+        for i in range(0, 2048, 128):
+            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+64], n=10)
+            corr /= _trimmed_mean(noisemed**2, n=10)
+            stripe[i//128] /= corr
+        noisemed = _trimmed_mean(stripe, axis=0)
+        for i in range(0, 2048, 128):
+            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+64], n=10)
+            corr /= _trimmed_mean(noisemed**2, n=10)
+            corrnoise[:, i+j:i+j+64] = corr*noisemed
+
+    return corrnoise
+
+def _recalc_ivar(data, ivar):
+    """
+    """
+
+    var = 1/ivar
+    for i in range(32):
+        rdnoise_old = np.sqrt(np.median(var[:4, i*64:(i + 1)*64]))
+        rdnoise_new = np.std(np.sort(data[:4, i*64:(i + 1)*64])[1:-1])
+        var[:, i*64:(i + 1)*64] += rdnoise_new**2 - rdnoise_old**2
+    return 1/var
+
 def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     """
     Fit a series of PSFlets to an image, recover the best-fit coefficients.
@@ -193,8 +273,8 @@ def _tag_psflets(shape, x, y, good):
 
 
 def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(), 
-                refine=True, smoothandmask=True, returnresid=False,
-                maxcpus=None):
+                refine=False, smoothandmask=True, returnresid=False,
+                suppressrdnse=False, maxcpus=None):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -215,7 +295,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
                 each wavelength
     6. good:    list of boolean arrays, true if lenslet spot lies 
                 within the H2RG
-    Optional input:
+    Optional inputs:
     1. header:  ordered dictionary or FITS header class, to store some
                 information about the reduction.
     
@@ -243,7 +323,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     goodint = np.reshape(np.prod(good.astype(np.int64), axis=0), -1)
     indx = np.where(goodint)[0]
     if im.ivar is not None:
-        isig = np.sqrt(im.ivar)
+        isig = np.sqrt(im.ivar).astype(np.float64)
     else:
         isig = np.ones(im.data.shape)
 
@@ -288,7 +368,6 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     ###################################################################
 
     cov[np.where(cov == 0)] = np.inf
-    #coefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
 
     ###################################################################
     # Subtract the best fit spectrum to include crosstalk.
@@ -296,28 +375,63 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     # intial guesses of the coefficients.
     ###################################################################
     
-    if refine or returnresid:
+    if refine or returnresid or suppressrdnse:
+
+        ###############################################################
+        # Compute residual from fit.
+        ###############################################################
+
         for i in range(len(psflets)):
             psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
             coefs_flat = np.reshape(coefs[i], -1)
             data -= psflets[i]*coefs_flat[psflet_indx]
+
+        ###############################################################
+        # Estimate shared noise and subtract it off.
+        ###############################################################
+
+        if suppressrdnse:
+            corrnoise = _get_corrnoise(data, im.ivar)
+            data[:] = im.data - corrnoise
+            im.ivar = _recalc_ivar(data, im.ivar)
+            isig = np.sqrt(im.ivar)
+            A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
+            coefs, cov = matutils.lstsq(A, b, indx, size, nlens, returncov=1, maxproc=maxcpus)
+            coefs = coefs.T.reshape(coefshape)
+            cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
+            cov = cov.T.reshape(coefshape)
+            cov[np.where(cov == 0)] = np.inf
+            for i in range(len(psflets)):
+                psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
+                coefs_flat = np.reshape(coefs[i], -1)
+                data -= psflets[i]*coefs_flat[psflet_indx]
+        else:
+            corrnoise = 0
+
         if returnresid:
             resid = Image(data=data, ivar=im.ivar)
-
+          
         if refine:
+            if suppressrdnse:
+                dcorrnoise = _get_corrnoise(data, im.ivar)
+                data -= dcorrnoise
+                corrnoise += dcorrnoise
             A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, 
                                              psflets2, maxproc=maxcpus)
             coefs += matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
             if returnresid:
-                coefs_flat = np.reshape(coefs[i], -1)                
-                data = im.data - psflets[i]*coefs_flat[psflet_indx]
+                data[:] = im.data - corrnoise
+                for i in range(len(psflets)):
+                    psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
+                    coefs_flat = np.reshape(coefs[i], -1)                
+                    data -= psflets[i]*coefs_flat[psflet_indx]
                 resid = Image(data=data, ivar=im.ivar)
 
     header['cubemode'] = ('leastsq', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
     header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
-    header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
+    header['nlam'] = (len(lam), 'Number of extracted wavelengths')
     datacube = Image(data=coefs, ivar=1./cov, header=header)
 
     if smoothandmask:
