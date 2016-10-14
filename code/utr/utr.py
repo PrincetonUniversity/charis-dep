@@ -1,8 +1,10 @@
 import numpy as np
 from image import Image
+import fitramp
 import tools
 import re
 import time
+import multiprocessing
 from collections import OrderedDict
 log = tools.getLogger('main')
 
@@ -46,7 +48,8 @@ def getreads(filename, header=OrderedDict(),
         idx1 = read_idx[1] + 1
     else:
         idx1 = read_idx[1]
-    reads = np.zeros((len(hdulist[read_idx[0]:idx1]), shape[0], shape[1]))
+    reads = np.zeros((len(hdulist[read_idx[0]:idx1]), shape[0], shape[1]),
+                     np.float32)
     
     #header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
     header['firstrd'] = (read_idx[0], 'First HDU of original file used')
@@ -67,6 +70,45 @@ def getreads(filename, header=OrderedDict(),
         #            refpix = np.concatenate([top, bottom])
         #        reads[i, :, j*64:(j+1)*64] -= refpix.mean()
     return reads
+
+
+
+def calcramp(reads=None, filename=None, mask=None, phnoise=1.,
+             header=OrderedDict(), read_idx=[1,None], maxcpus=4,
+             fitnonlin=True, fitexpdecay=True):
+
+    """
+    
+    """
+
+    if reads is None:
+        reads = getreads(filename, header, read_idx)
+
+    read0 = header['firstrd'][0]
+
+    maskarr = np.ones(reads[0].shape, np.uint16)
+    if mask is not None:
+        maskarr[:] = mask
+
+    data, ivar = fitramp.fit_ramp(reads, maskarr, tol=1e-5, read0=read0,
+                                  phnsefac=phnoise, maxproc=maxcpus,
+                                  fitnonlin=fitnonlin, fitexpdecay=fitexpdecay,
+                                  returnivar=True)
+
+    header['phnoise'] = (phnoise, 'Poisson variance = phnoise*(cts/ADU)')
+    header['fitdecay'] = (fitexpdecay, 'Fit exponential decay of ref. volt. in read 1?')
+    header['nonlin'] = (fitnonlin, 'Fit nonlinear pixel response?')
+    
+    try:
+        origname = re.sub('.*CRSA', '', re.sub('.fits', '', filename))
+        header['origname'] = (origname, 'Original file ID number')
+    except:
+        pass
+
+    return Image(data=data, ivar=ivar, header=header)
+
+
+
 
 def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     """
@@ -217,7 +259,8 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
     # Now add photon noise.  The factor of 1.3 is approximate and is from
     # the asymptotic performance of up-the-ramp sampling.  Divide by
     # nreads because we are using units of ADU per read.
-    var[4:-4, 4:-4] += phnoise*np.abs(c_arr[4:-4, 4:-4])/gain/nreads
+    cts = c_arr[4:-4, 4:-4]
+    var[4:-4, 4:-4] += phnoise*cts*(cts > 0)/gain/nreads
     ivar = 1./var
 
     if return_im:
@@ -227,8 +270,8 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
     else:
         return c_arr
 
-def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
-        interp_meth='linear', calc_chisq=False, phnoise=1.3,
+def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, 
+        biassub='all', interp_meth='linear', calc_chisq=False, phnoise=1.3,
         header=OrderedDict(), **kwargs):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
@@ -261,7 +304,7 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
     if reads is None:
         reads = getreads(filename, header, **kwargs)
 
-    nreads = reads.shape[2]
+    nreads = reads.shape[0]
 
     ###################################################################
     # Sample up-the-ramp in the read noise limit to get an estimate of 
@@ -270,8 +313,8 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, biassub='all',
     ###################################################################
 
     im = utr_rn(reads, header=header, biassub=biassub, gain=gain, phnoise=phnoise, return_im=True) # count rate (ADU) in RN limit
-    #ivar_arr = np.ones(c_rn_arr.shape)
-    
+    ivar_arr = np.ones(c_rn_arr.shape)
+
     ###################################################################
     # Generate interpolation objects for the up-the-ramp coefficients,
     # calculate the count (c) and intercept (a) for every pixel. The
