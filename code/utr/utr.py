@@ -313,7 +313,7 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0,
     ###################################################################
 
     im = utr_rn(reads, header=header, biassub=biassub, gain=gain, phnoise=phnoise, return_im=True) # count rate (ADU) in RN limit
-    ivar_arr = np.ones(c_rn_arr.shape)
+    #ivar_arr = np.ones(c_rn_arr.shape)
 
     ###################################################################
     # Generate interpolation objects for the up-the-ramp coefficients,
