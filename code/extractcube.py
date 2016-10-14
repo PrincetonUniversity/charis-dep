@@ -73,13 +73,17 @@ def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3,
     # background and apply a bad pixel mask.
     ################################################################
 
-    inImage = utr.utr(filename=filename, read_idx=read_idx, 
-                      biassub=biassub, phnoise=phnoise)
+    maskarr = fits.open(calibdir + '/mask.fits')[0].data
+
+    inImage = utr.calcramp(filename=filename, mask=maskarr,read_idx=read_idx, 
+                           phnoise=phnoise, maxcpus=maxcpus)
+    #inImage = utr.utr(filename=filename, read_idx=read_idx, 
+    #                  biassub=biassub, phnoise=phnoise)
     if bgsub:
         inImage.data -= fits.open(calibdir + '/background.fits')[0].data
-    if mask:
-        inImage.ivar *= fits.open(calibdir + '/mask.fits')[0].data
-
+    #if mask:
+    #    inImage.ivar *= fits.open(calibdir + '/mask.fits')[0].data
+    
     ################################################################
     # Read in necessary calibration files and extract the data cube.
     ################################################################
@@ -156,7 +160,7 @@ if __name__ == "__main__":
         if maxcpus < 1:
             maxcpus = 1
     except:
-        maxcpus = None
+        maxcpus = multiprocessing.cpu_count()
 
     try:
         smoothandmask = Config.getboolean('Extract', 'smoothandmask')
