@@ -102,12 +102,12 @@ def _get_corrnoise(resid, ivar):
     for j in [0, 64]:
         for i in range(0, 2048, 128):
             stripe[i//128] = masked[:, i+j:i+j+64]
-        noisemed = _trimmed_mean(stripe, axis=0)
+        noisemed = _trimmed_mean(stripe, axis=0, n=1)
         for i in range(0, 2048, 128):
             corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+64], n=10)
             corr /= _trimmed_mean(noisemed**2, n=10)
             stripe[i//128] /= corr
-        noisemed = _trimmed_mean(stripe, axis=0)
+        noisemed = _trimmed_mean(stripe, axis=0, n=1)
         for i in range(0, 2048, 128):
             corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+64], n=10)
             corr /= _trimmed_mean(noisemed**2, n=10)
