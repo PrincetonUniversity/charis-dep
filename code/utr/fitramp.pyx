@@ -320,7 +320,7 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
                 # Only use reads that should not be heavily saturated.
                 ########################################################
 
-                x = fabs(cts_local[i, 1] - cts_local[i, 0])
+                x = fabs(cts_local[i, 1] - cts_local[i, 0]) + 1e-10
                 kmax = (int)(sat/x - read0)
                 if kmax < 2:
                     kmax = 2
