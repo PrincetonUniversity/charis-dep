@@ -5,7 +5,6 @@ except:
 
 import numpy as np
 import tools
-from collections import OrderedDict
 from datetime import date
 
 log = tools.getLogger('main')
@@ -30,8 +29,8 @@ class Image:
     through a call to Image.load().  
     """
 
-    def __init__(self, filename=None, data=None, ivar=None, chisq=None, 
-                 header=OrderedDict(),
+    def __init__(self, filename='', data=None, ivar=None, chisq=None, 
+                 header=fits.PrimaryHDU().header,
                  reads=None, flags=None, destriped=False, flatfielded=False):
         self.destriped = destriped
         self.flatfielded = flatfielded
@@ -44,10 +43,10 @@ class Image:
         self.flags = flags
         self.filename = filename
 
-        if filename is not None:
+        if data is None and filename != '':
             self.load(filename)
                 
-    def load(self, filename, loadbadpixmap=True):
+    def load(self, filename, loadbadpixmap=False):
         """
         Image.load(outfilename)
         
@@ -95,7 +94,7 @@ class Image:
         Creates a primary HDU using self.data and self.header, and
         attempts to write to outfilename.  If self.ivar is not None,
         append self.ivar as a second HDU before writing to a file.       
-        clobber is provided as a  keyword to fits.HDUList.writeto.
+        clobber is provided as a keyword to fits.HDUList.writeto.
         """
         
         hdr = fits.PrimaryHDU().header
@@ -103,8 +102,9 @@ class Image:
         yyyymmdd = '%d%02d%02d' % (today[0], today[1], today[2])
         hdr['date'] = (yyyymmdd, 'File creation date (yyyymmdd)')
 
-        for key in self.header:
-            hdr[key] = self.header[key]
+        for i, key in enumerate(self.header):
+            hdr.append((key, self.header[i], self.header.comments[i]), end=True)
+
         out = fits.HDUList(fits.PrimaryHDU(None, hdr))
         out.append(fits.PrimaryHDU(self.data.astype(np.float32)))
         if self.ivar is not None:
@@ -119,5 +119,3 @@ class Image:
                 
         except:
             log.error("Unable to write FITS file " + filename)
-        #except:
-        #    log.error("Unable to create HDU from data and header")
