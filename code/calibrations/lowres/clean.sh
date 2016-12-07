@@ -1,8 +1,0 @@
-#cp hires_psflets_lam1550.fits hires_psflets_lam1450.fits
-#cp hires_psflets_lam1450.fits hires_psflets_lam1350.fits
-
-cp hires_psflets_lam1350.fits hires_psflets_lam1250.fits
-cp hires_psflets_lam1350.fits hires_psflets_lam1150.fits
-
-cp hires_psflets_lam2250.fits hires_psflets_lam2300.fits
-cp hires_psflets_lam2250.fits hires_psflets_lam2350.fits
