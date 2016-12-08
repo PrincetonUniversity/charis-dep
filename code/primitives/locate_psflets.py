@@ -91,8 +91,9 @@ class PSFLets:
             lam2 = np.amax(lam)*1.03
 
         interporder = order
-
-        self.geninterparray(lam, allcoef, order=order)
+        
+        if self.interp_arr is None:
+            self.geninterparray(lam, allcoef, order=order)
 
         coeforder = int(np.sqrt(allcoef.shape[1])) - 1
         n_spline = 100
@@ -109,13 +110,30 @@ class PSFLets:
 
             dx += [_dx]
             dy += [_dy]
+        
+        R = np.sqrt(np.asarray(dy)**2 + np.asarray(dx)**2)
 
-        return interp_lam, np.asarray(dy)
-
-
-    def return_locations(self, lam, allcoef, xindx, yindx):
+        return interp_lam, R
+    
+    def monochrome_coef(self, lam, alllam=None, allcoef=None, order=3):
         if self.interp_arr is None:
-            self.geninterparray(lam, allcoef)
+            if alllam is None or allcoef is None:
+                raise ValueError("Interpolation array has not been computed.  Must call monochrome_coef with arrays.")
+            self.geninterparray(alllam, allcoef, order=order)
+
+        coef = np.zeros(self.interp_arr[0].shape)
+        for k in range(self.order + 1):
+            coef += self.interp_arr[k]*np.log(lam)**k
+        return coef
+
+    def return_locations(self, lam, allcoef, xindx, yindx, order=3):
+        if len(allcoef.shape) == 1:
+            coeforder = int(np.sqrt(allcoef.shape[0])) - 1
+            interp_x, interp_y = _transform(xindx, yindx, coeforder, allcoef)
+            return interp_x, interp_y
+
+        if self.interp_arr is None:
+            self.geninterparray(lam, allcoef, order=order)
 
         coeforder = int(np.sqrt(allcoef.shape[1])) - 1
         if not (coeforder + 1)*(coeforder + 2) == allcoef.shape[1]:
@@ -145,7 +163,8 @@ class PSFLets:
             lam2 = np.amax(lam)*1.03
         interporder = order
 
-        self.geninterparray(lam, allcoef, order=order)
+        if self.interp_arr is None:
+            self.geninterparray(lam, allcoef, order=order)
 
         coeforder = int(np.sqrt(allcoef.shape[1])) - 1
         if not (coeforder + 1)*(coeforder + 2) == allcoef.shape[1]:
@@ -464,8 +483,8 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
         bestval = 0
         coefsave = list(coef[:])
 
-        for ix in np.arange(-0.3, 0.4, 0.1):
-            for iy in np.arange(-10, 1, 0.1):
+        for ix in np.arange(-3, 3.1, 0.2):
+            for iy in np.arange(-3, 3.1, 0.2):
                 coef = coefsave[:]
                 coef[0] += ix
                 coef[(polyorder + 1)*(polyorder + 2)/2] += iy
