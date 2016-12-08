@@ -5,11 +5,11 @@ import tools
 import re
 import time
 import multiprocessing
-from collections import OrderedDict
+from astropy.io import fits
+
 log = tools.getLogger('main')
 
-def getreads(filename, header=OrderedDict(), 
-             read_idx=[1,None]): #, biassub=None):
+def getreads(filename, header=fits.PrimaryHDU().header, read_idx=[1,None]):
     """
     Get reads from fits file and put them in the correct 
     format for the up-the-ramp functions. 
@@ -18,29 +18,21 @@ def getreads(filename, header=OrderedDict(),
     1. filename:  string, name of the fits file
 
     Optional inputs:
-    1. read_idx:  list, [first index, last index] to extract from
+    1. header:    FITS header object for recording the reads used.  
+    2. read_idx:  list, [first index, last index] to extract from
                   the hdulist: index = 1 is the first read, use 
                   last index = None to use all reads after the 
-                  first index
-    2. biassub:   string, perform bias subtraction using the
-                  'top', 'bottom', or 'all' (top and bottom)
-                  the reference pixels. If None, do not perform 
-                  the bias subtraction
+                  first index.  Default [1, None].
 
     Returns:
-    1. reads:     3D ndarray, shape = (nreads, 2048, 2048)
-                  or (nreads, 2048, 2112) 
+    1. reads:     3D float32 ndarray, shape = (nreads, ny, nx)
+
+    The input header, if given, will contain keywords for the first
+    and last reads used.
 
     """
 
-    try:
-        from astropy.io import fits
-    except:
-        import pyfits as fits
-
     log.info("Getting reads from " + filename)
-    #if biassub is not None:
-    #    log.info("Subtracting mean from " + biassub + " reference pixels")
 
     hdulist = fits.open(filename)
     shape = hdulist[1].data.shape
@@ -50,60 +42,97 @@ def getreads(filename, header=OrderedDict(),
         idx1 = read_idx[1]
     reads = np.zeros((len(hdulist[read_idx[0]:idx1]), shape[0], shape[1]),
                      np.float32)
-    
-    #header['biassub'] = (biassub, 'Reference pixels used to correct ref voltage')
-    header['firstrd'] = (read_idx[0], 'First HDU of original file used')
+
+    header.append(('firstrd', read_idx[0], 'First HDU of original file used'), end=True)
 
     for i, r in enumerate(hdulist[read_idx[0]:idx1]):
         header['lastrd'] = (i + read_idx[0], 'Last HDU of original file used')
         reads[i] = r.data
-        #if biassub is not None:
-        #    numchan = shape[1]/64
-        #    for j in xrange(numchan):
-        #        if biassub=='top':
-        #            refpix = reads[i, -4:, j*64:(j+1)*64]
-        #        elif biassub=='bottom':
-        #            refpix = reads[i, :4, j*64:(j+1)*64]
-        #        elif biassub=='all':
-        #            top = reads[i, -4:, j*64:(j+1)*64]
-        #            bottom = reads[i, :4, j*64:(j+1)*64]
-        #            refpix = np.concatenate([top, bottom])
-        #        reads[i, :, j*64:(j+1)*64] -= refpix.mean()
     return reads
 
 
 
-def calcramp(reads=None, filename=None, mask=None, phnoise=1.,
-             header=OrderedDict(), read_idx=[1,None], maxcpus=4,
+def calcramp(filename, mask=None, gain=2., noisefac=0,
+             header=fits.PrimaryHDU().header, read_idx=[1,None], 
+             maxcpus=multiprocessing.cpu_count(),
              fitnonlin=True, fitexpdecay=True):
 
     """
-    
+    Function calcramp computes the up-the-ramp count rates and their
+    inverse variance using the cython function fit_ramp.
+
+    Input:
+    1. filename  string, name of the file containing the reads, to be
+                 opened by astropy.io.fits.open().  Reads are assumed 
+                 to reside in HDU 1, 2, ..., N.
+    Optional inputs:
+    1. mask      boolean array, nonzero for good pixels and zero for 
+                 bad pixels.  Default None (no masking)
+    2. gain      Float, electrons/ADU, used to compute shot noise on 
+                 count rates.  Default 2.
+    3. noisefac  Float, extra noise to add to derived count rates.  
+                 This noise will be added in quadrature but will be 
+                 assumed to be a fixed fraction of the count rate;
+                 it is appropriate for handing imperfect PSFlet 
+                 models.  Default 0.
+    4. header    FITS header to hold information on the ramp.  Create
+                 a new header if this is not given.
+    5. read_idx  Reads to use to compute the ramp.  Default [1, None],
+                 i.e., use the first and all subsequent reads.
+    6. maxcpus   Maximum number of threads for OpenMP parallelization
+                 in Cython.  Default multiprocessing.cpu_count().
+    7. fitnonlin  Boolean, fit an approximately measured nonlinear 
+                 response to each pixel's count rate?  Adds very 
+                 little to the computational cost.  Default True.
+    8. fitexpdecay  Boolean, fit for the exponential decay of the 
+                 reference voltage in the first read (if using the
+                 first read)?  Strongly recommended for CHARIS data.
+                 Default True.  Only possible if there are at least 
+                 three reads.
+
+    Returns:    
+    1. Image     an Image class containing the derived count rates,
+                 their inverse variance, and a FITS header.
+
+
+    This function is largely a wrapper for the cython function
+    fit_ramp, which is calls after first calling getreads().  
+
     """
 
-    if reads is None:
-        reads = getreads(filename, header, read_idx)
+    header.append(('comment', ''), end=True)
+    header.append(('comment', '*'*60), end=True)
+    header.append(('comment', '*'*19 + ' Ramp, Masking, Noise ' + '*'*19), end=True)
+    header.append(('comment', '*'*60), end=True)    
+    header.append(('comment', ''), end=True)
 
-    read0 = header['firstrd'][0]
+    reads = getreads(filename, header, read_idx)
+
+    try:
+        read0 = header['firstrd']
+    except:
+        read0 = 0
 
     maskarr = np.ones(reads[0].shape, np.uint16)
     if mask is not None:
-        maskarr[:] = mask
+        maskarr[:] = mask != 0
+
+    header.append(('pixmask', mask is not None, 'Mask known bad/hot pixels?'), end=True)
 
     data, ivar = fitramp.fit_ramp(reads, maskarr, tol=1e-5, read0=read0,
-                                  phnsefac=phnoise, maxproc=maxcpus,
+                                  gain=gain, maxproc=maxcpus,
                                   fitnonlin=fitnonlin, fitexpdecay=fitexpdecay,
                                   returnivar=True)
 
-    header['phnoise'] = (phnoise, 'Poisson variance = phnoise*(cts/ADU)')
+    if noisefac > 0:
+        ivar[:] = 1./(1./(ivar + 1e-100) + (noisefac*data)**2)
+
+    header.append(('gain', gain, 'Assumed detector gain for Poisson variance'), end=True)
+    header['noisefac'] = (noisefac, 'Added noise (as fraction of abs(ct rate))')
+
     header['fitdecay'] = (fitexpdecay, 'Fit exponential decay of ref. volt. in read 1?')
     header['nonlin'] = (fitnonlin, 'Fit nonlinear pixel response?')
     
-    try:
-        origname = re.sub('.*CRSA', '', re.sub('.fits', '', filename))
-        header['origname'] = (origname, 'Original file ID number')
-    except:
-        pass
 
     return Image(data=data, ivar=ivar, header=header)
 
@@ -187,7 +216,7 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     return ia_coef, ic_coef, ic_ivar
 
 
-def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDict(), biassub='all', phnoise=1.3, **kwargs):
+def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=fits.PrimaryHDU().header, biassub='all', phnoise=1.3, **kwargs):
     """
     Sample reads up-the-ramp in the read noise limit. We assume the counts 
     in each pixel obey the linear relation y_i = a + i*b*dt = a + i*c, 
@@ -272,7 +301,7 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=OrderedDic
 
 def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0, 
         biassub='all', interp_meth='linear', calc_chisq=False, phnoise=1.3,
-        header=OrderedDict(), **kwargs):
+        header=fits.PrimaryHDU().header, **kwargs):
     """
     Sample reads up-the-ramp taking both shot noise and read noise 
     into account. We assume the counts in each pixel obey the linear 
