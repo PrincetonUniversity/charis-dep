@@ -13,14 +13,14 @@ import primitives
 import utr
 from image import Image
 import sys
-import os
 import ConfigParser
 import multiprocessing
 
-def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3, 
-            calibdir='calibrations/20160408/', bgsub=True, mask=True,
-            maxcpus=None, R=25, method='lstsq', refine=True,
-            smoothandmask=True, suppressrn=True):
+def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/', 
+            bgsub=True, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
+            method='lstsq', refine=True, suppressrn=True, fitshift=True, 
+            flatfield=True, smoothandmask=True,
+            maxcpus=multiprocessing.cpu_count()):
 
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
@@ -34,13 +34,36 @@ def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3,
                  discard the first read and use all of the rest.
     2. calibdir: name of the directory containing the calibration files.  
                  Default calibrations/20160408/
-    3. R:        integer, approximate resolution lam/delta(lam) of the
+    3. bgsub:    Subtract the file background.fits in calibdir?  Default
+                 True.
+    4. mask:     Apply the bad pixel mask mask.fits in the directory
+                 calibdir?  Strongly recommended.  Default True.
+    5. gain:     Detector gain, used to compute shot noise.  Default 2.
+    6. noisefac: Extra factor of noise to account for imperfect lenslet
+                 models: 
+                 variance = readnoise + shotnoise + noisefac*countrate
+                 Default zero, values of around 0.05 should give 
+                 reduced chi squared values of around 1 in the fit.
+    7. R:        integer, approximate resolution lam/delta(lam) of the
                  extracted data cube.  Resolutions higher than ~25 or 30
                  are comparable to or finer than the pixel sampling and 
                  are not recommended--there is very strong covariance.
-    4. method:   string, method used to extract data cube.  Should be 
+                 Default 30.
+    8. method:   string, method used to extract data cube.  Should be 
                  either 'lstsq' for a least-squares extraction or 
-                 'optext' for a quasi-optimal extraction.
+                 'optext' for a quasi-optimal extraction.  Default
+                 'lstsq'
+    9. refine:   Fit the data cube twice to account for nearest neighbor
+                 crosstalk?  Approximately doubles runtime.  This option
+                 also enables read noise suppression (below).  Default 
+                 True
+    10. suppress_rn: Remove correlated read noise between channels using 
+                 the residuals of the 50% least illuminated pixels?  
+                 Default True.
+    11. fitshift: Fit a subpixel shift in the psflet locations across 
+                 the detector?  Recommended except for quicklook.  Cost 
+                 is modest compared to cube extraction
+
     Returns:
     1. datacube: an instance of the Image class containing the data cube.
 
@@ -48,12 +71,15 @@ def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3,
 
     1. Up-the-ramp combination.  As of yet no special read noise
     suppression (just a channel-by-channel correction of the reference
-    voltages), no nonlinearity correction.
+    voltages).  Do a full nonlinear fit for high count pixels, and 
+    remove an exponential decay of the reference voltage in the first
+    read.
     2. Subtraction of thermal background from file in calibration 
     directory.
     3. Application of hot pixel mask (as zero inverse variances).
     4. Load calibration files from calibration directory for the data
-    cube extraction.
+    cube extraction, optionally fit for subpixel shifts across the 
+    detector.
     5. Extract the data cube.
 
     Notes for now: the quasi-optimal extraction isn't really an
@@ -73,29 +99,66 @@ def getcube(filename, read_idx=[2, None], biassub=None, phnoise=1.3,
     # background and apply a bad pixel mask.
     ################################################################
 
-    maskarr = fits.open(calibdir + '/mask.fits')[0].data
+    header = utr.metadata(filename)
 
+    maskarr = None
+    if mask == True:
+        maskarr = fits.open(calibdir + '/mask.fits')[0].data  
+        
     inImage = utr.calcramp(filename=filename, mask=maskarr,read_idx=read_idx, 
-                           phnoise=phnoise, maxcpus=maxcpus)
-    #inImage = utr.utr(filename=filename, read_idx=read_idx, 
-    #                  biassub=biassub, phnoise=phnoise)
+                           header=header, gain=gain, noisefac=noisefac, 
+                           maxcpus=maxcpus)
+
     if bgsub:
-        inImage.data -= fits.open(calibdir + '/background.fits')[0].data
-    #if mask:
-    #    inImage.ivar *= fits.open(calibdir + '/mask.fits')[0].data
-    
+        try:
+            hdulist = fits.open(calibdir + '/background.fits')
+            bg = hdulist[0].data
+            if bg is None:
+                bg = hdulist[1].data
+            if mask:
+                bg *= maskarr
+            inImage.data -= bg
+        except:
+            bgsub = False
+            log.warn('No valid background image found in ' + indir)
+
+    header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
+    if saveramp:
+        inImage.write(re.sub('.*/', '', re.sub('.fits', '_ramp.fits', filename)))
+
     ################################################################
     # Read in necessary calibration files and extract the data cube.
+    # Optionally fit for a position-dependent offset 
     ################################################################
 
+    header.append(('comment', ''), end=True)
+    header.append(('comment', '*'*60), end=True)
+    header.append(('comment', '*'*22 + ' Cube Extraction ' + '*'*21), end=True)
+    header.append(('comment', '*'*60), end=True)    
+    header.append(('comment', ''), end=True)
+
     if method == 'lstsq':
-        psflets = fits.open(calibdir + '/polychromeR%d.fits' % (R))[0].data
+        header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
+        if fitshift:
+            psflets = np.load(calibdir + '/polychromefullR%d.npy' % (R))
+            offsets = np.arange(-5, 6)
+            psflets = primitives.calc_offset(psflets, inImage, offsets, maxcpus=maxcpus)
+        else:
+            psflets = fits.open(calibdir + '/polychromeR%d.fits' % (R))[0].data
         keyfile = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))
         lam_midpts = keyfile[0].data
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
-        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, maxcpus=maxcpus)
+
+        if flatfield:
+            psflets = psflets*fits.open(calibdir + '/pixelflat.fits')[0].data
+            lensletflat = fits.open(calibdir + '/lensletflat.fits')[0].data
+        else:
+            lensletflat = None
+        header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
+
+        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, flat=lensletflat, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, maxcpus=maxcpus)
 
     elif method == 'optext':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
@@ -126,20 +189,26 @@ if __name__ == "__main__":
     except:
         read_1 = None
     read_idx = [read_0, read_1]
-    biassub = Config.get('Ramp', 'biassub')
-    if biassub == 'None':
-        biassub = None
     try:
-        phnoise = Config.getfloat('Ramp', 'phnoise')
-        if phnoise < 0:
-            phnoise = 0
+        gain = Config.getfloat('Ramp', 'gain')
     except:
-        phnoise = 1.3  # approximate factor for photon  noise (!= 1 as
-                      # the  asymptotic  ratio  of  up-the-ramp  noise
-                      # weighting to CDS weighting)
+        gain = 2
+    try:
+        noisefac = Config.getfloat('Ramp', 'noisefac')
+    except:
+        noisefac = 0
 
+    saveramp = Config.getboolean('Ramp', 'saveramp')
     bgsub = Config.getboolean('Calib', 'bgsub')
     mask = Config.getboolean('Calib', 'mask')
+    try:
+        flatfield = Config.getboolean('Calib', 'flatfield')
+    except:
+        flatfield = True
+    try:
+        fitshift = Config.getboolean('Calib', 'fitshift')
+    except:
+        fitshift = True
 
     calibdir = Config.get('Calib', 'calibdir')
     R = Config.getint('Extract', 'R')
@@ -169,9 +238,9 @@ if __name__ == "__main__":
 
     for filename in filenames:
         cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
-                       mask=mask, biassub=biassub, phnoise=phnoise,
-                       refine=refine, maxcpus=maxcpus, calibdir=calibdir,
-                       R=R, method=method, smoothandmask=smoothandmask,
-                       suppressrn=suppressrn)
+                       mask=mask, gain=gain, noisefac=noisefac, 
+                       saveramp=saveramp, refine=refine, maxcpus=maxcpus, 
+                       calibdir=calibdir, R=R, method=method, 
+                       smoothandmask=smoothandmask, flatfield=flatfield,
+                       fitshift=fitshift, suppressrn=suppressrn)
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
-
