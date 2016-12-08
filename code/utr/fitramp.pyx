@@ -373,9 +373,6 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
     return
 
 
-
-
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 
@@ -383,7 +380,7 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
              float tol=1e-5, int read0=1, 
              double a=0.991, double b=-1.8e-6, double c=-2e-11, 
              double threshold=5000., double sat=50000.,
-             double phnsefac=0.8, int maxproc=4, char refsub='t',
+             double gain=2, int maxproc=4, char refsub='t',
              int fitnonlin=1, int fitexpdecay=1, int returnivar=1):
 
     """
@@ -519,12 +516,14 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
                     elif y <= 0 or j < 4 or j >= ny - 4:
                         ivar[j, kk] = 1./rdnse
                     elif y > 0 and y*(nread + read0) < sat:
-                        ivar[j, kk] = 1./(rdnse + phnsefac*y/nread)
+                        x = 6./5*(nread*nread + 1.)/(nread*(nread*nread - 1.))
+                        #ivar[j, kk] = 1./(rdnse + phnsefac*y/nread)
+                        ivar[j, kk] = 1./(rdnse + x*y/gain)
                     else:
                         x = sat/y - read0
                         if x < 1:
                             x = 1
-                        ivar[j, kk] = 1./(rdnse + phnsefac*(sat - y*read0)/x**2)
+                        ivar[j, kk] = 1./(rdnse + 2./gain*(sat - y*read0)/x**2)
 
     ####################################################################
     # Set ivar to zero for pixels where one read contributes an
