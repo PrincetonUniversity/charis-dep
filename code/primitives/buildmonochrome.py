@@ -5,7 +5,7 @@ import numpy as np
 from scipy import signal, ndimage
 
 
-def gethires(x, y, image, upsample=5, nsubarr=5, npix=13):
+def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
     """
     Build high resolution images of the undersampled PSF using the
     monochromatic frames.
@@ -23,7 +23,7 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13):
     ###################################################################
 
     hires_arr = np.zeros((nsubarr, nsubarr, upsample*(npix + 1), upsample*(npix + 1)))
-    _x = np.arange(3*upsample) - (3*upsample)//2
+    _x = np.arange(3*upsample) - (3*upsample - 1)/2.
     _x, _y = np.meshgrid(_x, _x)
     r2 = _x**2 + _y**2
     window = np.exp(-r2/(2*0.3**2*(upsample/5.)**2))
@@ -91,34 +91,93 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13):
             # of poor sampling.
             ############################################################
 
-            for i in range(subim.shape[1]):
-                for j in range(subim.shape[2]):
-                    data = subim[:k, i, j][np.where(subim[:k, i, j] != 0)]
-                    data = np.sort(data)
-                    npts = data.shape[0]
-                    meanpsf[i, j] = max(0, np.mean(data[2*npts/10:8*npts/10]))
-                    weight[i, j] = npts 
+            for ii in range(3):
 
-            meanpsf = signal.convolve2d(meanpsf*weight, window, mode='same')
-            meanpsf /= signal.convolve2d(weight, window, mode='same')
+                window1 = np.exp(-r2/(2*1**2*(upsample/5.)**2))
+                window2 = np.exp(-r2/(2*1**2*(upsample/5.)**2))
+                if ii < 2:
+                    window = window2
+                else:
+                    window = window1                    
+
+                if ii > 0:
+                    for kk in range(k):
+                        mask = 1.*(subim[kk] != 0)
+                        if np.sum(mask) > 0:
+                            A = np.sum(subim[kk]*meanpsf*mask)
+                            A /= np.sum(meanpsf**2*mask)
+
+                            if A > 0.5 and A < 2:
+                                subim[kk] /= A
+                            else:
+                                subim[kk] = 0
+
+                            chisq = np.sum(mask*(meanpsf - subim[kk])**2)
+                            chisq /= np.amax(meanpsf)**2
+
+                            subim[kk] *= (chisq < 1e-2*upsample**2)
+                            #mask2 = np.abs(meanpsf - subim[kk])/(np.abs(meanpsf) + 0.01*np.amax(meanpsf)) < 1
+                            #subim[kk] *= mask2
+                            subim[kk] *= subim[kk] > -1e-3*np.amax(meanpsf)
+
+                subim2 = subim.copy()
+                for i in range(subim.shape[1]):
+                    for j in range(subim.shape[2]):
+
+                        _i1 = max(i - upsample//4, 0)
+                        _i2 = min(i + upsample//4 + 1, subim.shape[1] - 1)
+                        _j1 = max(j - upsample//4, 0)
+                        _j2 = min(j + upsample//4 + 1, subim.shape[2] - 1)
+                        
+                        data = subim2[:k, _i1:_i2, _j1:_j2][np.where(subim2[:k, _i1:_i2, _j1:_j2] != 0)]
+                        if data.shape[0] > 10:
+                            data = np.sort(data)[3:-3]
+                            std = np.std(data) + 1e-10
+                            mean = np.mean(data)
+                        
+                            subim[:k, i, j] *= np.abs(subim[:k, i, j] - mean)/std < 3.5
+                        elif data.shape[0] > 5:
+                            data = np.sort(data)[1:-1]
+                            std = np.std(data) + 1e-10
+                            mean = np.mean(data)
+                        
+                            subim[:k, i, j] *= np.abs(subim[:k, i, j] - mean)/std < 3.5
+                        
+                        data = subim[:k, i, j][np.where(subim[:k, i, j] != 0)]
+                        #data = np.sort(data)
+                        npts = data.shape[0]
+                        if npts > 0:
+                            meanpsf[i, j] = np.mean(data)
+                            weight[i, j] = npts
+
+                meanpsf = signal.convolve2d(meanpsf*weight, window, mode='same')
+                meanpsf /= signal.convolve2d(weight, window, mode='same')
+
+                val = meanpsf.copy()
+                for jj in range(10):
+                    tmp = val/signal.convolve2d(meanpsf, window, mode='same')
+                    meanpsf *= signal.convolve2d(tmp, window[::-1, ::-1], mode='same')
+                    
             
             ############################################################
             # Normalize all PSFs to unit flux when resampled with an
             # interpolator.
             ############################################################
 
-            meanpsf *= upsample**2/np.sum(meanpsf)
+            if renorm:
+                meanpsf *= upsample**2/np.sum(meanpsf)
             hires_arr[yreg, xreg] = meanpsf
             
     return hires_arr
 
 
 def make_polychrome(lam1, lam2, hires_arrs, lam_arr, psftool, allcoef,
-                     xindx, yindx, upsample=5, nlam=10):
+                     xindx, yindx, upsample=5, nlam=10, trans=None):
     """
     """
 
-    image = np.zeros((2048, 2048))
+    padding = 10
+    image = np.zeros((2048 + 2*padding, 2048 + 2*padding))
     x = np.arange(image.shape[0])
     x, y = np.meshgrid(x, x)
     npix = hires_arrs[0].shape[2]//upsample
@@ -127,6 +186,10 @@ def make_polychrome(lam1, lam2, hires_arrs, lam_arr, psftool, allcoef,
     loglam = np.log(lam1) + dloglam/2. + np.arange(nlam)*dloglam
 
     for lam in np.exp(loglam):
+
+        if trans is not None:
+            indx = np.where(np.abs(np.log(trans[:, 0]/lam)) < dloglam/2.)
+            meantrans = np.mean(trans[:, 1][indx])
 
         ################################################################
         # Build the appropriate average hires image by averaging over
@@ -141,10 +204,10 @@ def make_polychrome(lam1, lam2, hires_arrs, lam_arr, psftool, allcoef,
         elif lam >= np.amax(lam_arr):
             hires[:] = hires_arrs[-1]
         else:
-            i1 = np.amin(np.arange(lam_arr.shape[0])[np.where(lam > lam_arr)])
+            i1 = np.amax(np.arange(len(lam_arr))[np.where(lam > lam_arr)])
             i2 = i1 + 1
             hires = hires_arrs[i1]*(lam - lam_arr[i1])/(lam_arr[i2] - lam_arr[i1])
-            hires += hires_arrs[i1]*(lam_arr[i2] - lam)/(lam_arr[i2] - lam_arr[i1])
+            hires += hires_arrs[i2]*(lam_arr[i2] - lam)/(lam_arr[i2] - lam_arr[i1])
 
         for i in range(hires.shape[0]):
             for j in range(hires.shape[1]):
@@ -161,6 +224,8 @@ def make_polychrome(lam1, lam2, hires_arrs, lam_arr, psftool, allcoef,
         ################################################################
 
         xcen, ycen = psftool.return_locations(lam, allcoef, xindx, yindx)
+        xcen += padding
+        ycen += padding
         xcen = np.reshape(xcen, -1)
         ycen = np.reshape(ycen, -1)
         for i in range(xcen.shape[0]):
@@ -219,10 +284,17 @@ def make_polychrome(lam1, lam2, hires_arrs, lam_arr, psftool, allcoef,
             weight21 /= totweight*nlam
             weight22 /= totweight*nlam
 
+            if trans is not None:
+                weight11 *= meantrans
+                weight12 *= meantrans
+                weight21 *= meantrans
+                weight22 *= meantrans
+
             image[iy1:iy2, ix1:ix2] += weight11*ndimage.map_coordinates(hires[j1, i1], [yinterp, xinterp], prefilter=False)
             image[iy1:iy2, ix1:ix2] += weight12*ndimage.map_coordinates(hires[j1, i2], [yinterp, xinterp], prefilter=False)
             image[iy1:iy2, ix1:ix2] += weight21*ndimage.map_coordinates(hires[j2, i1], [yinterp, xinterp], prefilter=False)
             image[iy1:iy2, ix1:ix2] += weight22*ndimage.map_coordinates(hires[j2, i2], [yinterp, xinterp], prefilter=False)
      
+    image = image[padding:-padding, padding:-padding]
     return image
 
