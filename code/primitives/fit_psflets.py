@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
 import numpy as np
-from scipy import interpolate, signal
+from scipy import interpolate, signal, stats
 from image import Image
-import copy
-from collections import OrderedDict
+import tools
 import matutils
 import multiprocessing
 import time
+from astropy.io import fits
+
+log = tools.getLogger('main')
 
 def _smoothandmask(datacube, good):
     """
@@ -21,8 +23,16 @@ def _smoothandmask(datacube, good):
     values of the masked spectral measurements.  Note that this last
     step is purely cosmetic as the inverse variances are, in any case,
     zero.
-    
+
+    Inputs:
+    1. datacube: image class containing 3D arrays data and ivar
+    2. good:     2D array, nonzero = good lenslet
+
+    Output:
+    1. datacube: input datacube modified in place
+
     """
+
     ivar = datacube.ivar
     cube = datacube.data
 
@@ -38,28 +48,46 @@ def _smoothandmask(datacube, good):
         ivar[i] *= ivar[i] > ivar_smooth/10.
         
         mask = signal.convolve2d(cube[i]*ivar[i], narrowwindow, mode='same')
-        mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same')
+        mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same') + 1e-100
         indx = np.where(np.all([ivar[i] == 0, good], axis=0))
         cube[i][indx] = mask[indx]
-    
-    datacube.header['maskivar'] = (True, 'Set poor ivar to 0, smoothed I for cosmetics')
 
     return datacube
 
 def _trimmed_mean(arr, n=2, axis=None, maskval=0):
+
     """
+    Return the trimmed mean of an input array.
+
+    Inputs:
+    1. arr:     ndarray with the data
+    2. n:       integer, number of points to trim at each end
+
+    Optional inputs:
+    1. axis:    the axis along which to compute the trimmed mean.  
+                If None, compute the trimmed mean on the 
+                flattened array.  Default None.
+    2. maskval: value to mask in trimmed mean calculation.  NaN
+                and inf values are already masked.  Default 0.
+
     """
 
     arr_sorted = arr.copy()
+    shape = arr_sorted.shape
 
     ########################################################
-    # Sort with masked values at the end,
+    # Sort with masked values, NaN, inf at the end,
     # Trim the lowest n unmasked entries
     ########################################################
 
-    arr_sorted[np.where(arr == maskval)] = np.inf
+    arr_sorted[np.where(np.logical_not(np.isfinite(arr_sorted)))] = np.inf
+    if maskval is not None:
+        arr_sorted[np.where(arr == maskval)] = np.inf
     arr_sorted = np.sort(arr_sorted, axis=axis)
-    arr_sorted = arr_sorted[n:]
+    if axis > 0:
+        arr_sorted = np.take(arr_sorted, np.arange(n, shape[axis]), axis=axis)
+    else:
+        arr_sorted = arr_sorted[n:]
 
     ########################################################
     # Move masked values to the beginning, 
@@ -67,64 +95,145 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
     ########################################################
 
     arr_sorted[np.where(np.isinf(arr_sorted))] *= -1
-    arr_sorted = np.sort(arr_sorted, axis=axis)[:-n]
+    if axis > 0:
+        arr_sorted = np.take(arr_sorted, np.arange(0, shape[axis] - n), axis=axis)
+    elif n > 0:
+        arr_sorted = np.sort(arr_sorted, axis=axis)[:-n]
+    else:
+        arr_sorted = np.sort(arr_sorted, axis=axis)
 
     ########################################################
     # Replace mask with zero and return trimmed mean.
     # No data --> return zero
     ########################################################
 
-    arr_sorted[np.where(np.isinf(arr_sorted))] = 0
-    return np.sum(arr_sorted, axis=axis)/(np.sum(arr_sorted != 0, axis=axis) + 1e-100)
+    if maskval is not None:
+        norm = np.sum(np.isfinite(arr_sorted), axis=axis)
+        arr_sorted[np.where(np.isinf(arr_sorted))] = 0
+        return np.sum(arr_sorted, axis=axis)/(norm + 1e-100)
+    else:
+        return np.mean(arr_sorted, axis=axis)
 
 
 def _get_corrnoise(resid, ivar):
+
     """
-    """
-    mask = np.zeros(ivar.shape)
-    corrnoise = np.zeros(resid.shape)
     
-    for i in range(32):
-        ivar_ref = np.median(ivar[:4, i*64:(i + 1)*64])
-        mask[:, i*64:(i + 1)*64] = ivar[:, i*64:(i + 1)*64] > 0.3*ivar_ref
-     
-    masked = resid*mask
-    stripe = np.zeros((16, 2048, 64))
+    """
+
+    mask = np.zeros(resid.shape)
+    corrnoise = np.zeros(resid.shape)
+    dx = 64
+    
+    var_ratios = np.zeros((resid.shape[0], resid.shape[1]))
+    for i in range(0, resid.shape[1]//dx):
+        ivar_ref = np.median(ivar[:4, i*dx:(i + 1)*dx])
+        var_ratios[:, i*dx:(i + 1)*dx] = ivar[:, i*dx:(i + 1)*dx]/ivar_ref
 
     ##################################################################
-    # Do the even channels (j=0) and odd channels (j=64) separately.
+    # Default threshold: the variance is equal parts read noise and
+    # other sources.  However, always use at least 40% of the pixels
+    # to ensure a reasonable average.
+    ##################################################################
+
+    thresh = min(1/np.sqrt(2), stats.scoreatpercentile(var_ratios, 60))
+
+    for i in range(resid.shape[1]//dx):
+        ivar_ref = np.median(ivar[:4, i*dx:(i + 1)*dx])
+        mask[:, i*dx:(i + 1)*dx] = ivar[:, i*dx:(i + 1)*dx] > thresh*ivar_ref
+
+    masked = resid*mask
+    stripe = np.zeros((resid.shape[1]//(2*dx), resid.shape[0], dx))
+
+    ##################################################################
+    # Do the even channels (j=0) and odd channels (j=dx) separately.
     # Correlated read noise is very different between even and odd
     # channels.  Compute the trimmed mean of the <=16 unmasked pixels
     # in each set.  Each channel has its own coupling to this shared
     # noise, which is estimated by corr.
     ##################################################################
 
-    for j in [0, 64]:
-        for i in range(0, 2048, 128):
-            stripe[i//128] = masked[:, i+j:i+j+64]
-        noisemed = _trimmed_mean(stripe, axis=0, n=1)
-        for i in range(0, 2048, 128):
-            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+64], n=10)
-            corr /= _trimmed_mean(noisemed**2, n=10)
-            stripe[i//128] /= corr
-        noisemed = _trimmed_mean(stripe, axis=0, n=1)
-        for i in range(0, 2048, 128):
-            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+64], n=10)
-            corr /= _trimmed_mean(noisemed**2, n=10)
-            corrnoise[:, i+j:i+j+64] = corr*noisemed
+    for j in [0, dx]:
+        for i in range(0, resid.shape[1], 2*dx):
+            stripe[i//(2*dx)] = masked[:, i+j:i+j+dx]
+        noisemed = _trimmed_mean(stripe, axis=0, n=1, maskval=0)
+        for i in range(0, resid.shape[1], 2*dx):
+            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+dx], n=10, maskval=0)
+            corr /= _trimmed_mean(noisemed**2, n=10, maskval=0)
+            stripe[i//(2*dx)] /= corr
+        noisemed = _trimmed_mean(stripe, axis=0, n=1, maskval=0)
+        for i in range(0, resid.shape[1], 2*dx):
+            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+dx], n=10, maskval=0)
+            corr /= _trimmed_mean(noisemed**2, n=10, maskval=0)
+            corrnoise[:, i+j:i+j+dx] = corr*noisemed
 
     return corrnoise
 
 def _recalc_ivar(data, ivar):
-    """
+
     """
 
+    """
+
+    dx = 64
     var = 1/ivar
     for i in range(32):
-        rdnoise_old = np.sqrt(np.median(var[:4, i*64:(i + 1)*64]))
-        rdnoise_new = np.std(np.sort(data[:4, i*64:(i + 1)*64])[1:-1])
-        var[:, i*64:(i + 1)*64] += rdnoise_new**2 - rdnoise_old**2
+        rdnoise_old = np.sqrt(np.median(var[:4, i*dx:(i + 1)*dx]))
+        rdnoise_new = np.std(np.sort(data[:4, i*dx:(i + 1)*dx])[1:-1])
+        var[:, i*dx:(i + 1)*dx] += 0.5*(rdnoise_new**2 - rdnoise_old**2)
     return 1/var
+
+def _get_corrnoise_lowf(fit, resid, ivar, sig=250):
+
+    """
+    Subtract a highly smoothed map of the residuals to get
+    rid of pow over large spatial scales (long timescales).
+    """
+
+    corrnoise = np.zeros(fit.shape)
+    dx = 64
+    
+    x = np.arange(4*sig + 1) - 2*sig
+    window = np.exp(-x**2/(2*sig**2))
+    window /= np.sum(window)
+    allstripes = np.zeros((32, fit.shape[0]))
+
+    for i in range(32):
+        
+        #################################################################
+        # We'll use the pixels where the fitted PSF intensity is modest
+        # compared to the read noise so that the residual should be 
+        # dominated by read noise.  Don't use reference pixels.
+        #################################################################
+
+        mask = fit[:, i*dx:(i + 1)*dx]**2 < 15/np.mean(ivar[-4:, i*dx:(i + 1)*dx])
+        mask *= ivar[:, i*dx:(i + 1)*dx] > 0
+
+        #################################################################
+        # Don't use spectra for which any PSFlet lies near the detector
+        # edge.  Spectral length is about 30 pixels.
+        #################################################################
+
+        mask[:40] = mask[-40:] = 0
+        if i == 0:
+            mask[:, :10] = 0
+        elif i == 31:
+            mask[:, -10:] = 0
+
+        stripe = resid[:, i*dx:(i + 1)*dx]*mask            
+        allstripes[i] = _trimmed_mean(stripe, axis=1, maskval=0, n=1)
+
+        npts = np.sum(mask, axis=1)
+        stripe = np.sum(stripe, axis=1)
+            
+        stripe = np.convolve(stripe, window, mode='same')
+        stripe /= np.convolve(npts, window, mode='same') + 4
+        
+        for j in range(dx):
+            corrnoise[:, i*dx + j] = stripe
+
+    return corrnoise
+
 
 def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     """
@@ -190,12 +299,10 @@ def _get_cutout(im, x, y, psflets, dx=3):
                 same shape as image.
          
     Optional inputs:
-    5. dy:      vertical length to cut out, default 30.  E.g.
-                cut out from y0-dy to y0+dx (inclusive).
-    6. dx:      horizontal length to cut out, default 3.  This is
+    1. dx:      horizontal length to cut out, default 3.  This is
                 the length to cut out in the +/-x direction; the 
-                length cut out in the +y direction (beyond the 
-                shortest wavelength) is also dx.
+                lengths cut out in the +y direction (beyond the 
+                shortest and longest wavelengths) are also dx.
 
     Returns: 
     1. subim:   a flattened subimage to be fit
@@ -208,12 +315,6 @@ def _get_cutout(im, x, y, psflets, dx=3):
     will make the fit chi2 and properly handle bad/masked pixels.
 
     """
-
-    ###################################################################
-    # Note: x0 - dy is intentional--the horizontal spacing of 
-    # spectra is similar to the vertical spacing and is distinct
-    # from the spectral length.
-    ###################################################################
 
     y0, y1 = [int(np.amin(y)) - dx, int(np.amax(y)) + dx + 1]
     x0, x1 = [int(np.amin(x)) - dx, int(np.amax(x)) + dx + 1]
@@ -272,9 +373,9 @@ def _tag_psflets(shape, x, y, good):
     return psflet_indx
 
 
-def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(), 
-                refine=False, smoothandmask=True, returnresid=False,
-                suppressrdnse=False, maxcpus=None):
+def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
+                flat=None, refine=False, smoothandmask=True, returnresid=False,
+                suppressrdnse=False, maxcpus=multiprocessing.cpu_count()):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -298,6 +399,19 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
     Optional inputs:
     1. header:  ordered dictionary or FITS header class, to store some
                 information about the reduction.
+    2. flat:    ndarray, lenslet flatfield.  Do not flatfield if this
+                array is not given.  Default None.
+    3. refine:  boolean, iterate solution to remove crosstalk?  
+                Approximately doubles runtime.  Default True.
+    4. smoothandmask: boolean, set inverse variance of particularly 
+                noisy lenslets to zero and replace their values with
+                interpolations for cosmetics (ivar will still be zero)?
+                Default True.
+    5. returnresid: boolean, return a residual image in addition the
+                data cube?  Default False.
+    6. suppressrdnse: boolean
+    7. maxcpus   Maximum number of threads for OpenMP parallelization
+                 in Cython.  Default multiprocessing.cpu_count().
     
     Note: the 'x', 'y', and 'good' inputs are assumed to be the
           outputs from the function locatePSFlets.
@@ -326,6 +440,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
         isig = np.sqrt(im.ivar).astype(np.float64)
     else:
         isig = np.ones(im.data.shape)
+    if flat is not None:
+        lenslet_ok = (flat > 0).astype(np.float64)
 
     ###################################################################
     # Need to make copies of the data arrays because FITS is
@@ -335,21 +451,17 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
 
     data = np.empty(im.data.shape)
     data[:] = im.data
-    psflets2 = np.empty(psflets.shape)
-    psflets2[:] = psflets
+    if psflets.dtype != 'float64':
+        psflets2 = np.empty(psflets.shape)
+        psflets2[:] = psflets
+        psflets = psflets2
 
     ###################################################################
     # Call cython implementations of _get_cutouts and _fit_cutouts.
     # Factor of 5 or so speedup on a 16 core machine.
     ###################################################################
 
-    ncpus = multiprocessing.cpu_count()
-    if maxcpus is not None:
-        maxcpus = min(maxcpus, ncpus)
-    else:
-        maxcpus = ncpus
-    
-    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
+    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, maxproc=maxcpus)
     nlens = xint.shape[1]
 
     ###################################################################
@@ -384,10 +496,13 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
         for i in range(len(psflets)):
             psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
             coefs_flat = np.reshape(coefs[i], -1)
+            if flat is not None:
+                coefs_flat *= np.reshape(lenslet_ok, -1)
             data -= psflets[i]*coefs_flat[psflet_indx]
 
         ###############################################################
-        # Estimate shared noise and subtract it off.
+        # Estimate shared noise and subtract it off.  Recompute the
+        # data cube, inverse variance, and residuals.
         ###############################################################
 
         if suppressrdnse:
@@ -395,7 +510,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
             data[:] = im.data - corrnoise
             im.ivar = _recalc_ivar(data, im.ivar)
             isig = np.sqrt(im.ivar)
-            A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets2, maxproc=maxcpus)
+            A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, maxproc=maxcpus)
             coefs, cov = matutils.lstsq(A, b, indx, size, nlens, returncov=1, maxproc=maxcpus)
             coefs = coefs.T.reshape(coefshape)
             cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
@@ -404,6 +519,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
             for i in range(len(psflets)):
                 psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
                 coefs_flat = np.reshape(coefs[i], -1)
+                if flat is not None:
+                    coefs_flat *= np.reshape(lenslet_ok, -1)
                 data -= psflets[i]*coefs_flat[psflet_indx]
         else:
             corrnoise = 0
@@ -411,14 +528,31 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
         if returnresid:
             resid = Image(data=data, ivar=im.ivar)
           
+        ###############################################################
+        # Compute the perturbation to the data cube after subtracting
+        # nearest-neighbor crosstalk.  Suppress read noise in one
+        # additional iteration.
+        ###############################################################
+
         if refine:
             if suppressrdnse:
                 dcorrnoise = _get_corrnoise(data, im.ivar)
                 data -= dcorrnoise
                 corrnoise += dcorrnoise
+
+                fit = im.data - data - corrnoise
+                dcorrnoise = _get_corrnoise_lowf(fit, data, im.ivar, sig=250)
+                data -= dcorrnoise
+                corrnoise += dcorrnoise
+
             A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, 
-                                             psflets2, maxproc=maxcpus)
-            coefs += matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
+                                             psflets, maxproc=maxcpus)
+            dcoefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
+            if flat is not None:
+                coefs += dcoefs*lenslet_ok
+            else:
+                coefs += dcoefs
+
             if returnresid:
                 data[:] = im.data - corrnoise
                 for i in range(len(psflets)):
@@ -426,16 +560,27 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
                     coefs_flat = np.reshape(coefs[i], -1)                
                     data -= psflets[i]*coefs_flat[psflet_indx]
                 resid = Image(data=data, ivar=im.ivar)
+    
+    header['cubemode'] = ('Chi^2 Fit to PSFlets', 'Method used to extract data cube')
 
-    header['cubemode'] = ('leastsq', 'Method used to extract data cube')
+    header['reducern'] = (suppressrdnse, 'Suppress read noise using low ct rate pixels?')
+    header['refine'] = (refine, 'Iterate solution to remove crosstalk?')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
-    header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
+    if len(lam) > 1:
+        header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (len(lam), 'Number of extracted wavelengths')
+
     datacube = Image(data=coefs, ivar=1./cov, header=header)
+
+    if flat is not None:
+        datacube.data /= flat + 1e-10
+        datacube.ivar *= flat**2
 
     if smoothandmask:
         datacube = _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
+    
+    datacube.header['maskivar'] = (smoothandmask, 'Set poor ivar to 0, smoothed I for cosmetics')
 
     if returnresid:
         return datacube, resid
@@ -443,7 +588,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=OrderedDict(),
         return datacube
 
 
-def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, header=OrderedDict()):
+def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, header=fits.PrimaryHDU().header):
     """
     """
 
@@ -489,11 +634,12 @@ def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, header=OrderedDict()):
             tck = interpolate.splrep(np.log(_lam[::-1]), coefs[:len(_lam), i, j], s=0, k=3)
             coefs[:loglam.shape[0], i, j] = interpolate.splev(loglam, tck, ext=1)
 
-    header['cubemode'] = ('optext', 'Method used to extract data cube')
+    header['cubemode'] = ('Optimal Extraction', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
     header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
+
     datacube = Image(data=coefs[:loglam.shape[0]], header=header)
     return datacube
 
