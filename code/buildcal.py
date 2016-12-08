@@ -287,8 +287,14 @@ if __name__ == "__main__":
     # Monochromatic flatfield image
     ###############################################################
 
-    #inImage = utr.calcramp(filename=infile, mask=mask)
-    inImage = Image(filename=infile)
+    infilelist = glob.glob(infile)
+    num = 0
+    denom = 1e-100
+    for filename in infilelist:
+        im = utr.calcramp(filename=filename, mask=mask)
+        num = num + im.data*im.ivar
+        denom = denom + im.ivar
+    inImage = Image(data=num/denom, ivar=mask*1./denom)
 
     trans = np.loadtxt(indir + band + '_tottrans.dat')
 
