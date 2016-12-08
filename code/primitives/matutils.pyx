@@ -3,6 +3,143 @@ import cython
 from cython.parallel import prange, parallel
 import numpy as np
 
+@cython.wraparound(False)
+@cython.boundscheck(False)
+
+def crosscorr(float [:, :, :] calimage, double [:, :] image,
+              double [:, :] ivar, long [:] offsets, 
+              int n1=0, int n2=-1, int m1=0, int m2=-1, int maxproc=4):
+
+    cdef int i, j, ii, k1, k2, n, dj, nlam, upsamp, mmin, mmax
+    cdef double x, y
+    cdef extern from "math.h" nogil:
+        double sqrt(double _x)
+        double exp(double _x)
+
+    upsamp = calimage.shape[2]/image.shape[1]
+    n = offsets.shape[0]
+    nlam = calimage.shape[0]
+    n1 = max(n1, 0)
+    if n2 < 0:
+        n2 = image.shape[0] - n2
+    n2 = min(image.shape[0] - 0, n2)
+    m1 = max(m1, 4)
+    if m2 < 0:
+        m2 = image.shape[1] - m2
+    m2 = min(image.shape[1] - 4, m2)
+    if m2 < 4 or n2 < 4 or n1 > image.shape[0] - 4 or m1 > image.shape[1] - 4:
+        return None
+    if m2 <= m1 or n2 <= n1:
+        return None
+
+    maskedim_np = np.zeros((n2 - n1, m2 - m1))
+    cdef double [:, :] maskedim = maskedim_np
+
+    corrvals_np = np.zeros((nlam, n, n2 - n1))
+    cdef double [:, :, :] corrvals = corrvals_np
+
+    with nogil, parallel(num_threads=maxproc):
+        for i in prange(n2 - n1, schedule='dynamic'):
+            ii = i + n1
+            x = 0
+            y = 1e10
+            for j in range(m1, m2):
+                if image[ii, j] > x:
+                    x = image[ii, j]
+                if image[ii, j] < y and ivar[ii, j] > 0:
+                    y = image[ii, j]
+            if y < 0:
+                y = 0
+            if y >= 10*x:
+                y = x/10.
+
+            mmin = m1
+            mmax = m2
+            for j in range(m1, m2):
+                if ivar[ii, j] > 0 and image[ii, j] < 5*y:
+                    mmin = j
+                    break
+            for j in range(m2 - 1, m1, -1):
+                if ivar[ii, j] > 0 and image[ii, j] < 5*y:
+                    mmax = j
+                    break
+
+            for j in range(m1, mmin):
+                maskedim[i, j - m1] = 0
+            for j in range(m2 - 1, mmax, -1):
+                maskedim[i, j - m1] = 0
+                
+            if mmax <= mmin:
+                continue
+
+            for j in range(mmin, mmax + 1):
+            #for j in range(m1, m2):
+                maskedim[i, j - m1] = image[ii, j]*sqrt(ivar[ii, j])
+
+    with nogil, parallel(num_threads=maxproc):
+        for i in prange(nlam, schedule='dynamic'):
+            #for k1 in range(4, n1 - 4):
+            for k1 in range(n1, n2):
+                ii = k1 - n1
+                for j in range(n):
+                    y = 0
+                    dj = offsets[j]
+                    #for k2 in range(4, n2 - 4):
+                    for k2 in range(m1, m2):
+                        y = y + maskedim[ii, k2-m1]*calimage[i, k1, k2*upsamp + dj]
+                    corrvals[i, j, k1 - n1] = corrvals[i, j, k1 - n1] + y
+
+    return np.sum(corrvals_np, axis=0)
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+
+def interpcal(float [:, :, :] calimage, double [:, :] image,
+              unsigned short [:, :] mask, double [:, :] offsets, int maxproc=4):
+
+    cdef int i, j, k, k1, k2, dj, nlam, noffset, upsamp, n1, n2, m1, m2
+    cdef int nn1, nn2, mm1, mm2
+    cdef double x
+
+    upsamp = calimage.shape[2]/image.shape[1]
+    nlam = calimage.shape[0]
+    n1 = image.shape[0]
+    n2 = image.shape[1]
+    m1 = offsets.shape[0]
+    m2 = offsets.shape[1]
+
+    calinterp_np = np.zeros((nlam, n1, n2))
+    cdef double [:, :, :] calinterp = calinterp_np
+
+    xarr_np = np.arange(int(np.floor(np.amin(offsets))) - 1, 
+                        int(np.floor(np.amax(offsets))) + 3)
+    cdef long [:] xarr = xarr_np
+    noffset = xarr_np.shape[0]
+
+    fac_np = np.ones((m1, m2, xarr_np.shape[0]))
+    cdef double [:, :, :] fac = fac_np
+
+    with nogil, parallel(num_threads=maxproc):
+        for k1 in prange(m1, schedule='dynamic'):
+            for k2 in range(m2):
+                for j in range(noffset):
+                    for k in range(noffset):
+                        if j != k:
+                            fac[k1, k2, j] = fac[k1, k2, j]*(offsets[k1, k2] - xarr[k])*1./(xarr[j] - xarr[k])
+
+    with nogil, parallel(num_threads=maxproc):
+        for i in prange(nlam, schedule='dynamic'):
+            for k1 in range(4, n1 - 4):
+                for k2 in range(4, n2 - 4):
+                    x = 0
+                    for j in range(noffset):
+                        x = x + fac[k1, k2, j]*calimage[i, k1, k2*upsamp + xarr[j]]
+                    calinterp[i, k1, k2] = x
+
+    return calinterp_np
+                        
+
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
@@ -25,30 +162,59 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
     size_np = np.zeros((nlens), np.int64)
     cdef long [:] size = size_np
 
+    ylim_np = np.zeros((nlens, 2), np.int64)
+    ylim_np[:, 0] = im.shape[0] + 1
+    ylim_np[:, 1] = -1
+    cdef long [:, :] ylim = ylim_np
+    xlim_np = np.zeros((nlens, 2), np.int64)
+    xlim_np[:, 0] = im.shape[1] + 1
+    xlim_np[:, 1] = -1
+    cdef long [:, :] xlim = xlim_np
+
     with nogil, parallel(num_threads=maxproc):
         for jj in prange(nlens, schedule='dynamic'):
             ii = indx[jj]
 
-            x0 = xdim + 1
-            x1 = -1
-            y0 = ydim + 1
-            y1 = -1
-            for j in range(nlam):
-                if x[j, ii] > x1:
-                    x1 = x[j, ii]
-                if x[j, ii] < x0:
-                    x0 = x[j, ii]
-                if y[j, ii] > y1:
-                    y1 = y[j, ii]
-                if y[j, ii] < y0:
-                    y0 = y[j, ii]
+            if False:
+                x0 = xdim + 1
+                x1 = -1
+                y0 = ydim + 1
+                y1 = -1
+                for j in range(nlam):
+                    if x[j, ii] > x1:
+                        x1 = x[j, ii]
+                    if x[j, ii] < x0:
+                        x0 = x[j, ii]
+                    if y[j, ii] > y1:
+                        y1 = y[j, ii]
+                    if y[j, ii] < y0:
+                        y0 = y[j, ii]
 
-            y0 = y0 - dx
-            x0 = x0 - dx
-            y1 = y1 + dx + 1
-            x1 = x1 + dx + 1
-            dy0 = y1 - y0
-            dx0 = x1 - x0
+                y0 = y0 - dx
+                x0 = x0 - dx
+                y1 = y1 + dx + 1
+                x1 = x1 + dx + 1
+                
+                dy0 = y1 - y0
+                dx0 = x1 - x0
+            else:
+                for j in range(nlam):
+                    if x[j, ii] > xlim[jj, 1]:
+                        xlim[jj, 1] = x[j, ii]
+                    if x[j, ii] < xlim[jj, 0]:
+                        xlim[jj, 0] = x[j, ii]
+                    if y[j, ii] > ylim[jj, 1]:
+                        ylim[jj, 1] = y[j, ii]
+                    if y[j, ii] < ylim[jj, 0]:
+                        ylim[jj, 0] = y[j, ii]
+                
+                ylim[jj, 0] = max(ylim[jj, 0] - dx, 0)
+                ylim[jj, 1] = min(ylim[jj, 1] + dx + 1, ydim)
+                xlim[jj, 0] = max(xlim[jj, 0] - dx, 0)
+                xlim[jj, 1] = min(xlim[jj, 1] + dx + 1, xdim)
+                
+                dy0 = ylim[jj, 1] - ylim[jj, 0]
+                dx0 = xlim[jj, 1] - xlim[jj, 0]
             
             size[jj] = dy0*dx0
 
@@ -63,27 +229,32 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
         for jj in prange(nlens, schedule='dynamic'):
             ii = indx[jj]
 
-            x0 = xdim + 1
-            x1 = -1
-            y0 = ydim + 1
-            y1 = -1
-            for j in range(nlam):
-                if x[j, ii] > x1:
-                    x1 = x[j, ii]
-                if x[j, ii] < x0:
-                    x0 = x[j, ii]
-                if y[j, ii] > y1:
-                    y1 = y[j, ii]
-                if y[j, ii] < y0:
-                    y0 = y[j, ii]
+            if False:
+                x0 = xdim + 1
+                x1 = -1
+                y0 = ydim + 1
+                y1 = -1
+                for j in range(nlam):
+                    if x[j, ii] > x1:
+                        x1 = x[j, ii]
+                    if x[j, ii] < x0:
+                        x0 = x[j, ii]
+                    if y[j, ii] > y1:
+                        y1 = y[j, ii]
+                    if y[j, ii] < y0:
+                        y0 = y[j, ii]
 
-            y0 = y0 - dx
-            x0 = x0 - dx
-            y1 = y1 + dx + 1
-            x1 = x1 + dx + 1
-            dy0 = y1 - y0
-            dx0 = x1 - x0
-
+                y0 = y0 - dx
+                x0 = x0 - dx
+                y1 = y1 + dx + 1
+                x1 = x1 + dx + 1
+                dy0 = y1 - y0
+                dx0 = x1 - x0
+            else:
+                y0 = ylim[jj, 0]
+                y1 = ylim[jj, 1]
+                x0 = xlim[jj, 0]
+                x1 = xlim[jj, 1]
 
             for j in range(nlam):
                 k = 0
@@ -96,85 +267,6 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
                         k = k + 1
 
     return A_np, b_np, size_np
-
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-
-def dot(double [:, :] A, double [:, :] B, int maxproc=4):
-    
-    """
-    Compute and return the simple dot product of the input matrices
-    A and B, performing operations in parallel.  Return the product
-    A*B.  If A is n x m and B is m x l, the output will be n x l.
-
-    The input matrices should be double precision, the output will
-    also be double precision.
-    """
-
-    cdef int i, j, k, n1, n2, n3
-    cdef double x
-
-    n1 = A.shape[0]
-    n2 = A.shape[1]
-    n3 = B.shape[1]
-    assert A.shape[1] == B.shape[0]
-
-    result_np = np.empty((n1, n3))
-    cdef double [:, :] result = result_np
-
-    with nogil, parallel(num_threads=maxproc):
-        for i in prange(n1, schedule='dynamic'):
-            for j in range(n3):
-                x = 0
-                for k in range(n2):
-                    x = x + A[i, k]*B[k, j]
-                result[i, j] = x
-
-    return result_np
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-
-
-
-def dot_3d(double [:, :, :] A, double [:, :, :] B, int maxproc=4):
-    
-    """
-    Compute and return the simple dot product of the input matrices
-    A and B, performing operations in parallel.  Return the product
-    A*B.  If A is n x m and B is m x l, the output will be n x l.
-
-    The input matrices should be double precision, the output will
-    also be double precision.
-    """
-
-    cdef int i, j, k, ii, n1, n2, n3, nmat
-    cdef double x
-
-    nmat = A.shape[0]
-    n1 = A.shape[1]
-    n2 = A.shape[2]
-    n3 = B.shape[2]
-    assert A.shape[2] == B.shape[1]
-
-    result_np = np.empty((nmat, n1, n3))
-    cdef double [:, :, :] result = result_np
-
-    with nogil, parallel(num_threads=maxproc):
-        for ii in prange(nmat, schedule='dynamic'):
-            for i in range(n1):
-                for j in range(n3):
-                    x = 0
-                    for k in range(n2):
-                        x = x + A[ii, i, k]*B[ii, k, j]
-                    result[ii, i, j] = x
-
-    return result_np
-
-
 
 
 @cython.wraparound(False)
@@ -486,7 +578,6 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
                         A[ii, i, k] = -1.*A[ii, i, k]
                     for j in range(n):
                         v[ii, j, k] = -1.*v[ii, j, k]
-
 
             #eps = 2.3e-16
             tsh = 0.5*sqrt(m + n + 1.)*w[ii, 0]*eps
