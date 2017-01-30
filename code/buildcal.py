@@ -76,6 +76,8 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
 
     indx = np.asarray([0, 1, 4, 10, 11, 14])
     psftool.interp_arr[0][indx] += dcoef[indx]
+    psftool.genpixsol(lam, allcoef, order=3, lam1=lam1/1.05, lam2=lam2*1.05)
+    psftool.savepixsol(outdir=outdir)
 
     #################################################################
     # Load the high-resolution PSFlet images and associated
