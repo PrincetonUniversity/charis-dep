@@ -176,12 +176,12 @@ def _recalc_ivar(data, ivar):
     """
 
     dx = 64
-    var = 1/ivar
+    var = 1/(ivar + 1e-100)
     for i in range(32):
         rdnoise_old = np.sqrt(np.median(var[:4, i*dx:(i + 1)*dx]))
         rdnoise_new = np.std(np.sort(data[:4, i*dx:(i + 1)*dx])[1:-1])
         var[:, i*dx:(i + 1)*dx] += 0.5*(rdnoise_new**2 - rdnoise_old**2)
-    return 1/var
+    return (1/var)*(ivar > 0)
 
 def _get_corrnoise_lowf(fit, resid, ivar, sig=250):
 
@@ -227,7 +227,7 @@ def _get_corrnoise_lowf(fit, resid, ivar, sig=250):
         stripe = np.sum(stripe, axis=1)
             
         stripe = np.convolve(stripe, window, mode='same')
-        stripe /= np.convolve(npts, window, mode='same') + 4
+        stripe /= np.convolve(npts, window, mode='same') + 2
         
         for j in range(dx):
             corrnoise[:, i*dx + j] = stripe
@@ -375,7 +375,8 @@ def _tag_psflets(shape, x, y, good):
 
 def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
                 flat=None, refine=False, smoothandmask=True, returnresid=False,
-                suppressrdnse=False, maxcpus=multiprocessing.cpu_count()):
+                suppressrdnse=False, return_corrnoise=False,
+                maxcpus=multiprocessing.cpu_count()):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -522,6 +523,19 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
                 if flat is not None:
                     coefs_flat *= np.reshape(lenslet_ok, -1)
                 data -= psflets[i]*coefs_flat[psflet_indx]
+
+            dcorrnoise = _get_corrnoise(data, im.ivar)
+            data -= dcorrnoise
+            corrnoise += dcorrnoise
+            
+            fit = im.data - data - corrnoise
+            dcorrnoise = _get_corrnoise_lowf(fit, data, im.ivar, sig=250)
+            data -= dcorrnoise
+            corrnoise += dcorrnoise
+            
+            if return_corrnoise:
+                return corrnoise
+
         else:
             corrnoise = 0
 
@@ -530,21 +544,10 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
           
         ###############################################################
         # Compute the perturbation to the data cube after subtracting
-        # nearest-neighbor crosstalk.  Suppress read noise in one
-        # additional iteration.
+        # nearest-neighbor crosstalk.  
         ###############################################################
 
         if refine:
-            if suppressrdnse:
-                dcorrnoise = _get_corrnoise(data, im.ivar)
-                data -= dcorrnoise
-                corrnoise += dcorrnoise
-
-                fit = im.data - data - corrnoise
-                dcorrnoise = _get_corrnoise_lowf(fit, data, im.ivar, sig=250)
-                data -= dcorrnoise
-                corrnoise += dcorrnoise
-
             A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, 
                                              psflets, maxproc=maxcpus)
             dcoefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
@@ -588,51 +591,39 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
         return datacube
 
 
-def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, header=fits.PrimaryHDU().header):
+def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, flat=None, 
+                   smoothandmask=True, header=fits.PrimaryHDU().header,
+                   maxcpus=multiprocessing.cpu_count()):
     """
     """
-
-    xindx = PSFlet_tool.xindx
-    yindx = PSFlet_tool.yindx
-    Nmax = PSFlet_tool.nlam_max
-
-    x = np.arange(im.data.shape[1])
-    y = np.arange(im.data.shape[0])
-    x, y = np.meshgrid(x, y)
-
-    coefs = np.zeros(tuple([max(Nmax, lam.shape[0])] + list(xindx.shape)[:-1]))
-    
-    xarr, yarr = np.meshgrid(np.arange(delt_x), np.arange(Nmax))
 
     loglam = np.log(lam)
 
-    for i in range(xindx.shape[0]):
-        for j in range(yindx.shape[1]):
-            _x = xindx[i, j, :PSFlet_tool.nlam[i, j]]
-            _y = yindx[i, j, :PSFlet_tool.nlam[i, j]]
-            _lam = PSFlet_tool.lam_indx[i, j, :PSFlet_tool.nlam[i, j]]
+    ########################################################################
+    # x-locations of the centers of the microspectra.  The y locations
+    # are integer pixels, and the wavelengths in PSFlet_tool.lam_indx
+    # are given at the centers of the pixels.  Dispersion is in the
+    # y-direction.  Make copies of all arrays to ensure that they are
+    # in native byte order as required by Cython.
+    ########################################################################
 
-            if not (np.all(_x > x[0, 10]) and np.all(_x < x[0, -10]) and 
-                    np.all(_y > y[10, 0]) and np.all(_y < y[-10, 0])):
-                continue
+    xindx = np.zeros(PSFlet_tool.xindx.shape)
+    xindx[:] = PSFlet_tool.xindx
+    yindx = np.zeros(PSFlet_tool.yindx.shape)
+    yindx[:] = PSFlet_tool.yindx
+    loglam_indx = np.log(PSFlet_tool.lam_indx + 1e-100)
+    nlam = np.zeros(PSFlet_tool.nlam.shape, np.int32)
+    nlam[:] = PSFlet_tool.nlam
+    Nmax = max(PSFlet_tool.nlam_max, lam.shape[0])
 
+    data = np.zeros(im.data.shape)
+    data[:] = im.data
+    ivar = np.zeros(im.ivar.shape)
+    ivar[:] = im.ivar
 
-            i1 = int(np.mean(_x) - delt_x/2.)
-            dx = _x[yarr[:len(_lam)]] - x[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
-            #var = _var[yarr[:len(_lam)]] - x[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
-            sig = 0.7
-            weight = np.exp(-dx**2/2./sig**2)
-            data = im.data[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
-            if im.ivar is not None:
-                ivar = im.ivar[_y[0]:_y[-1] + 1, i1:i1 + delt_x]
-            else:
-                ivar = np.ones(data.shape)
-
-            coefs[:len(_lam), i, j] = np.sum(weight*data*ivar, axis=1)[::-1]
-            coefs[:len(_lam), i, j] /= np.sum(weight**2*ivar, axis=1)[::-1]
-
-            tck = interpolate.splrep(np.log(_lam[::-1]), coefs[:len(_lam), i, j], s=0, k=3)
-            coefs[:loglam.shape[0], i, j] = interpolate.splev(loglam, tck, ext=1)
+    coefs, tot_ivar = matutils.optext(data, ivar, xindx, yindx, 
+                                      loglam_indx, nlam, loglam, Nmax, 
+                                      delt_x=7, sig=0.7, maxproc=maxcpus)
 
     header['cubemode'] = ('Optimal Extraction', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
@@ -640,6 +631,15 @@ def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, header=fits.PrimaryHDU().head
     header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
 
-    datacube = Image(data=coefs[:loglam.shape[0]], header=header)
+    datacube = Image(data=coefs, ivar=tot_ivar, header=header)
+
+    if flat is not None:
+        datacube.data /= flat + 1e-10
+        datacube.ivar *= flat**2
+
+    if smoothandmask:
+        good = np.any(datacube.data != 0, axis=0)
+        datacube = _smoothandmask(datacube, good)
+
     return datacube
 
