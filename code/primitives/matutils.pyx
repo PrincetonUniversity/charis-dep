@@ -582,7 +582,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
             #eps = 2.3e-16
             tsh = 0.5*sqrt(m + n + 1.)*w[ii, 0]*eps
     
-            for j in range(n):
+            for j in range(n): 
                 s = 0.
                 if w[ii, j] > tsh:
                     for i in range(m):
@@ -613,3 +613,99 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
     else:
         return coef_np, cov_np
     
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+
+def optext(double [:, :] im, double [:, :] ivar, 
+           double [:, :, :] xindx, double[:, :, :] yindx,
+           double [:, :, :] loglamindx, int [:, :] nlam,
+           double [:] refloglam, int nmax, 
+           int delt_x=7, double sig=0.7, int maxproc=4):
+    """
+    """
+
+    cdef int i, j, k, n, nx, ny, ix, iy, xdim, ydim, nref, i1, i2
+    cdef double x, dx, num, denom, w1, w2, wtot
+
+    cdef extern from "math.h" nogil:
+        double exp(double _x)
+
+    ####################################################################
+    # Relevant dimensions and limits for loops
+    ####################################################################
+
+    xdim = im.shape[1]
+    ydim = im.shape[0]
+    nref = refloglam.shape[0]
+
+    nx = xindx.shape[0]
+    ny = xindx.shape[1]
+
+    ####################################################################
+    # Allocate arrays and create memory views.  Only coefs and ivar_tot 
+    # will be returned; coefs_num and coefs_denom are internal.
+    ####################################################################
+
+    coefs_num_np = np.zeros((nx, ny, nmax))
+    cdef double [:, :, :] coefs_num = coefs_num_np
+    coefs_denom_np = np.zeros((nx, ny, nmax))
+    cdef double [:, :, :] coefs_denom = coefs_denom_np
+
+    coefs_np = np.zeros((nref, nx, ny))
+    cdef double [:, :, :] coefs = coefs_np
+    ivar_tot_np = np.zeros((nref, nx, ny))
+    cdef double [:, :, :] ivar_tot = ivar_tot_np
+
+    lamref_np = np.zeros((nx, nmax))
+    cdef double [:, :] lamref = lamref_np
+
+    with nogil, parallel(num_threads=maxproc):
+        for i in prange(nx, schedule='dynamic'):
+            for j in range(ny):
+                n = nlam[i, j] - 1
+                if (xindx[i, j, 0] < 10 or xindx[i, j, n] < 10 or
+                    xindx[i, j, 0] > xdim - 10 or xindx[i, j, n] > xdim - 10 or
+                    yindx[i, j, 0] < 10 or yindx[i, j, n] < 10 or
+                    yindx[i, j, 0] > ydim - 10 or yindx[i, j, n] > ydim - 10):
+                    continue
+                
+                for k in range(n):
+                    num = 0
+                    denom = 0
+                    x = xindx[i, j, k]
+                    i1 = (int)(x + 1 - delt_x/2.)
+                    wtot = 0
+                    for ix in range(i1, i1 + delt_x):
+                        dx = x - ix
+                        w1 = exp(-dx*dx/(2.*sig*sig))
+                        wtot = wtot + w1
+
+                        iy = (int)(yindx[i, j, k])
+                        num = num + w1*im[iy, ix]*ivar[iy, ix]
+                        denom = denom + w1*w1*ivar[iy, ix]
+
+                    coefs_num[i, j, n - k - 1] = num/wtot
+                    coefs_denom[i, j, n - k - 1] = denom/(wtot*wtot)
+                    lamref[i, n - k - 1] = loglamindx[i, j, k]
+
+                i2 = 1
+                for k in range(nref):
+                    while lamref[i, i2] < refloglam[k]:
+                        i2 = i2 + 1
+                        if i2 == n - 1:
+                            break
+
+                    i1 = i2 - 1
+                    w1 = lamref[i, i2] - refloglam[k]
+                    w2 = refloglam[k] - lamref[i, i1]
+                    wtot = w1 + w2
+                    w1 = w1/wtot
+                    w2 = w2/wtot
+                    
+                    num = coefs_num[i, j, i1]*w1 + coefs_num[i, j, i2]*w2
+                    denom = coefs_denom[i, j, i1]*w1 + coefs_denom[i, j, i2]*w2
+                    coefs[k, i, j] = num/denom
+                    ivar_tot[k, i, j] = denom
+                    
+    return coefs_np, ivar_tot_np 
