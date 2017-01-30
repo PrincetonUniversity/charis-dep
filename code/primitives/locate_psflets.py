@@ -276,7 +276,48 @@ def _initcoef(order, scale=15.02, phi=np.arctan2(1.926,-1), x0=0, y0=0):
     return list(coef)
 
 
-def _transform(x, y, order, coef):
+def _pullorder(coef, order=1):
+
+    coeforder = int(np.sqrt(len(coef) + 0.25) - 1.5 + 1e-12)
+    coef_short = []
+
+    i = 0
+    for ix in range(coeforder + 1):
+        for iy in range(coeforder - ix + 1):
+            if ix + iy <= order:
+                coef_short += [coef[i]]
+            i += 1
+    for ix in range(coeforder + 1):
+        for iy in range(coeforder - ix + 1):
+            if ix + iy <= order:
+                coef_short += [coef[i]]
+            i += 1
+            
+    return coef_short
+
+def _insertorder(coefshort, coef):
+    coeforder = int(np.sqrt(len(coef) + 0.25) - 1.5 + 1e-12)
+    shortorder = int(np.sqrt(len(coefshort) + 0.25) - 1.5 + 1e-12)
+
+    i = 0
+    j = 0
+    for ix in range(coeforder + 1):
+        for iy in range(coeforder - ix + 1):
+            if ix + iy <= shortorder:
+                coef[i] = coefshort[j]
+                j += 1
+            i += 1
+    for ix in range(coeforder + 1):
+        for iy in range(coeforder - ix + 1):
+            if ix + iy <= shortorder:
+                coef[i] = coefshort[j]
+                j += 1
+            i += 1
+
+    return coef
+
+
+def _transform(x, y, order, coef, highordercoef=None):
     """
     private function _transform in locate_psflets
 
@@ -298,7 +339,8 @@ def _transform(x, y, order, coef):
     
     try:
         if not len(coef) == (order + 1)*(order + 2):
-            raise ValueError("Number of coefficients incorrect for polynomial order.")
+            
+            pass #raise ValueError("Number of coefficients incorrect for polynomial order.")
     except:
         raise AttributeError("order must be integer, coef should be a list.")
     
@@ -311,23 +353,48 @@ def _transform(x, y, order, coef):
     except:
             raise ValueError("Polynomial order must be integer")
 
+
+    # n**2 + 3*n + 2 = (n + 1.5)**2 - 0.25
+    #                = (1/4)*((2*n + 3)**2 - 1) = len(coef)
+
+    order1 = int(np.sqrt(len(coef) + 0.25) - 1.5 + 1e-12)
+
     _x = np.zeros(np.asarray(x).shape)
     _y = np.zeros(np.asarray(y).shape)
     
     i = 0
-    for ix in range(order + 1):
-        for iy in range(order - ix + 1):
+    for ix in range(order1 + 1):
+        for iy in range(order1 - ix + 1):
             _x += coef[i]*x**ix*y**iy
             i += 1
-    for ix in range(order + 1):
-        for iy in range(order - ix + 1):
+    for ix in range(order1 + 1):
+        for iy in range(order1 - ix + 1):
             _y += coef[i]*x**ix*y**iy
             i += 1
+
+    if highordercoef is None:
+        return [_x, _y]
+    else:
+        order2 = int(np.sqrt(len(highordercoef) + 0.25) - 1.5 + 1e-12)
+
+        i = 0
+        for ix in range(order2 + 1):
+            for iy in range(order1 - ix + 1):
+                if ix + iy <= order1:
+                    continue
+                _x += coef[i]*x**ix*y**iy
+                i += 1
+        for ix in range(order2 + 1):
+            for iy in range(order1 - ix + 1):
+                if ix + iy <= order1:
+                    continue
+                _y += coef[i]*x**ix*y**iy
+                i += 1
  
-    return [_x, _y]
+        return [_x, _y]
 
 
-def _corrval(coef, x, y, filtered, order, trimfrac=0.1):
+def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
 
     """
     private function _corrval in locate_psflets
@@ -357,7 +424,7 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1):
     # discard these from the calculation before trimming.
     #################################################################
 
-    _x, _y = _transform(x, y, order, coef)
+    _x, _y = _transform(x, y, order, coef, highordercoef)
     vals = ndimage.map_coordinates(filtered, [_y, _x], mode='constant', 
                                    cval=np.nan, prefilter=False)
     vals_ok = vals[np.where(np.isfinite(vals))]
@@ -369,7 +436,7 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1):
 
 
 def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
-                  phi=np.arctan2(1.926,-1), scale=15.02):
+                  phi=np.arctan2(1.926,-1), scale=15.02, fitorder=None):
     """
     function locatePSFlets takes an Image class, assumed to be a
     monochromatic grid of spots with read noise and shot noise, and
@@ -448,29 +515,51 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
     #############################################################
 
     if coef is None:
-
+        ix_arr = np.arange(0, 14, 0.5)
+        iy_arr = np.arange(0, 25, 0.5)
         log.info("Initializing PSFlet location transformation coefficients")
-        bestval = 0
-        subshape = xdim//3
-        _s = x.shape[0]//3
-        subfiltered = ndimage.interpolation.spline_filter(unfiltered[subshape:-subshape, subshape:-subshape])
-        for ix in np.arange(0, 14, 0.5):
-            for iy in np.arange(0, 25, 0.5):
+        init = True
+    else:
+        ix_arr = np.arange(-3.0, 3.05, 0.2)
+        iy_arr = np.arange(-3.0, 3.05, 0.2)
+        coef_save = list(coef[:])
+        log.info("Initializing transformation coefficients with previous values")
+        init = False
+
+    bestval = 0
+    subshape = xdim*3//8
+    _s = x.shape[0]*3//8
+    subfiltered = ndimage.interpolation.spline_filter(unfiltered[subshape:-subshape, subshape:-subshape])
+    for ix in ix_arr:
+        for iy in iy_arr:
+            if init:
                 coef = _initcoef(polyorder, x0=ix+xdim/2.-subshape,
                                  y0=iy+ydim/2.-subshape, scale=scale, phi=phi)
-                newval = _corrval(coef, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], 
-                                  subfiltered, polyorder, trimfrac)
-                if newval < bestval:
-                    bestval = newval
-                    coefbest = copy.deepcopy(coef)
-        coef_opt = coefbest
+            else:
+                coef = copy.deepcopy(coef_save)
+                coef[0] += ix - subshape
+                coef[(polyorder + 1)*(polyorder + 2)/2] += iy - subshape
 
+            newval = _corrval(coef, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], 
+                              subfiltered, polyorder, trimfrac)
+            if newval < bestval:
+                bestval = newval
+                coef_opt = copy.deepcopy(coef)
+
+    if init:
         log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
         res = optimize.minimize(_corrval, coef_opt, args=(x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac), method='Powell')
         coef_opt = res.x
+    else:
+        log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
+        coef_lin = _pullorder(coef_opt, 1)
 
-        coef_opt[0] += subshape
-        coef_opt[(polyorder + 1)*(polyorder + 2)/2] += subshape
+        res = optimize.minimize(_corrval, coef_lin, args=(x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol':1e-6, 'ftol':1e-6})
+        coef_lin = res.x
+        coef_opt = _insertorder(coef_lin, coef_opt)
+
+    coef_opt[0] += subshape
+    coef_opt[(polyorder + 1)*(polyorder + 2)/2] += subshape
 
     #############################################################
     # If we have coefficients from last time, we assume that we
@@ -478,28 +567,18 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
     # that are slightly to the right to get a good initial guess.
     #############################################################
 
-    else:
-        log.info("Initializing transformation coefficients with previous values")
-        bestval = 0
-        coefsave = list(coef[:])
-
-        for ix in np.arange(-3, 3.1, 0.2):
-            for iy in np.arange(-3, 3.1, 0.2):
-                coef = coefsave[:]
-                coef[0] += ix
-                coef[(polyorder + 1)*(polyorder + 2)/2] += iy
-
-                newval = _corrval(coef, x, y, filtered, polyorder, trimfrac)
-                if newval < bestval:
-                    bestval = newval
-                    coefbest = copy.deepcopy(coef)
-        coef_opt = coefbest
-
     log.info("Performing final optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
-                
-    res = optimize.minimize(_corrval, coef_opt, args=(x, y, filtered, polyorder, trimfrac), method='Powell')
+            
+    if not init and fitorder is not None:
+        coef_lin = _pullorder(coef_opt, fitorder)
 
-    coef_opt = res.x
+        res = optimize.minimize(_corrval, coef_lin, args=(x, y, filtered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol':1e-5, 'ftol':1e-5})
+
+        coef_lin = res.x
+        coef_opt = _insertorder(coef_lin, coef_opt)
+    else:
+        res = optimize.minimize(_corrval, coef_opt, args=(x, y, filtered, polyorder, trimfrac), method='Powell', options={'xtol':1e-5, 'ftol':1e-5})
+        coef_opt = res.x
 
     if not res.success:
         log.info("Optimizing PSFlet location transformation coefficients may have failed for frame " + inImage.filename)
