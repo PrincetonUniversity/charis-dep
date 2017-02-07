@@ -30,7 +30,7 @@ class Image:
     """
 
     def __init__(self, filename='', data=None, ivar=None, chisq=None, 
-                 header=fits.PrimaryHDU().header,
+                 header=fits.PrimaryHDU().header, extrahead=None,
                  reads=None, flags=None, destriped=False, flatfielded=False):
         self.destriped = destriped
         self.flatfielded = flatfielded
@@ -42,6 +42,7 @@ class Image:
         self.reads = reads
         self.flags = flags
         self.filename = filename
+        self.extrahead = extrahead
 
         if data is None and filename != '':
             self.load(filename)
@@ -113,6 +114,13 @@ class Image:
             out.append(fits.PrimaryHDU(self.chisq.astype(np.float32)))
         if self.flags is not None:
             out.append(fits.PrimaryHDU(self.flags))
+
+        if self.extrahead is not None:
+            try:
+                out.append(fits.PrimaryHDU(None, self.extrahead))
+            except:
+                log.warn("Extra header in image class must be a FITS header.")
+
         try:
             out.writeto(filename, clobber=clobber)
             log.info("Writing data to " + filename)
