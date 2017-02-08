@@ -44,7 +44,7 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
             j1 = xreg*image.data.shape[1]//nsubarr
             j2 = j1 + image.data.shape[1]//nsubarr
             j1 = max(j1, npix)
-            j2 = min(j2, image.data.shape[0] - npix)
+            j2 = min(j2, image.data.shape[1] - npix)
 
             ############################################################
             # subim holds the high-resolution images.  The first
