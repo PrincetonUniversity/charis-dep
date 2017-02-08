@@ -4,7 +4,7 @@ from astropy.time import Time
 from astropy.io import fits
 import numpy as np
 import re
-
+import time
 
 def _fetch(key, filename, comment=None, newkey=None):
 
@@ -48,7 +48,7 @@ def _fetch(key, filename, comment=None, newkey=None):
         return (newkey, val, comment)
         
 
-def metadata(filename, header=fits.PrimaryHDU().header):
+def metadata(filename, header=fits.PrimaryHDU().header, clear=True):
     
     """
     Function metadata populates a FITS header (creating a new one if
@@ -71,6 +71,9 @@ def metadata(filename, header=fits.PrimaryHDU().header):
     reads.
 
     """
+
+    if clear:
+        header.clear()
 
     header.append(('comment', ''), end=True)
     header.append(('comment', '*'*60), end=True)
@@ -101,9 +104,21 @@ def metadata(filename, header=fits.PrimaryHDU().header):
             try:
                 mean_mjd = head['mjd'] + 1.48*0.5*len(fits.open(filename))/86400
             except:
-                head1 = fits.open(filename)[1].header
-                mean_mjd = head1['acqtime'] - 2400000.5
-                mean_mjd += 1.48*0.5*len(fits.open(filename))/86400
+                ########################################################
+                # Note: acqtime is unreliable--doesn't always update.
+                ########################################################
+                #head1 = fits.open(filename)[1].header
+                #mean_mjd = head1['acqtime'] - 2400000.5
+                #mean_mjd += 1.48*0.5*len(fits.open(filename))/86400
+                ########################################################
+                # This is pretty bad: use the checksum time of the
+                # middle read as the time stamp of last resort.
+                ########################################################
+                head1 = fits.open(filename)[len(fits.open(filename))//2].header
+                t = head1.comments['checksum'].split()[-1]
+                t = Time(t, format='isot')
+                t.format = 'mjd'
+                mean_mjd = float(str(t))                
     except:
         mjd_ok = False
         mean_mjd = np.nan
@@ -120,6 +135,8 @@ def metadata(filename, header=fits.PrimaryHDU().header):
         head = fits.open(filename)[0].header
         ra, dec = [head['ra'], head['dec']]
     except:
+        #ra, dec = ['05:02:27.5438', '+07:27:39.265']
+ 	#ra, dec = ['04:37:36.182', '-02:28:25.87']
         pos_ok = False
         
     if mjd_ok:
@@ -130,8 +147,8 @@ def metadata(filename, header=fits.PrimaryHDU().header):
         
         lng, lat = [-155.4760187, 19.825504]
         subaru = (str(lng) + 'd', str(lat) + 'd')
-        t = Time([mean_mjd], format='mjd', location=subaru)
-        
+        t = Time(mean_mjd, format='mjd', location=subaru)
+       
         if pos_ok:
 
             ############################################################
@@ -147,7 +164,7 @@ def metadata(filename, header=fits.PrimaryHDU().header):
         # Compute hour angle to get parallactic angle
         ################################################################
 
-            ha = (t.sidereal_time('apparent') - c.ra).rad
+            ha =  (t.sidereal_time('apparent') - c.ra).rad
             lat = lat*np.pi/180
             
             pa = -np.arctan2(-np.sin(ha), np.cos(c.dec.rad)*np.tan(lat)
@@ -157,8 +174,8 @@ def metadata(filename, header=fits.PrimaryHDU().header):
             pa = np.nan
 
         t.format = 'isot'
-        utc_date = str(t[0]).split('T')[0]
-        utc_time = str(t[0]).split('T')[1]
+        utc_date = str(t).split('T')[0]
+        utc_time = str(t).split('T')[1]
     else:
         pa = np.nan
 
@@ -176,6 +193,7 @@ def metadata(filename, header=fits.PrimaryHDU().header):
 
     header.append(_fetch('ra', filename, comment='RA of telescope pointing'))
     header.append(_fetch('dec', filename, comment='DEC of telescope pointing'))
+
     if np.isfinite(pa):
         header['parang'] = (pa*180/np.pi, 'Mean parallactic angle (degrees)')
     else:
