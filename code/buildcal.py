@@ -21,7 +21,8 @@ log = tools.getLogger('main')
 
 def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
                       order=3, lam1=1150, lam2=2400, R=25, trans=None,
-                      upsample=True, ncpus=multiprocessing.cpu_count()):
+                      upsample=True, header=None,
+                      ncpus=multiprocessing.cpu_count()):
     """
     Build the calibration files needed to extract data cubes from
     sequences of CHARIS reads.
@@ -46,7 +47,10 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     5. trans:    ndarray, trans[:, 0] = wavelength in nm, trans[:, 1]
                  is fractional transmission through the filter and 
                  atmosphere.  Default None --> trans[:, 1] = 1
-    6. ncpus:    number of threads for multithreading.  
+    6. header:   FITS header, to which will be appended the shifts
+                 and rotation angle between the stored and the fitted
+                 wavelength solutions.  Default None.
+    7. ncpus:    number of threads for multithreading.  
                  Default multiprocessing.cpu_count()
 
     Returns None, writes calibration files to outdir.
@@ -78,6 +82,20 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     psftool.interp_arr[0][indx] += dcoef[indx]
     psftool.genpixsol(lam, allcoef, order=3, lam1=lam1/1.05, lam2=lam2*1.05)
     psftool.savepixsol(outdir=outdir)
+
+    #################################################################
+    # Record the shift in the spot locations.
+    #################################################################    
+
+    phi1 = np.mean([np.arctan2(oldcoef[4], oldcoef[1]), 
+                    np.arctan2(-oldcoef[11], oldcoef[14])])
+    phi2 = np.mean([np.arctan2(newcoef[4], newcoef[1]),
+                    np.arctan2(-newcoef[11], newcoef[14])])
+    dx, dy, dphi = [dcoef[0], dcoef[10], phi2 - phi1]
+    if header is not None:
+        header['cal_dx'] = (dx, 'x-shift from archival spot positions (pixels)')
+        header['cal_dy'] = (dy, 'y-shift from archival spot positions (pixels)')
+        header['cal_dphi'] = (dphi, 'Rotation from archival spot positions (radians)')
 
     #################################################################
     # Load the high-resolution PSFlet images and associated
@@ -215,10 +233,29 @@ if __name__ == "__main__":
         else:
             print "Invalid input."
 
+    ncpus = multiprocessing.cpu_count()
+    print "\n" + "*"*60
+    print "How many threads would you like to use?  %d threads detected." % (ncpus)
+    print "*"*60
+    while True:
+        nthreads = raw_input("     Number of threads to use [%d]: " % (ncpus))
+        try:
+            nthreads = int(nthreads)
+            if nthreads < 0 or nthreads > ncpus:
+                print "Must use between 1 and %d threads." % (ncpus)
+            else:
+                break
+        except:
+            if nthreads == '':
+                nthreads = ncpus
+                break
+            print "Invalid input."
+
     print "\n" + "*"*60
     print "Building calibration files, placing results in current directory:"
     print os.path.abspath('.')
     print "\nSettings:\n"
+    print "Using %d threads" % (nthreads)
     print "Narrow-band flatfield image: " + infile
     print "Wavelength:", lam, "nm"
     print "Observing mode: " + band
@@ -271,29 +308,50 @@ if __name__ == "__main__":
 
     mask = fits.open(indir + 'mask.fits')[0].data
 
+    hdr = fits.PrimaryHDU().header
+    hdr.clear()
+    infilelist = glob.glob(infile)
+    if len(infilelist) == 0:
+        raise ValueError("No CHARIS file found for calibration.")
+
+    hdr['calfname'] = (re.sub('.*/', '', infilelist[0]),
+                       'Monochromatic image used for calibration')
+    try:
+        hdr['cal_date'] = (fits.open(infilelist[0])[0].header['mjd'],
+                           'MJD date of calibration image')
+    except:
+        hdr['cal_date'] = ('unavailable', 'MJD date of calibration image')
+    hdr['cal_lam'] = (lam, 'Wavelength of calibration image (nm)')
+    hdr['cal_band'] = (band, 'Band/mode of calibration image (J/H/K/lowres)')
+
     ###############################################################
     # Mean background count rate, weighted by inverse variance
     ###############################################################
 
     num = 0
     denom = 1e-100
+    ibg = 1
     for filename in bgfiles:
-        bg = utr.calcramp(filename=filename, mask=mask)
+        bg = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
         num = num + bg.data*bg.ivar
         denom = denom + bg.ivar
+        hdr['bkgnd%03d' % (ibg)] = (re.sub('.*/', '', filename),
+                                    'Dark(s) used for background subtraction')
+        ibg += 1
     if len(bgfiles) > 0:
         background = Image(data=num/denom, ivar=1./denom)
         background.write('background.fits')
+    else:
+        hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
         
     ###############################################################
     # Monochromatic flatfield image
     ###############################################################
 
-    infilelist = glob.glob(infile)
     num = 0
     denom = 1e-100
     for filename in infilelist:
-        im = utr.calcramp(filename=filename, mask=mask)
+        im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
         num = num + im.data*im.ivar
         denom = denom + im.ivar
     inImage = Image(data=num/denom, ivar=mask*1./denom)
@@ -301,7 +359,11 @@ if __name__ == "__main__":
     trans = np.loadtxt(indir + band + '_tottrans.dat')
 
     buildcalibrations(inImage, lam, mask, indir, lam1=lam1, lam2=lam2,
-                      upsample=upsample, R=R, order=3, trans=trans)
+                      upsample=upsample, R=R, order=3, trans=trans,
+                      header=hdr, ncpus=nthreads)
+
+    out = fits.HDUList(fits.PrimaryHDU(None, hdr))
+    out.writeto('cal_params.fits', clobber=True)
 
     for filename in ['mask.fits', 'lensletflat.fits', 'pixelflat.fits']:
         shutil.copy(indir + filename, './' + filename)
