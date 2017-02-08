@@ -19,7 +19,7 @@ import multiprocessing
 def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/', 
             bgsub=True, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, suppressrn=True, fitshift=True, 
-            flatfield=True, smoothandmask=True,
+            flatfield=True, smoothandmask=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count()):
 
     """Provisional routine getcube.  Construct and return a data cube
@@ -88,27 +88,46 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     interpolated onto the same wavelength array.  This is certainly
     not optimal, but I don't see any particularly good alternatives
     (other than maybe convolving to a lower, but uniform, resolution).
-    The lstsq extraction can include all errors and covariances, and
-    soon will.
+    The lstsq extraction can include all errors and covariances.
+    Errors are included (the diagonal of the covariance matrix), but
+    the full covariance matrix is currently discarded.
 
     """
     
+    ################################################################
+    # Initiate the header with critical data about the observation.
+    # Then add basic information about the calibration data used to
+    # extract a cube.
+    ################################################################
+    
+    header = utr.metadata(filename)
+
+    try:
+        calhead = fits.open(calibdir + '/cal_params.fits')[0].header
+        header.append(('comment', ''), end=True)
+        header.append(('comment', '*'*60), end=True)
+        header.append(('comment', '*'*21 + ' Calibration Data ' + '*'*21), end=True)
+        header.append(('comment', '*'*60), end=True)    
+        header.append(('comment', ''), end=True)
+        for key in calhead:
+            header.append((key, calhead[key], calhead.comments[key]), end=True)
+    except:
+        log.warn('Unable to append calibration parameters to FITS header.')    
+
     ################################################################
     # Read in file and return an instance of the Image class with the
     # up-the-ramp combination of reads.  Subtract the thermal
     # background and apply a bad pixel mask.
     ################################################################
-
-    header = utr.metadata(filename)
-
+    
     maskarr = None
     if mask == True:
         maskarr = fits.open(calibdir + '/mask.fits')[0].data  
-        
+    
     inImage = utr.calcramp(filename=filename, mask=maskarr,read_idx=read_idx, 
                            header=header, gain=gain, noisefac=noisefac, 
                            maxcpus=maxcpus)
-
+        
     if bgsub:
         try:
             hdulist = fits.open(calibdir + '/background.fits')
@@ -137,7 +156,15 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     header.append(('comment', '*'*60), end=True)    
     header.append(('comment', ''), end=True)
 
-    if method == 'lstsq':
+    if flatfield:
+        lensletflat = fits.open(calibdir + '/lensletflat.fits')[0].data
+    else:
+        lensletflat = None
+    header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
+
+    datacube = None
+
+    if method == 'lstsq' or suppressrn:
         header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
         if fitshift:
             psflets = np.load(calibdir + '/polychromefullR%d.npy' % (R))
@@ -153,33 +180,59 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
         if flatfield:
             psflets = psflets*fits.open(calibdir + '/pixelflat.fits')[0].data
-            lensletflat = fits.open(calibdir + '/lensletflat.fits')[0].data
+
+        ############################################################
+        # Do an initial least-squares fit to remove correlated read
+        # noise if method = optext and suppressrn = True
+        ############################################################
+
+        if method != 'lstsq':
+            corrnoise = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, flat=lensletflat, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, maxcpus=maxcpus, return_corrnoise=True)
+            inImage.data -= corrnoise
         else:
-            lensletflat = None
-        header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
+            result = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, flat=lensletflat, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, returnresid=saveresid, maxcpus=maxcpus)
+            if saveresid:
+                datacube, resid = result
+                resid.write(re.sub('.*/', '', re.sub('.fits', '_resid.fits', filename)))
+            else:
+                datacube = result
 
-        datacube = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, flat=lensletflat, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, maxcpus=maxcpus)
-
-    elif method == 'optext':
+    if method == 'optext':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
         lam_midpts = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))[0].data
-        datacube = primitives.fitspec_intpix(inImage, loc, lam_midpts, header=inImage.header)
-    
-    else:
+        datacube = primitives.fitspec_intpix(inImage, loc, lam_midpts, header=inImage.header, flat=lensletflat, maxcpus=maxcpus)
+
+    if datacube is None:
         raise ValueError("Datacube extraction method " + method + " not implemented.")
+
+    ################################################################
+    # Add the original header for reference as the last HDU
+    ################################################################
+
+    datacube.extrahead = fits.open(filename)[0].header
+
     return datacube
+
 
 if __name__ == "__main__":
 
     if len(sys.argv) < 3:
-        print "Must call extractcube.py with two arguments:"
-        print "1: a string parsed by glob matching files to be turned into data cubes"
-        print "2: a .ini configuration file processed by ConfigParser"
+        errstring = "Must call extractcube.py with at least two arguments:\n"
+        errstring += "1: string(s) parsed by glob matching files to be turned into data cubes\n"
+        errstring += "2: a .ini configuration file processed by ConfigParser"
+        try:
+            print errstring
+        except:
+            print(errstring)
         exit()
 
     filenames = []
     for i in range(1, len(sys.argv) - 1):
         filenames += glob.glob(sys.argv[i])
+
+    if len(filenames) == 0:
+        raise ValueError("No matching CHARIS files found by extractcube.")
+
     Config = ConfigParser.ConfigParser()
     Config.read(sys.argv[len(sys.argv) - 1])
 
@@ -221,13 +274,21 @@ if __name__ == "__main__":
         suppressrn = Config.getboolean('Extract', 'suppressrn')
     except:
         suppressrn = True
+    try:
+        saveresid = Config.getboolean('Extract', 'saveresid')
+    except:
+        saveresid = False
+
+    ################################################################
+    # Maximum threads must be between 1 and cpu_count, inclusive
+    ################################################################
 
     try:
         maxcpus = Config.getint('Extract', 'maxcpus')
         if maxcpus <= 0:
             maxcpus = multiprocessing.cpu_count() + maxcpus
-        if maxcpus < 1:
-            maxcpus = 1
+        maxcpus = min(maxcpus, multiprocessing.cpu_count())
+        maxcpus = max(maxcpus, 1)
     except:
         maxcpus = multiprocessing.cpu_count()
 
@@ -242,5 +303,6 @@ if __name__ == "__main__":
                        saveramp=saveramp, refine=refine, maxcpus=maxcpus, 
                        calibdir=calibdir, R=R, method=method, 
                        smoothandmask=smoothandmask, flatfield=flatfield,
-                       fitshift=fitshift, suppressrn=suppressrn)
+                       fitshift=fitshift, suppressrn=suppressrn,
+                       saveresid=saveresid)
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
