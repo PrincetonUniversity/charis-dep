@@ -1,0 +1,45 @@
+Software package charis-dep, designed to build calibration files for
+the CHARIS integral-field spectrograph for the Subaru telescope and to
+extract data cubes from sequences of raw reads.
+
+Requirements:
+Python 2.7
+Cython with a C compiler and OpenMP
+
+Dependencies:
+numpy, scipy, astropy
+
+Your computer should have at least ~2 GB of RAM to extract data cubes,
+and at least 2 GB/core (and at least 4 GB total) to build the
+calibration files.  The calibration files can take a long time to
+generate if you do not have multiple processors.
+
+Installation:
+I'll create a proper setup.py for installation some time soon.  For now, you'll need to build two cython extensions.  Go to the /code/primitives and run
+python setup.py build_ext --inplace
+then go to /code/utr and run the same command,
+python setup.py build_ext --inplace
+This will build the cython extensions in the current directory tree.  You can then run the code from its current location.  Note: you'll need a working C compiler that can link to the openMP libraries for this to work.
+
+
+Quick-start tutorial, basic usage with sample files:
+
+Example: 
+CRSA00000001.fits is a 1550-nm monochromatic flat taken in broadband/lowres mode
+CRSA00000002.fits through CRSA00000005.fits are broadband/lowres darks
+CRSA10000000.fits is a science frame in broadband/lowres mode 
+
+First, we must build the calibration files.  Create a directory where they will live, make this the current working directory, and run
+/path/to/./buildcal.py CRSA00000001.fits 1550 lowres CRSA0000000[2-5].fits
+Follow the prompts to create (or not) oversampled PSFlet images.  This routine will create calibration files in the current working directory.  The arguments to buildcal are:
+1. The monochromatic flat, as a raw sequence of CHARIS reads
+2. The wavelength (in nm) of the monochromatic flat
+3. The CHARIS mode (J/H/K/lowres)
+4. Background frame(s)/dark(s) (optional)
+
+Now extract a cube.  First, you need to create an appropriate .ini file by modifying sample.ini in the code directory.  With the example file names given above and with your modified .ini file in the current working directory, you would run
+/path/to/./extractcube.py CRSA00000000.fits modified.ini
+The arguments are simply
+1. The raw file(s) to extract into cubes
+2. The configuration file
+The extracted cubes will be written to the current working directory.  The first HDU is simply the header with some basic information, the second HDU is the cube, the third HDU is the inverse variance on the cube, and the fourth HDU has no data but saves the original header on HDU0 of the raw reads.
