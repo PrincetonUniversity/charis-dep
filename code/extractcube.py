@@ -200,7 +200,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     if method == 'optext':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
         lam_midpts = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))[0].data
-        datacube = primitives.fitspec_intpix(inImage, loc, lam_midpts, header=inImage.header, flat=lensletflat, maxcpus=maxcpus)
+        datacube = primitives.optext_spectra(inImage, loc, lam_midpts, header=inImage.header, flat=lensletflat, maxcpus=maxcpus)
 
     if datacube is None:
         raise ValueError("Datacube extraction method " + method + " not implemented.")
