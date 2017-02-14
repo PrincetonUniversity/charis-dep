@@ -411,16 +411,16 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     5. returnresid: boolean, return a residual image in addition the
                 data cube?  Default False.
     6. suppressrdnse: boolean
-    7. maxcpus   Maximum number of threads for OpenMP parallelization
-                 in Cython.  Default multiprocessing.cpu_count().
+    7. maxcpus  Maximum number of threads for OpenMP parallelization
+                in Cython.  Default multiprocessing.cpu_count().
     
     Note: the 'x', 'y', and 'good' inputs are assumed to be the
           outputs from the function locatePSFlets.
 
     Output:
-    1. coefs:   An Image class containing the data cube.
+    1. datacube: An Image class containing the data cube.
 
-    Note: these routines remain a work in progress.  
+    
 
     """
     
@@ -591,10 +591,53 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
         return datacube
 
 
-def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, flat=None, 
+def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7, 
                    smoothandmask=True, header=fits.PrimaryHDU().header,
                    maxcpus=multiprocessing.cpu_count()):
     """
+    Function optext_spectra performs an "optimal" extraction of the
+    microspectra (a truly optimal extraction would require more
+    accurate dispersions; this will be implemented).  Aperture
+    photometry may also be performed by setting sig=1e10 (or something
+    similarly large); the aperture will then be delt_x.
+
+    The function takes at least three arguments:
+
+    1. im:          Image class containing the 2D count rates and 
+                    inverse variances
+    2. PSFlet_tool: An instance of the PSFlet_tool class containing 
+                    the wavelength solution.  The locations of the 
+                    microspectra and the wavelengths corresponding to
+                    whole pixels along the dispersion direction will
+                    be used in this routine.
+    3. lam:         list of floating point numbers or 1D array. The
+                    array of wavelengths onto which to interpolate
+                    the microspectra.
+    
+    Optional arguments: 
+    1. delt_x:      odd, positive integer, the aperture width for 
+                    extraction.  Default 7 (5 or 7 recommended).
+    2. flat:        2D floating point ndarray, lenslet flat.  
+                    Default None (don't flat-field).
+    3. sig:         float, 1D root variance of lenslet PSF.  
+                    Default 0.7 (currently cannot be a function of 
+                    wavelength).  Setting sig >> delt_x is 
+                    equivalent to aperture photometry.
+    4. smoothandmask: boolean, set inverse variance of particularly 
+                    noisy lenslets to zero and replace their values 
+                    with interpolations for cosmetics (ivar will still
+                    be zero)?  Default True.
+    5. header:      ordered dictionary or FITS header class, to store
+                    some information about the reduction.
+    6. maxcpus      Maximum number of threads for OpenMP parallelization
+                    in Cython.  Default multiprocessing.cpu_count().
+    
+    Output:
+    1. datacube:    An Image class containing the data cube.
+
+    In the near future a position- and wavelength-dependent PSFlet
+    width will be included from the measured PSFlets.
+
     """
 
     loglam = np.log(lam)
@@ -623,7 +666,7 @@ def fitspec_intpix(im, PSFlet_tool, lam, delt_x=7, flat=None,
 
     coefs, tot_ivar = matutils.optext(data, ivar, xindx, yindx, 
                                       loglam_indx, nlam, loglam, Nmax, 
-                                      delt_x=7, sig=0.7, maxproc=maxcpus)
+                                      delt_x=delt_x, sig=sig, maxproc=maxcpus)
 
     header['cubemode'] = ('Optimal Extraction', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
