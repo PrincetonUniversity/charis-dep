@@ -4,10 +4,10 @@ except:
     import pyfits as fits
 
 import numpy as np
-import tools
+import logging
 from datetime import date
 
-log = tools.getLogger('main')
+log = logging.getLogger('main')
 
 class Image:
     
