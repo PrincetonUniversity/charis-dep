@@ -142,7 +142,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             inImage.data -= bg
         except:
             bgsub = False
-            log.warn('No valid background image found in ' + indir)
+            log.warn('No valid background image found in ' + calibdir)
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
