@@ -2,14 +2,18 @@
 
 import numpy as np
 from scipy import interpolate, signal, stats
-from image import Image
-import tools
+try:
+    from charis.image import Image
+except:
+    from image import Image
+
+import logging
 import matutils
 import multiprocessing
 import time
 from astropy.io import fits
 
-log = tools.getLogger('main')
+log = logging.getLogger('main')
 
 def _smoothandmask(datacube, good):
     """
