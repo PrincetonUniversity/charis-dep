@@ -4,13 +4,16 @@ import numpy as np
 from astropy.io import fits
 import copy
 from scipy import signal, ndimage, optimize, interpolate
-from image import Image
-import tools
+try:
+    from charis.image import Image
+except:
+    from image import Image
+import logging
 import glob
 import re
 import os
 
-log = tools.getLogger('main')
+log = logging.getLogger('main')
 
 
 class PSFLets:
