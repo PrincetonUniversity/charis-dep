@@ -1,13 +1,13 @@
 import numpy as np
 from image import Image
 import fitramp
-import tools
+import logging
 import re
 import time
 import multiprocessing
 from astropy.io import fits
 
-log = tools.getLogger('main')
+log = logging.getLogger('main')
 
 def getreads(filename, header=fits.PrimaryHDU().header, read_idx=[1,None]):
     """
