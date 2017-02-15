@@ -7,7 +7,7 @@ import time
 import numpy as np
 from image import Image
 import primitives
-import tools
+import logging
 from astropy.io import fits
 import multiprocessing
 from parallel import Task, Consumer
@@ -16,7 +16,7 @@ import utr
 import shutil
 import sys
 
-log = tools.getLogger('main')
+log = logging.getLogger('main')
 
 
 def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
