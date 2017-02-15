@@ -2,7 +2,6 @@
 import cython
 from cython.parallel import prange, parallel
 import numpy as np
-import pyfits as pyf
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
