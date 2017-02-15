@@ -15,6 +15,9 @@ from image import Image
 import sys
 import ConfigParser
 import multiprocessing
+import logging
+
+log = logging.getLogger('main')
 
 def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/', 
             bgsub=True, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
