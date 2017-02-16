@@ -28,9 +28,7 @@ class Image:
 
     def __init__(self, filename='', data=None, ivar=None, chisq=None, 
                  header=fits.PrimaryHDU().header, extrahead=None,
-                 reads=None, flags=None, destriped=False, flatfielded=False):
-        self.destriped = destriped
-        self.flatfielded = flatfielded
+                 reads=None, flags=None):
         
         self.data = data
         self.ivar = ivar
