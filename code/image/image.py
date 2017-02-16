@@ -1,8 +1,5 @@
-try:
-    from astropy.io import fits
-except:
-    import pyfits as fits
 
+from astropy.io import fits
 import numpy as np
 import logging
 from datetime import date
