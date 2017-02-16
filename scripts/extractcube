@@ -4,6 +4,7 @@
 # A provisional routine for actually producing and returning data cubes.
 #########################################################################
 
+from __future__ import print_function
 import numpy as np
 import time
 import glob
@@ -228,10 +229,7 @@ if __name__ == "__main__":
         errstring = "Must call extractcube.py with at least two arguments:\n"
         errstring += "1: string(s) parsed by glob matching files to be turned into data cubes\n"
         errstring += "2: a .ini configuration file processed by ConfigParser"
-        try:
-            print errstring
-        except:
-            print(errstring)
+        print(errstring)
         exit()
 
     filenames = []
