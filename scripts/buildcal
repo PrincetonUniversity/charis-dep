@@ -373,7 +373,7 @@ if __name__ == "__main__":
     out = fits.HDUList(fits.PrimaryHDU(None, hdr))
     out.writeto('cal_params.fits', clobber=True)
 
-    shutil.copy(os.path.join(indir, 'lensletflat.fits'), './' + filename)
+    shutil.copy(os.path.join(indir, 'lensletflat.fits'), './lensletflat.fits')
 
     for filename in ['mask.fits', 'pixelflat.fits']:
         shutil.copy(os.path.join(prefix, filename), './' + filename)
