@@ -1,5 +1,10 @@
+#!/usr/bin/env python
+
 import numpy as np
-from image import Image
+try:
+    from image import Image
+except:
+    from charis.image import Image
 import fitramp
 import logging
 import re
