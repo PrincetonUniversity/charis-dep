@@ -23,7 +23,9 @@ You may need to specify the C compiler when running the setup script using somet
 CC=gcc-5 python setup.py install
 or
 CC=gcc-mp-5 python setup.py install
-Type gcc [tab][tab] in a terminal to see your available gcc compilers.
+Type gcc [tab][tab] in a terminal to see your available gcc compilers.  If you use tcsh instead of bash, your export command will be different, but something like this should work:
+set CC = gcc-5
+python setup.py install
 
 
 Quick-start tutorial, basic usage with sample files:
