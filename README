@@ -20,9 +20,9 @@ https://www.continuum.io/downloads
 If you are running this on a Mac, you need gcc from Xcode, and you probably need a homebrew installation of gcc-5 to enable OpenMP linking.  Follow the instructions here:
 http://mathcancer.blogspot.com/2016/01/PrepOSXForCoding-Homebrew.html
 You may need to specify the C compiler when running the setup script using something like
-CC=gcc-5 python setup.py build_ext --inplace
+CC=gcc-5 python setup.py install
 or
-CC=gcc-mp-5 python setup.py build_ext --inplace
+CC=gcc-mp-5 python setup.py install
 Type gcc [tab][tab] in a terminal to see your available gcc compilers.
 
 
