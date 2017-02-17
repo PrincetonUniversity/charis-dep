@@ -705,7 +705,7 @@ def optext(double [:, :] im, double [:, :] ivar,
                     
                     num = coefs_num[i, j, i1]*w1 + coefs_num[i, j, i2]*w2
                     denom = coefs_denom[i, j, i1]*w1 + coefs_denom[i, j, i2]*w2
-                    coefs[k, i, j] = num/denom
+                    coefs[k, i, j] = num/(denom + 1e-300)
                     ivar_tot[k, i, j] = denom
                     
     return coefs_np, ivar_tot_np 
