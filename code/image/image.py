@@ -29,7 +29,26 @@ class Image:
     def __init__(self, filename='', data=None, ivar=None, chisq=None, 
                  header=fits.PrimaryHDU().header, extrahead=None,
                  reads=None, flags=None):
+        '''
+        Image initialization
         
+        Parameters
+        ----------
+        filename: string
+            Name of input file
+        data: ndarray
+            Numpy ndarray containing your data. Can be multi-dimensional.
+        ivar: ndarray
+            Numpy ndarray containing the inverse variance of the data. Should be same shape as data
+        chisq: ndarray
+            Numpy ndarray containing chisq value for each ramp fit to the data. Should be same shape as data
+        header: `PrimaryHDU` header
+            Empty header instance
+        extraheader: `PrimaryHDU` header
+            Placeholder for header from original ramp
+        reads: ndarray
+        flags: ndarray
+        '''
         self.data = data
         self.ivar = ivar
         self.chisq = chisq
@@ -50,6 +69,13 @@ class Image:
         HDU[0].header into self.header.  If there is more than one HDU
         with data, attempt to read the second HDU with data into
         self.ivar.
+        
+        Parameters
+        ----------
+        filename: string
+            Name of input file
+        loadbadpixmap: boolean
+            When True, loads the bad pixel map at `calibrations/mask.fits`
 
         """
         try:
@@ -91,6 +117,13 @@ class Image:
         attempts to write to outfilename.  If self.ivar is not None,
         append self.ivar as a second HDU before writing to a file.       
         clobber is provided as a keyword to fits.HDUList.writeto.
+        
+        Parameters
+        ----------
+        filename: string
+            Name of destination file
+        clobber: boolean
+            When True, overwrites if file already exists
         """
         
         hdr = fits.PrimaryHDU().header
