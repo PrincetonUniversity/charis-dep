@@ -77,7 +77,7 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
                 # Ignore high count rates and masked pixels.
                 ########################################################
 
-                if ctrates[j, k] > 500: # or ctrates[j, k] == 0
+                if ctrates[j, k] > 500 or mask[j, k] == 0:
                     resid[j, k] = 0
 
                 ########################################################
@@ -135,10 +135,10 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
                     denom = 0
                     for j in range(4, jmax):
                         for i in range(64):
-                            if (ichan == 0 and i < 4) or (ichan == 31 and i > 59):
+                            if (ichan == 0 and i < 4) or (ichan == nchan - 1 and i > 59):
                                 continue  # Neglect reference pixels
                             x = expval[t[j, i + 64*ichan]]
-                            y = resid[j, i + 64*ichan]
+                            y = resid[j, i + 64*ichan]*mask[j, i + 64*ichan]
                             num = num + y*x
                             if y != 0:
                                 denom = denom + x*x
@@ -155,6 +155,7 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
                     for i in range(4, nx - 4):
                         ichan = i/64
                         if mask[j, i] == 0 or resid[j, i] == 0:
+                            chisq[j] = chisq[j] + maxresid*maxresid
                             continue
                         x = norm[ichan]*expval[t[j, i]] - resid[j, i]
                         x = x*x
@@ -198,10 +199,10 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
             if ichan < nchan:
                 for j in range(4, jmax):
                     for i in range(64):
-                        if (ichan == 0 and i < 4) or (ichan == 31 and i > 59):
+                        if (ichan == 0 and i < 4) or (ichan == nchan - 1 and i > 59):
                             continue # Ignore reference pixels
-                        x = expval[t[j, i+64*ichan]]
-                        y = resid[j, i+64*ichan]
+                        x = expval[t[j, i + 64*ichan]]
+                        y = resid[j, i + 64*ichan]*mask[j, i + 64*ichan]
                         num = num + y*x
                         if y != 0:
                             denom = denom + x*x
@@ -241,6 +242,9 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
             x = norm[ichan]*expval[t[j, i]]
             cts[0, j, i] = cts[0, j, i] - x
 
+    #print t0
+    #for i in range(nchan + 1):
+    #    print norm[i]
     #print "Removed exponential decay of the reference voltage from the first read."
     #print "Fitted decay constant: %.2f ms" % (t0*1e-5*1000)
 
