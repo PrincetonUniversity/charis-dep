@@ -18,9 +18,23 @@ log = logging.getLogger('main')
 
 class PSFLets:
     """
+    Helper class to deal with the PSFLets on the detector. Does most of the heavy lifting
+    during the wavelength calibration step.
     """
 
     def __init__(self, load=False, infile=None, infiledir='.'):
+        '''
+        Initialize the class
+        
+        Parameters
+        ----------
+        load: Boolean
+            Whether to load an already-existing wavelength calibration file
+        infile: String
+            If load is True, this is the name of the file
+        infiledir: String
+            If load is True, this is the directory in which the file resides
+        '''
 
         self.xindx = None
         self.yindx = None 
@@ -35,6 +49,16 @@ class PSFLets:
 
 
     def loadpixsol(self, infile=None, infiledir='./calibrations'):
+        '''
+        Loads existing wavelength calibration file
+        
+        Parameters
+        ----------
+        infile: String
+            Name of the file
+        infiledir: String
+            Directory in which the file resides
+        '''
         if infile is None:
             infile = re.sub('//', '/', infiledir + '/PSFloc.fits')
         hdulist = fits.open(infile)
@@ -49,6 +73,20 @@ class PSFLets:
         self.nlam_max = np.amax(self.nlam)
        
     def savepixsol(self, outdir="calibrations/"):
+        '''
+        Saves wavelength calibration file
+        
+        Parameters
+        ----------
+        outdir: String
+            Directory in which to put the file. The file is name PSFloc.fits and is a
+            multi-extension FITS file, each extension corresponding to:
+            0. the list of wavelengths at which the calibration is done
+            1. a 2D ndarray with the X position of all lenslets
+            2. a 2D ndarray with the Y position of all lenslets
+            3. a 2D ndarray with the number of valid wavelengths for a given lenslet (some wavelengths fall outside of the detector area)
+            
+        '''
         if not os.path.isdir(outdir):
             raise IOError("Attempting to save pixel solution to directory " + outdir + ".  Directory does not exist.")
         outfile = re.sub('//', '/', outdir + '/PSFloc.fits')
@@ -63,12 +101,25 @@ class PSFLets:
 
     def geninterparray(self, lam, allcoef, order=3):
 
-        ###################################################################
-        # Set up array to solve for best-fit polynomial fits to the
-        # coefficients of the wavelength solution.  These will be used
-        # to smooth/interpolate the wavelength solution, and
-        # ultimately to compute its inverse.
-        ###################################################################
+        '''
+        Set up array to solve for best-fit polynomial fits to the
+        coefficients of the wavelength solution.  These will be used
+        to smooth/interpolate the wavelength solution, and
+        ultimately to compute its inverse.
+        
+        Parameters
+        ----------
+        lam: float
+            Wavelength in nm
+        allcoef: list of lists floats
+            Polynomial coefficients of wavelength solution
+        order: int
+            Order of polynomial wavelength solution
+        
+        Notes
+        -----
+        Populates the attribute interp_arr in PSFLet class
+        '''
 
         self.interp_arr = np.zeros((order + 1, allcoef.shape[1]))
         self.order = order
@@ -81,12 +132,58 @@ class PSFLets:
             self.interp_arr[:, i] = coef
 
     def return_locations_short(self, coef, xindx, yindx):
+        '''
+        Returns the x,y detector location of a given lenslet for a given polynomial fit
+        
+        Parameters
+        ----------
+        coef: lists floats
+            Polynomial coefficients of fit for a single wavelength
+        xindx: int
+            X index of lenslet in lenslet array
+        yindx: int
+            Y index of lenslet in lenslet array
+        
+        Returns
+        -------
+        interp_x: float
+            X coordinate on the detector
+        interp_y: float
+            Y coordinate on the detector
+        '''
         coeforder = int(np.sqrt(coef.shape[0])) - 1
         interp_x, interp_y = _transform(xindx, yindx, coeforder, coef)
         return interp_x, interp_y
 
     def return_res(self, lam, allcoef, xindx, yindx,
                    order=3, lam1=None, lam2=None):
+        '''
+        Returns the spectral resolution and interpolated wavelength array
+        
+        Parameters
+        ----------
+        lam: float
+            Wavelength in nm
+        allcoef: list of lists floats
+            Polynomial coefficients of wavelength solution
+        xindx: int
+            X index of lenslet in lenslet array
+        yindx: int
+            Y index of lenslet in lenslet array
+        order: int
+            Order of polynomial wavelength solution
+        lam1: float
+            Shortest wavelength in nm
+        lam2: float
+            Longest wavelength in nm
+        
+        Returns
+        -------
+        interp_lam: array
+            Array of wavelengths
+        R: float
+            Effective spectral resolution
+        '''
         
         if lam1 is None:
             lam1 = np.amin(lam)/1.04
@@ -130,6 +227,30 @@ class PSFLets:
         return coef
 
     def return_locations(self, lam, allcoef, xindx, yindx, order=3):
+        '''
+        Calculates the detector coordinates of lenslet located at `xindx`, `yindx`
+        for desired wavelength `lam` 
+        
+        Parameters
+        ----------
+        lam: float
+            Wavelength in nm
+        allcoef: list of floats
+            Polynomial coefficients of wavelength solution
+        xindx: int
+            X index of lenslet in lenslet array
+        yindx: int
+            Y index of lenslet in lenslet array
+        order: int
+            Order of polynomial wavelength solution
+        
+        Returns
+        -------
+        interp_x: float
+            X coordinate on the detector
+        interp_y: float
+            Y coordinate on the detector
+        '''
         if len(allcoef.shape) == 1:
             coeforder = int(np.sqrt(allcoef.shape[0])) - 1
             interp_x, interp_y = _transform(xindx, yindx, coeforder, allcoef)
@@ -151,6 +272,26 @@ class PSFLets:
 
     def genpixsol(self, lam, allcoef, order=3, lam1=None, lam2=None):
         """
+        Calculates the wavelength at the center of each pixel within a microspectrum
+        
+        Parameters
+        ----------
+        lam: float
+            Wavelength in nm
+        allcoef: list of floats
+            List describing the polynomial coefficients that best fit the lenslets,
+            for all wavelengths
+        order: int
+            Order of the polynomical fit
+        lam1: float
+            Lowest wavelength in nm
+        lam2: float
+            Highest wavelength in nm
+        
+        Notes
+        -----
+        This functions fills in most of the fields of the PSFLet class: the array
+        of xindx, yindx, nlam, lam_indx and nlam_max
         """
 
         ###################################################################
@@ -234,29 +375,36 @@ class PSFLets:
 def _initcoef(order, scale=15.02, phi=np.arctan2(1.926,-1), x0=0, y0=0):
 
     """
-    private function _initcoef in locate_psflets
+    Private function _initcoef in locate_psflets
 
     Create a set of coefficients including a rotation matrix plus zeros.
 
-    Inputs: 
-    1. order: int, the polynomial order of the grid distortion
+    Parameters
+    ---------- 
+    order: int
+        The polynomial order of the grid distortion
+    scale: float
+        The linear separation in pixels of the PSFlets. Default 15.02.
+    phi:   float
+        The pitch angle of the lenslets.  Default atan(1.926)
+    x0:    float
+        x offset to apply to the central pixel. Default 0
+    y0:    float
+        y offset to apply to the central pixel. Default 0
 
-    Optional inputs:
-    2. scale: float, the linear separation in pixels of the PSFlets.
-              Default 13.88.
-    3. phi:   float, the pitch angle of the lenslets.  Default atan(2)
-    4. x0:    float, x offset to apply to the central pixel. Default 0
-    5. y0:    float, x offset to apply to the central pixel. Default 0
-
-    Returns: 
-    1. coef: a list of length (order+1)*(order+2) to be optimized.
+    Returns
+    -------
+    coef: list of floats
+        A list of length (order+1)*(order+2) to be optimized.
     
+    Notes
+    -----
     The list of coefficients has space for a polynomial fit of the
     input order (i.e., for order 3, up to terms like x**3 and x**2*y,
     but not x**3*y).  It is all zeros in the output apart from the 
     rotation matrix given by scale and phi.    
     """
-
+    
     try:
         if not order == int(order):
             raise ValueError("Polynomial order must be integer")
@@ -322,21 +470,30 @@ def _insertorder(coefshort, coef):
 
 def _transform(x, y, order, coef, highordercoef=None):
     """
-    private function _transform in locate_psflets
+    Private function _transform in locate_psflets
 
     Apply the coefficients given to transform the coordinates using
     a polynomial.
 
-    Inputs:
-    1. x:     ndarray of floats, rectilinear grid
-    2. y:     ndarray of floats, rectilinear grid
-    3. order: int, order of the polynomial fit
-    4. coef:  list of the coefficients.  Must match the length
-              required by order = (order+1)*(order+2)
+    Parameters
+    ----------
+    x:     ndarray
+        Rectilinear grid
+    y:     ndarray of floats
+        Rectilinear grid
+    order: int
+        Order of the polynomial fit
+    coef:  list of floats
+        List of the coefficients.  Must match the length required by
+        order = (order+1)*(order+2)
+    highordercoef: Boolean
    
-    Outputs:
-    1. _x:    ndarray, transformed coordinates
-    2. _y:    ndarray, transformed coordinates
+    Returns
+    -------
+    _x:    ndarray
+        Transformed coordinates
+    _y:    ndarray
+        Transformed coordinates
 
     """
     
@@ -400,26 +557,34 @@ def _transform(x, y, order, coef, highordercoef=None):
 def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
 
     """
-    private function _corrval in locate_psflets
+    Private function _corrval in locate_psflets
 
     Return the negative of the sum of the middle XX% of the PSFlet
     spot fluxes (disregarding those with the most and the least flux
     to limit the impact of outliers).  Analogous to the trimmed mean.
 
-    Inputs:
-    1. coef:     list, coefficients for polynomial transformation
-    2. x:        ndarray, coordinates of lenslets
-    3. y:        ndarray, coordinates of lenslets
-    4. filtered: ndarray, image convolved with gaussian PSFlet
-    5. order:    int, order of the polynomial fit
-
-    Optional inputs: 
-    6. trimfrac: float, fraction of outliers (high & low combined) to
-                 trim Default 0.1 (5% trimmed on the high end, 5% on
-                 the low end)
-
-    Output:
-    1. score:    float, negative sum of PSFlet fluxes, to be minimized
+    Parameters
+    ----------
+    coef:     list of floats
+        coefficients for polynomial transformation
+    x: ndarray
+        coordinates of lenslets
+    y: ndarray
+        coordinates of lenslets
+    filtered: ndarray
+        image convolved with gaussian PSFlet
+    order: int
+        order of the polynomial fit
+    trimfrac: float
+        fraction of outliers (high & low combined) to trim 
+        Default 0.1 (5% trimmed on the high end, 5% on the low end)
+    highordercoef: boolean
+        
+        
+    Returns
+    -------
+    score:    float
+        Negative sum of PSFlet fluxes, to be minimized
     """
 
     #################################################################
@@ -447,29 +612,38 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
     designed to constrain the domain of the PSF-let fitting later in
     the pipeline.
 
-    Input:
-    1. imImage: Image class, assumed to be a monochromatic grid of spots
+    Parameters
+    ----------
+    imImage: Image class
+        Assumed to be a monochromatic grid of spots
+    polyorder: float
+        order of the polynomial coordinate transformation. Default 2.
+    sig: float
+        standard deviation of convolving Gaussian used
+        for estimating the grid of centroids.  Should be close
+        to the true value for the PSF-let spots.  Default 0.7.
+    coef: list
+        initial guess of the coefficients of polynomial
+        coordinate transformation
+    trimfrac: float
+        fraction of lenslet outliers (high & low
+        combined) to trim in the minimization.  Default 0.1
+        (5% trimmed on the high end, 5% on the low end)
 
-    Optional Input:
-    2. polyorder float, order of the polynomial coordinate transformation
-                 Default 2.
-    3. sig:      float, standard deviation of convolving Gaussian used
-                 for estimating the grid of centroids.  Should be close
-                 to the true value for the PSF-let spots.  Default 0.7.
-    4. coef:     list, initial guess of the coefficients of polynomial
-                 coordinate transformation
-    5. trimfrac: float, fraction of lenslet outliers (high & low
-                 combined) to trim in the minimization.  Default 0.1
-                 (5% trimmed on the high end, 5% on the low end)
+    Returns
+    -------
+    x: 2D ndarray
+        Estimated spot centroids in x.
+    y: 2D ndarray
+        Estimated spot centroids in y.
+    good:2D boolean ndarray
+        True for lenslets with spots inside the detector footprint
+    coef: list of floats
+        List of best-fit polynomial coefficients
 
-    Output:
-    1. x:       2D ndarray with the estimated spot centroids in x.
-    2. y:       2D ndarray with the estimated spot centroids in y.
-    3. good:    2D boolean ndarray, true for lenslets with spots inside
-                the detector footprint
-    4. coef:    list of best-fit polynomial coefficients
-
-    Notes: the coefficients, if not supplied, are initially set to the 
+    Notes
+    -----
+    the coefficients, if not supplied, are initially set to the 
     known pitch angle and scale.  A loop then does a quick check to find
     reasonable offsets in x and y.  With all of the first-order polynomial
     coefficients set, the optimizer refines these and the higher-order

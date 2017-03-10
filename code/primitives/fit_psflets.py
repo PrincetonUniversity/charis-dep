@@ -28,12 +28,16 @@ def _smoothandmask(datacube, good):
     step is purely cosmetic as the inverse variances are, in any case,
     zero.
 
-    Inputs:
-    1. datacube: image class containing 3D arrays data and ivar
-    2. good:     2D array, nonzero = good lenslet
+    Parameters
+    ----------
+    datacube: image instance
+            containing 3D arrays data and ivar
+    good:     2D array
+            nonzero = good lenslet
 
-    Output:
-    1. datacube: input datacube modified in place
+    Returns
+    -------
+    datacube: input datacube modified in place
 
     """
 
@@ -63,17 +67,24 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
     """
     Return the trimmed mean of an input array.
 
-    Inputs:
-    1. arr:     ndarray with the data
-    2. n:       integer, number of points to trim at each end
+    Parameters
+    ----------
+    arr:     ndarray
+        Data to trim
+    n:       integer
+        Number of points to trim at each end
+    axis:    int
+        The axis along which to compute the trimmed mean.  
+        If None, compute the trimmed mean on the 
+        flattened array.  Default None.
+    maskval: float
+        Value to mask in trimmed mean calculation.  NaN
+        and inf values are already masked.  Default 0.
 
-    Optional inputs:
-    1. axis:    the axis along which to compute the trimmed mean.  
-                If None, compute the trimmed mean on the 
-                flattened array.  Default None.
-    2. maskval: value to mask in trimmed mean calculation.  NaN
-                and inf values are already masked.  Default 0.
-
+    Returns
+    -------
+    trimmed_mean: ndarray
+        Returns the trimmed mean
     """
 
     arr_sorted = arr.copy()
@@ -122,7 +133,19 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
 def _get_corrnoise(resid, ivar):
 
     """
+    Private function that returns the correlated noise
     
+    Parameters
+    ----------
+    resid: ndarray
+        Residuals of the psflet fit
+    ivar: ndarray
+        Inverse variance of the data
+        
+    Returns
+    -------
+    corrnoise: ndarray
+        Correlated noise map
     """
 
     mask = np.zeros(resid.shape)
@@ -176,7 +199,7 @@ def _get_corrnoise(resid, ivar):
 def _recalc_ivar(data, ivar):
 
     """
-
+    Private function to recalculate the inverse variance
     """
 
     dx = 64
@@ -246,18 +269,24 @@ def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     could be more complex if/when we regularize the problem or adopt some
     other approach.
 
-    Inputs:
-    1. subim:   2D nadarray, microspectrum to fit
-    2. psflets: 3D ndarray, first dimension is wavelength.  psflets[0] 
-                must match the shape of subim.
-    3. mode:    string, method to use.  Currently limited to lstsq (a 
-                simple least-squares fit using linalg.lstsq), this can
-                be expanded to include an arbitrary approach.
+    Parameters
+    ----------
+    subim:   2D nadarray
+        Microspectrum to fit
+    psflets: 3D ndarray
+        First dimension is wavelength. psflets[0] must match the shape of subim.
+    mode:    string
+        Method to use. Currently limited to lstsq, ext, and apphot.
+        lstsq highly recommended.
     
-    Returns:
-    1. coef:    the best-fit coefficients (i.e. the microspectrum).
+    Returns
+    -------
+    coef:    list of floats
+        The best-fit coefficients (i.e. the microspectrum).
 
-    Note: this routine may also return the covariance matrix in the future.
+    Notes
+    -----
+    This routine may also return the covariance matrix in the future.
     It will depend on the performance of the algorithms and whether/how we
     implement regularization.
     """
@@ -293,28 +322,33 @@ def _get_cutout(im, x, y, psflets, dx=3):
     linalg.lstsq or to whatever regularization scheme we adopt.
     Assumes that spectra are dispersed in the -y direction.
 
-    Inputs:
-    1. im:      Image object containing data to be fit
-    2. x0:      float, x location of lenslet centroid at shortest 
-                wavelength
-    3. y0:      float, y location of lenslet centroid at shortest 
-                wavelength
-    4. psflets: list of 2D ndarrays, each of which should have the
-                same shape as image.
-         
-    Optional inputs:
-    1. dx:      horizontal length to cut out, default 3.  This is
-                the length to cut out in the +/-x direction; the 
-                lengths cut out in the +y direction (beyond the 
-                shortest and longest wavelengths) are also dx.
+    Parameters
+    ----------
+    im:      Image object
+        Image containing data to be fit
+    x0:      float
+        x location of lenslet centroid at shortest wavelength
+    y0:      float
+        y location of lenslet centroid at shortest wavelength
+    psflets: list of 2D ndarrays
+        Each of which should have the same shape as image.
+    dx:     int
+        Horizontal length to cut out, default 3. 
+        This is the length to cut out in the +/-x direction; 
+        the lengths cut out in the +y direction 
+        (beyond the shortest and longest wavelengths) are also dx.
 
-    Returns: 
-    1. subim:   a flattened subimage to be fit
-    2. psflet_subarr: a 2D ndarray, first dimension is wavelength,
-                second dimension is spatial, and is the same shape
-                as the flattened subimage.
+    Returns
+    -------
+    subim:   1D array
+        A flattened subimage to be fit
+    psflet_subarr: 2D ndarray
+        First dimension is wavelength second dimension is spatial,
+        and is the same shape as the flattened subimage.
 
-    Note: both subim and psflet_subarr are scaled by the inverse
+    Notes
+    -----
+    Both subim and psflet_subarr are scaled by the inverse
     standard deviation if it is given for the input Image.  This 
     will make the fit chi2 and properly handle bad/masked pixels.
 
@@ -344,18 +378,26 @@ def _tag_psflets(shape, x, y, good):
     wavelength.  This will make it very easy to remove the best-fit
     spectra accounting for nearest-neighbor crosstalk.
 
-    Inputs:
-    1. shape:  tuple, shape of the image and psflet arrays.
-    2. x:      ndarray, x indices of the PSFlet centroids at a given
-               wavelength
-    3. y:      ndarray, y indices of the PSFlet centroids
-    4. good:   ndarray, boolean True if the PSFlet falls on the detector
+    Parameters
+    ----------
+    shape:  tuple
+        Shape of the image and psflet arrays.
+    x:      ndarray
+        x indices of the PSFlet centroids at a given wavelength
+    y:      ndarray
+        y indices of the PSFlet centroids
+    good:  boolean ndarray
+        True if the PSFlet falls on the detector
 
-    Output:
-    1. psflet_indx: ndarray of the requested input shape (matching the
-               PSFlet image).  The array contains the indices of the
-               closest lenslet to each pixel at the wavelength of x and y
+    Returns
+    -------
+    psflet_indx: ndarray
+        Has the requested input shape (matching the PSFlet image). 
+        The array contains the indices of the closest lenslet to each
+        pixel at the wavelength of x and y
 
+    Notes
+    -----
     The output, psflet_indx, is to be used as follows:
     coefs[psflet_indx] will give the scaling of the monochromatic PSF-let
     frame.
@@ -389,42 +431,50 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     framework to iteratively solve for the coefficients accounting for
     nearest-neighbor crosstalk.
 
-    Inputs:
-    1. im:      Image class, im.data is the data to be fit.
-    2. psflets: list of Image classes, each one having data of the same 
-                shape as im.data.  These are the monochromatic spots.
-    3. lam:     array of wavelengths extracted.  Should match the first
-                dimension of psflets.
-    4. x:       list of ndarrays, x position of each lenslet spot at 
-                each wavelength
-    5. y:       list of ndarrays, y position of each lenslet spot at 
-                each wavelength
-    6. good:    list of boolean arrays, true if lenslet spot lies 
-                within the H2RG
-    Optional inputs:
-    1. header:  ordered dictionary or FITS header class, to store some
-                information about the reduction.
-    2. flat:    ndarray, lenslet flatfield.  Do not flatfield if this
-                array is not given.  Default None.
-    3. refine:  boolean, iterate solution to remove crosstalk?  
-                Approximately doubles runtime.  Default True.
-    4. smoothandmask: boolean, set inverse variance of particularly 
-                noisy lenslets to zero and replace their values with
-                interpolations for cosmetics (ivar will still be zero)?
-                Default True.
-    5. returnresid: boolean, return a residual image in addition the
-                data cube?  Default False.
-    6. suppressrdnse: boolean
-    7. maxcpus  Maximum number of threads for OpenMP parallelization
-                in Cython.  Default multiprocessing.cpu_count().
+    Parameters
+    ----------
+    im:      Image instance
+        im.data is the data to be fit.
+    psflets: list of Image instances
+        each one having data of the same shape as im.data. 
+        These are the monochromatic spots.
+    lam:     1D array of floats
+        Array of wavelengths extracted.  Should match the first dimension of psflets.
+    x:       list of ndarrays
+        x position of each lenslet spot at each wavelength
+    y:       list of ndarrays
+        y position of each lenslet spot at each wavelength
+    good:    list of boolean arrays
+        true if lenslet spot lies within the H2RG
     
-    Note: the 'x', 'y', and 'good' inputs are assumed to be the
-          outputs from the function locatePSFlets.
-
-    Output:
-    1. datacube: An Image class containing the data cube.
-
+    header:  FITS header instance
+        Ordered dictionary or FITS header class,
+        to store some information about the reduction.
+    flat:    ndarray
+        Lenslet flatfield.  Do not flatfield if this array is not given.  Default None.
+    refine:  boolean
+        Iterate solution to remove crosstalk? Approximately doubles runtime.  Default True.
+    smoothandmask: boolean
+        Set inverse variance of particularly noisy lenslets to zero and
+        replace their values with interpolations for cosmetics
+        (ivar will still be zero)? Default True.
+    returnresid: boolean
+        Return a residual image in addition the data cube?  Default False.
+    suppressrdnse: boolean
+    maxcpus:  int
+        Maximum number of threads for OpenMP parallelization in Cython.
+        Default multiprocessing.cpu_count().
     
+    Returns
+    -------
+    datacube: Image instance
+        An Image instance containing the data cube.
+
+    Notes
+    -----
+    the 'x', 'y', and 'good' inputs are assumed to be the outputs from the function
+    locatePSFlets.
+
 
     """
     
@@ -605,40 +655,40 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
     photometry may also be performed by setting sig=1e10 (or something
     similarly large); the aperture will then be delt_x.
 
-    The function takes at least three arguments:
-
-    1. im:          Image class containing the 2D count rates and 
-                    inverse variances
-    2. PSFlet_tool: An instance of the PSFlet_tool class containing 
-                    the wavelength solution.  The locations of the 
-                    microspectra and the wavelengths corresponding to
-                    whole pixels along the dispersion direction will
-                    be used in this routine.
-    3. lam:         list of floating point numbers or 1D array. The
-                    array of wavelengths onto which to interpolate
-                    the microspectra.
+    Parameters
+    ----------
+    im:     Image instance
+        Containing the 2D count rates and inverse variances
+    PSFlet_tool: PSFLet_tool instance
+        An instance of the PSFlet_tool class containing the wavelength solution. 
+        The locations of the microspectra and the wavelengths corresponding to 
+        whole pixels along the dispersion direction will be used in this routine.
+    lam:         list of floats
+        List of floating point numbers or 1D array. The array of wavelengths onto which
+        to interpolate the microspectra.
+    delt_x:      int
+        Odd, positive integer, the aperture width for extraction.  Default 7 (5 or 7 recommended).
+    flat:        2D ndarray
+        2D floating point ndarray, lenslet flat. Default None (don't flat-field).
+    sig:         float
+        1D root variance of lenslet PSF. Default 0.7 (currently cannot be a function of 
+        wavelength).  Setting sig >> delt_x is equivalent to aperture photometry.
+    smoothandmask: boolean
+        Set inverse variance of particularly noisy lenslets to zero and replace their values 
+        with interpolations for cosmetics (ivar will still be zero)?  Default True.
+    header:      FITS header
+        Ordered dictionary or FITS header class, to store some information about the reduction.
+    maxcpus      int
+        Maximum number of threads for OpenMP parallelization in Cython. 
+        Default multiprocessing.cpu_count().
     
-    Optional arguments: 
-    1. delt_x:      odd, positive integer, the aperture width for 
-                    extraction.  Default 7 (5 or 7 recommended).
-    2. flat:        2D floating point ndarray, lenslet flat.  
-                    Default None (don't flat-field).
-    3. sig:         float, 1D root variance of lenslet PSF.  
-                    Default 0.7 (currently cannot be a function of 
-                    wavelength).  Setting sig >> delt_x is 
-                    equivalent to aperture photometry.
-    4. smoothandmask: boolean, set inverse variance of particularly 
-                    noisy lenslets to zero and replace their values 
-                    with interpolations for cosmetics (ivar will still
-                    be zero)?  Default True.
-    5. header:      ordered dictionary or FITS header class, to store
-                    some information about the reduction.
-    6. maxcpus      Maximum number of threads for OpenMP parallelization
-                    in Cython.  Default multiprocessing.cpu_count().
-    
-    Output:
-    1. datacube:    An Image class containing the data cube.
+    Returns
+    -------
+    datacube:    Image instance
+        An Image instance containing the data cube.
 
+    Notes
+    -----
     In the near future a position- and wavelength-dependent PSFlet
     width will be included from the measured PSFlets.
 
