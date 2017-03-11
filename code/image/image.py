@@ -135,13 +135,13 @@ class Image:
             hdr.append((key, self.header[i], self.header.comments[i]), end=True)
 
         out = fits.HDUList(fits.PrimaryHDU(None, hdr))
-        out.append(fits.PrimaryHDU(self.data.astype(np.float32)))
+        out.append(fits.PrimaryHDU(self.data.astype(np.float32),hdr))
         if self.ivar is not None:
-            out.append(fits.PrimaryHDU(self.ivar.astype(np.float32)))
+            out.append(fits.PrimaryHDU(self.ivar.astype(np.float32),hdr))
         if self.chisq is not None:
-            out.append(fits.PrimaryHDU(self.chisq.astype(np.float32)))
+            out.append(fits.PrimaryHDU(self.chisq.astype(np.float32),hdr))
         if self.flags is not None:
-            out.append(fits.PrimaryHDU(self.flags))
+            out.append(fits.PrimaryHDU(self.flags),hdr)
 
         if self.extrahead is not None:
             try:
