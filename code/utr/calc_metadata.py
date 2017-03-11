@@ -229,7 +229,24 @@ def metadata(filename, header=None, clear=True):
 def addWCS(header,xpix,ypix,xpixscale = 0.015,ypixscale = -0.015,extrarot=0.0):
     
     '''
+    Add the proper keywords to align the cube into the World Coordinate System.
+    This modifies the variable `header` in place
     
+    Parameters
+    ----------
+    
+    header: FITS header
+        Header to modify. Needs to already contain 'ra' and 'dec' keywords
+    xpix:   float
+        X coordinate of reference pixel
+    ypix:   float
+        Y coordinate of reference pixel
+    xpixscale:   float
+        Plate scale in the X direction in arcseconds
+    Ypixscale:   float
+        Plate scale in the Y direction in arcseconds
+    extrarot:   float
+        Additional rotation angle in degrees
     
     '''
     ra = header['ra']
