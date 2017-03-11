@@ -105,6 +105,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
         header['cal_dx'] = (dx, 'x-shift from archival spot positions (pixels)')
         header['cal_dy'] = (dy, 'y-shift from archival spot positions (pixels)')
         header['cal_dphi'] = (dphi, 'Rotation from archival spot positions (radians)')
+        header['ifs_rot'] = (180.*phi2/np.pi+90., 'Rotation of lenslet array (degrees)')
 
     #################################################################
     # Load the high-resolution PSFlet images and associated
