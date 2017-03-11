@@ -215,6 +215,18 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         raise ValueError("Datacube extraction method " + method + " not implemented.")
 
     ################################################################
+    # Add WCS for the cube 
+    # for now assume the image is centered on the cube
+    # in practice, we will have to register things with
+    # the satellite spots
+    ################################################################ 
+    ydim,xdim = datacube.data[0].shape
+    rot_angle = datacube.header['IFS_ROT']
+    utr.addWCS(datacube.header,xpix=ydim//2,ypix=xdim//2,
+                    xpixscale = 0.015/3600., ypixscale = -0.015/3600.,
+                    extrarot=rot_angle)      
+
+    ################################################################
     # Add the original header for reference as the last HDU
     ################################################################
 
