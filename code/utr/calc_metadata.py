@@ -12,18 +12,25 @@ def _fetch(key, filename, comment=None, newkey=None):
     Private function _fetch fetches a key from HDU 0 of a file.  It
     returns a tuple suitable for appending to a FITS header.
 
-    Inputs:
-    1. key       string, the name of the FITS header keyword
-    2. filename  string, the file to be opened with astropy.io.fits.open(filename)
-    Optional inputs:
-    1. comment   string, comment to use for the entry.  Default None, 
-                 i.e. use the comment in the original header
-    2. newkey    string, keyword to return.  Default None, i.e., the
-                 keyword to return is the same as the keyword in the 
+    Parameters
+    ----------
+    
+    key:       string
+        The name of the FITS header keyword
+    filename:  string
+        The file to be opened with astropy.io.fits.open(filename)
+    comment:   string
+        Comment to use for the entry.  Default None, i.e. use the comment in the original header
+    newkey:    string
+        Keyword to return.  Default None, i.e., the keyword to return is the same as the keyword in the 
                  original header.
-    Ouptut: 
-    1. (key, value, comment) tuple for use with fits.header.append
+    Returns
+    -------
+    (key, value, comment): tuple
+        for use with fits.header.append
 
+    Notes
+    -----
     If the file cannot be opened or the key is not in the header, the
     function will return a value of 'unavailable'.
 
@@ -48,20 +55,28 @@ def _fetch(key, filename, comment=None, newkey=None):
         return (newkey, val, comment)
         
 
-def metadata(filename, header=fits.PrimaryHDU().header, clear=True):
+def metadata(filename, header=None, clear=True):
     
     """
     Function metadata populates a FITS header (creating a new one if
     necessary) with important information about an observation.  
 
-    Input:
-    1. filename  string to be called with astropy.io.fits.open(filename)
-    Optional Input:
-    1. header    fits header object to append to (default = create new)
+    Parameters
+    ----------
+    filename:  string
+        To be called with astropy.io.fits.open(filename)
+    header:    fits header
+        Fits header object to append to (default = create new)
+    clear:    boolean
+        Whether to clear the header or not
 
-    Output:
-    header       fits header with additional data
+    Returns
+    -------
+    header:    fits header
+        With additional data
 
+    Notes
+    -----
     The main calculation in this routine is for the parallactic angle;
     other parameters are trivially computed or simply copied from the
     original FITS header.  Entries that cannot be computed or found in
@@ -71,7 +86,8 @@ def metadata(filename, header=fits.PrimaryHDU().header, clear=True):
     reads.
 
     """
-
+    if header is None:
+        header = fits.PrimaryHDU().header
     if clear:
         header.clear()
 
@@ -184,7 +200,7 @@ def metadata(filename, header=fits.PrimaryHDU().header, clear=True):
 
     header['mjd'] = (mean_mjd, 'Mean MJD of exposure')    
     header['utc-date'] = (utc_date, 'UTC date of exposure')  
-    header['utc-time'] = (utc_time, 'Mean UTC time of exposure')
+    header['utc-time'] = (utc_time, 'Mean UTC time of exposure')        
 
     ####################################################################
     # Attempt to fetch useful/important keywords from the original
@@ -196,6 +212,7 @@ def metadata(filename, header=fits.PrimaryHDU().header, clear=True):
 
     if np.isfinite(pa):
         header['parang'] = (pa*180/np.pi, 'Mean parallactic angle (degrees)')
+    
     else:
         header['parang'] = ('unavailable', 'Mean parallactic angle (degrees)')
     header.append(_fetch('d_imrpap', filename, comment='Image rotator pupil position angle (degrees)'))
@@ -208,3 +225,37 @@ def metadata(filename, header=fits.PrimaryHDU().header, clear=True):
                          comment='CHARIS shutter position', newkey='shutter'))
 
     return header
+
+def addWCS(header,xpix,ypix,xpixscale = 0.015,ypixscale = -0.015,extrarot=0.0):
+    
+    '''
+    
+    
+    '''
+    ra = header['ra']
+    dec = header['dec']
+    c = coord.SkyCoord(ra=ra, dec=dec, unit=(u.hourangle, u.deg), frame='fk5')
+        
+    ####################################################################
+    # Compute the FITS header rotation and scale matrix to properly 
+    # align the image in FITS viewers
+    ####################################################################
+    header['XPIXSCAL'] = (xpixscale, 'Degrees/pixel')
+    header['YPIXSCAL'] = (ypixscale, 'Degrees/pixel')
+    header['CTYPE1']  = ('RA---TAN','first parameter RA  ,  projection TANgential')
+    header['CTYPE2']  = ('DEC--TAN','second parameter DEC,  projection TANgential')        
+    header['CRVAL1']  = (c.ra.deg,'Reference X pixel value')
+    header['CRVAL2']  = (c.dec.deg,'Reference Y pixel value')
+    header['CRPIX1']  = (xpix,'Reference X pixel')
+    header['CRPIX2']  = (ypix,'Reference Y pixel')
+    header['EQUINOX'] = (2000,'Equinox of coordinates')
+    header['TOT_ROT'] = (header['PARANG']+extrarot+header['D_IMRPAP'],'Total rotation angle (degrees)')
+    
+    angle = np.pi*(header['TOT_ROT'])/180.
+    header['CD1_1'] = (np.cos(angle)*xpixscale,'Rotation matrix coefficient')
+    header['CD1_2'] = (np.sin(angle)*xpixscale,'Rotation matrix coefficient')
+    header['CD2_1'] = (-np.sin(angle)*ypixscale,'Rotation matrix coefficient')
+    header['CD2_2'] = (np.cos(angle)*ypixscale,'Rotation matrix coefficient')
+    
+
+    
