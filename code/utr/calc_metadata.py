@@ -226,7 +226,7 @@ def metadata(filename, header=None, clear=True):
 
     return header
 
-def addWCS(header,xpix,ypix,xpixscale = 0.015,ypixscale = -0.015,extrarot=0.0):
+def addWCS(header,xpix,ypix,xpixscale = 0.015/3600.,ypixscale = -0.015/3600.,extrarot=0.0):
     
     '''
     Add the proper keywords to align the cube into the World Coordinate System.
@@ -242,9 +242,9 @@ def addWCS(header,xpix,ypix,xpixscale = 0.015,ypixscale = -0.015,extrarot=0.0):
     ypix:   float
         Y coordinate of reference pixel
     xpixscale:   float
-        Plate scale in the X direction in arcseconds
+        Plate scale in the X direction in degrees
     Ypixscale:   float
-        Plate scale in the Y direction in arcseconds
+        Plate scale in the Y direction in degrees
     extrarot:   float
         Additional rotation angle in degrees
     
