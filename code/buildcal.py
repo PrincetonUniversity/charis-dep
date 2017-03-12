@@ -1,20 +1,28 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import glob
 import re
 import os
 import time
 import numpy as np
-from image import Image
-import primitives
+try:
+    import primitives
+    import utr
+    from image import Image
+    from parallel import Task, Consumer
+except:
+    import charis.primitives as primitives
+    import charis.utr as utr
+    from charis.image import Image
+    from charis.parallel import Task, Consumer
 import logging
 from astropy.io import fits
 import multiprocessing
-from parallel import Task, Consumer
 import copy
-import utr
 import shutil
 import sys
+import pkg_resources
 
 log = logging.getLogger('main')
 
@@ -67,12 +75,13 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     # the existing calibration files.
     #################################################################
 
-    log.info("Loading wavelength solution from " + indir + "lamsol.dat")
-    lam = np.loadtxt(indir + "lamsol.dat")[:, 0]
-    allcoef = np.loadtxt(indir + "lamsol.dat")[:, 1:]
+    log.info("Loading wavelength solution from " + indir + "/lamsol.dat")
+    lam = np.loadtxt(os.path.join(indir, "lamsol.dat"))[:, 0]
+    allcoef = np.loadtxt(os.path.join(indir, "lamsol.dat"))[:, 1:]
     psftool = primitives.PSFLets()
     oldcoef = psftool.monochrome_coef(inLam, lam, allcoef, order=order)
 
+    print('Generating new wavelength solution')
     x, y, good, newcoef = primitives.locatePSFlets(inImage, polyorder=order, coef=oldcoef)
             
     psftool.geninterparray(lam, allcoef, order=order)
@@ -96,6 +105,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
         header['cal_dx'] = (dx, 'x-shift from archival spot positions (pixels)')
         header['cal_dy'] = (dy, 'y-shift from archival spot positions (pixels)')
         header['cal_dphi'] = (dphi, 'Rotation from archival spot positions (radians)')
+        header['ifs_rot'] = (180.*phi2/np.pi, 'Rotation of lenslet array (degrees)')
 
     #################################################################
     # Load the high-resolution PSFlet images and associated
@@ -159,11 +169,16 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
                       
     polyimage = np.empty((Nspec - 1, 2048, 2048*upsamp), np.float32)
 
+    print('Generating narrowband template images')
     for i in range(upsamp*(Nspec - 1)):
+        frac_complete = (i + 1)*1./(upsamp*(Nspec - 1))
+        N = int(frac_complete*40)
+        print('-'*N + '>' + ' '*(40 - N) + ' %3d%% complete\r' % (int(100*frac_complete)), end='')
         index, result = results.get()
         ilam = index//upsamp
         dx = (index%upsamp)
         polyimage[ilam, :, dx::upsamp] = result
+    print('')
 
     #################################################################
     # Save the positions of the PSFlet centers to cut out the
@@ -192,7 +207,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     outkey.append(fits.PrimaryHDU(np.asarray(good).astype(np.uint8)))
     outkey.writeto(outdir + 'polychromekeyR%d.fits' % (R), clobber=True)
     
-    print "Total time elapsed: %.0f" % (time.time() - tstart)
+    print("Total time elapsed: %.0f seconds" % (time.time() - tstart))
     return None
     
 
@@ -200,14 +215,14 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
 if __name__ == "__main__":
 
     if len(sys.argv) < 4:
-        print "Must call buildcal with at least three arguments:"
-        print "  1: The path to the narrow-band flatfield image"
-        print "  2: The wavelength, in nm, of the narrow-band image"
-        print "  3: The band/filter: 'J', 'H', 'K', or 'lowres'"
-        print "Example: buildcal CRSA00000000.fits 1550 lowres"
-        print "Optional additional arguments: filenames of darks"
-        print "  taken with the same observing setup."
-        print "Example: buildcal CRSA00000000.fits 1550 lowres darks/CRSA*.fits"
+        print("Must call buildcal with at least three arguments:")
+        print("  1: The path to the narrow-band flatfield image")
+        print("  2: The wavelength, in nm, of the narrow-band image")
+        print("  3: The band/filter: 'J', 'H', 'K', or 'lowres'")
+        print("Example: buildcal CRSA00000000.fits 1550 lowres")
+        print("Optional additional arguments: filenames of darks")
+        print("  taken with the same observing setup.")
+        print("Example: buildcal CRSA00000000.fits 1550 lowres darks/CRSA*.fits")
         exit()
 
     infile = sys.argv[1]
@@ -218,10 +233,10 @@ if __name__ == "__main__":
     for i in range(4, len(sys.argv)):
         bgfiles += glob.glob(sys.argv[i])        
 
-    print "\n" + "*"*60
-    print "Oversample PSFlet templates to enable fitting a subpixel offset in cube"
-    print "extraction?  Cost is a factor of ~2-4 in the time to build calibrations."
-    print "*"*60
+    print("\n" + "*"*60)
+    print("Oversample PSFlet templates to enable fitting a subpixel offset in cube")
+    print("extraction?  Cost is a factor of ~2-4 in the time to build calibrations.")
+    print("*"*60)
     while True:
         upsample = raw_input("     Oversample? [Y/n]: ")
         if upsample in ['', 'y', 'Y']:
@@ -231,40 +246,40 @@ if __name__ == "__main__":
             upsample = False
             break
         else:
-            print "Invalid input."
+            print("Invalid input.")
 
     ncpus = multiprocessing.cpu_count()
-    print "\n" + "*"*60
-    print "How many threads would you like to use?  %d threads detected." % (ncpus)
-    print "*"*60
+    print("\n" + "*"*60)
+    print("How many threads would you like to use?  %d threads detected." % (ncpus))
+    print("*"*60)
     while True:
         nthreads = raw_input("     Number of threads to use [%d]: " % (ncpus))
         try:
             nthreads = int(nthreads)
             if nthreads < 0 or nthreads > ncpus:
-                print "Must use between 1 and %d threads." % (ncpus)
+                print("Must use between 1 and %d threads." % (ncpus))
             else:
                 break
         except:
             if nthreads == '':
                 nthreads = ncpus
                 break
-            print "Invalid input."
+            print("Invalid input.")
 
-    print "\n" + "*"*60
-    print "Building calibration files, placing results in current directory:"
-    print os.path.abspath('.')
-    print "\nSettings:\n"
-    print "Using %d threads" % (nthreads)
-    print "Narrow-band flatfield image: " + infile
-    print "Wavelength:", lam, "nm"
-    print "Observing mode: " + band
-    print "Upsample PSFlet templates? ", upsample
+    print("\n" + "*"*60)
+    print("Building calibration files, placing results in current directory:")
+    print(os.path.abspath('.'))
+    print("\nSettings:\n")
+    print("Using %d threads" % (nthreads))
+    print("Narrow-band flatfield image: " + infile)
+    print("Wavelength:", lam, "nm")
+    print("Observing mode: " + band)
+    print("Upsample PSFlet templates? ", upsample)
     if len(bgfiles) > 0:
-        print "Background count rates will be computed."
+        print("Background count rates will be computed.")
     else:
-        print "No background will be computed."
-    print "*"*60
+        print("No background will be computed.")
+    print("*"*60)
     while True:
         do_calib = raw_input("     Continue with these settings? [Y/n]: ")
         if do_calib in ['', 'y', 'Y']:
@@ -272,7 +287,7 @@ if __name__ == "__main__":
         elif do_calib in ['n', 'N']:
             exit()
         else:
-            print "Invalid input."
+            print("Invalid input.")
    
     ###############################################################
     # Wavelength limits in nm
@@ -293,20 +308,21 @@ if __name__ == "__main__":
         raise ValueError("Error: wavelength " + str(lam) + " outside range (" + str(lam1) + ", " + str(lam2) + ") of mode " + band)
 
 
-    prefix = os.path.dirname(os.path.realpath(__file__))
+    #prefix = os.path.dirname(os.path.realpath(__file__))
+    prefix = pkg_resources.resource_filename('charis', 'calibrations')
 
     ###############################################################
     # Spectral resolutions for the final calibration files
     ###############################################################
 
     if band in ['J', 'H', 'K']:
-        indir = prefix + "/calibrations/highres_" + band + "/"
+        indir = os.path.join(prefix, "highres_" + band)
         R = 100
     else:
-        indir = prefix + "/calibrations/lowres/"
+        indir = os.path.join(prefix, "lowres")
         R = 30
 
-    mask = fits.open(indir + 'mask.fits')[0].data
+    mask = fits.open(os.path.join(prefix, 'mask.fits'))[0].data
 
     hdr = fits.PrimaryHDU().header
     hdr.clear()
@@ -328,6 +344,7 @@ if __name__ == "__main__":
     # Mean background count rate, weighted by inverse variance
     ###############################################################
 
+    print('Computing ramps from sequences of raw reads')
     num = 0
     denom = 1e-100
     ibg = 1
@@ -356,7 +373,7 @@ if __name__ == "__main__":
         denom = denom + im.ivar
     inImage = Image(data=num/denom, ivar=mask*1./denom)
 
-    trans = np.loadtxt(indir + band + '_tottrans.dat')
+    trans = np.loadtxt(os.path.join(indir, band + '_tottrans.dat'))
 
     buildcalibrations(inImage, lam, mask, indir, lam1=lam1, lam2=lam2,
                       upsample=upsample, R=R, order=3, trans=trans,
@@ -365,5 +382,7 @@ if __name__ == "__main__":
     out = fits.HDUList(fits.PrimaryHDU(None, hdr))
     out.writeto('cal_params.fits', clobber=True)
 
-    for filename in ['mask.fits', 'lensletflat.fits', 'pixelflat.fits']:
-        shutil.copy(indir + filename, './' + filename)
+    shutil.copy(os.path.join(indir, 'lensletflat.fits'), './lensletflat.fits')
+
+    for filename in ['mask.fits', 'pixelflat.fits']:
+        shutil.copy(os.path.join(prefix, filename), './' + filename)

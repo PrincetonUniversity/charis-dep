@@ -4,14 +4,20 @@
 # A provisional routine for actually producing and returning data cubes.
 #########################################################################
 
+from __future__ import print_function
 import numpy as np
 import time
 import glob
 import re
 from astropy.io import fits
-import primitives
-import utr
-from image import Image
+try:
+    import primitives
+    import utr
+    from image import Image
+except:
+    import charis.primitives as primitives
+    import charis.utr as utr
+    from charis.image import Image
 import sys
 import ConfigParser
 import multiprocessing
@@ -209,6 +215,18 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         raise ValueError("Datacube extraction method " + method + " not implemented.")
 
     ################################################################
+    # Add WCS for the cube 
+    # for now assume the image is centered on the cube
+    # in practice, we will have to register things with
+    # the satellite spots
+    ################################################################ 
+    ydim,xdim = datacube.data[0].shape
+    rot_angle = 113 # empirically determined
+    utr.addWCS(datacube.header,xpix=ydim//2,ypix=xdim//2,
+                    xpixscale = 0.015/3600., ypixscale = -0.015/3600.,
+                    extrarot=rot_angle)      
+
+    ################################################################
     # Add the original header for reference as the last HDU
     ################################################################
 
@@ -223,10 +241,7 @@ if __name__ == "__main__":
         errstring = "Must call extractcube.py with at least two arguments:\n"
         errstring += "1: string(s) parsed by glob matching files to be turned into data cubes\n"
         errstring += "2: a .ini configuration file processed by ConfigParser"
-        try:
-            print errstring
-        except:
-            print(errstring)
+        print(errstring)
         exit()
 
     filenames = []
