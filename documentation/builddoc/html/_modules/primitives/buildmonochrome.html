@@ -1,0 +1,399 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>primitives.buildmonochrome &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
+    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="../../_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for primitives.buildmonochrome</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="k">import</span> <span class="n">fits</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">signal</span><span class="p">,</span> <span class="n">ndimage</span>
+
+
+<div class="viewcode-block" id="gethires"><a class="viewcode-back" href="../../primitives.html#primitives.buildmonochrome.gethires">[docs]</a><span class="k">def</span> <span class="nf">gethires</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">upsample</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">nsubarr</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">npix</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span> <span class="n">renorm</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build high resolution images of the undersampled PSF using the</span>
+<span class="sd">    monochromatic frames.</span>
+
+<span class="sd">    Inputs:</span>
+<span class="sd">    1. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">###################################################################</span>
+    <span class="c1"># hires_arr has nsubarr x nsubarr high-resolution PSFlets.  Smooth</span>
+    <span class="c1"># out the result very slightly to reduce the impact of poorly</span>
+    <span class="c1"># sampled points.  The resolution on these images, which will be</span>
+    <span class="c1"># passed to a multidimensional spline interpolator, is a factor of</span>
+    <span class="c1"># upsample higher than the pixellation of the original image.</span>
+    <span class="c1">###################################################################</span>
+
+    <span class="n">hires_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nsubarr</span><span class="p">,</span> <span class="n">nsubarr</span><span class="p">,</span> <span class="n">upsample</span><span class="o">*</span><span class="p">(</span><span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">upsample</span><span class="o">*</span><span class="p">(</span><span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+    <span class="n">_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">upsample</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="n">upsample</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span>
+    <span class="n">_x</span><span class="p">,</span> <span class="n">_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">_x</span><span class="p">,</span> <span class="n">_x</span><span class="p">)</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="n">_x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">_y</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">r2</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="mf">0.3</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">upsample</span><span class="o">/</span><span class="mf">5.</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    
+    <span class="c1">###################################################################</span>
+    <span class="c1"># yreg and xreg denote the regions of the image.  Each region will</span>
+    <span class="c1"># have roughly 20,000/nsubarr**2 PSFlets from which to construct</span>
+    <span class="c1"># the resampled version.  For 5x5 (default), this is roughly 800.</span>
+    <span class="c1">###################################################################   </span>
+
+    <span class="k">for</span> <span class="n">yreg</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nsubarr</span><span class="p">):</span>
+        <span class="n">i1</span> <span class="o">=</span> <span class="n">yreg</span><span class="o">*</span><span class="n">image</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">//</span><span class="n">nsubarr</span>
+        <span class="n">i2</span> <span class="o">=</span> <span class="n">i1</span> <span class="o">+</span> <span class="n">image</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">//</span><span class="n">nsubarr</span>
+        <span class="n">i1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">i1</span><span class="p">,</span> <span class="n">npix</span><span class="p">)</span>
+        <span class="n">i2</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">i2</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">npix</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">xreg</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nsubarr</span><span class="p">):</span>
+            <span class="n">j1</span> <span class="o">=</span> <span class="n">xreg</span><span class="o">*</span><span class="n">image</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">//</span><span class="n">nsubarr</span>
+            <span class="n">j2</span> <span class="o">=</span> <span class="n">j1</span> <span class="o">+</span> <span class="n">image</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">//</span><span class="n">nsubarr</span>
+            <span class="n">j1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">j1</span><span class="p">,</span> <span class="n">npix</span><span class="p">)</span>
+            <span class="n">j2</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">j2</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">npix</span><span class="p">)</span>
+
+            <span class="c1">############################################################</span>
+            <span class="c1"># subim holds the high-resolution images.  The first</span>
+            <span class="c1"># dimension counts over PSFlet, and must hold roughly the</span>
+            <span class="c1"># total number of PSFlets divided by upsample**2.  The</span>
+            <span class="c1"># worst possible case is about 20,000/nsubarr**2.</span>
+            <span class="c1">############################################################</span>
+
+            <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">subim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">20000</span><span class="o">/</span><span class="n">nsubarr</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">upsample</span><span class="o">*</span><span class="p">(</span><span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">upsample</span><span class="o">*</span><span class="p">(</span><span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+
+            <span class="c1">############################################################</span>
+            <span class="c1"># Now put the PSFlets in.  The pixel of index</span>
+            <span class="c1"># [npix*upsample//2, npix*upsample//2] is the centroid.</span>
+            <span class="c1"># The counter k keeps track of how many PSFlets contribute</span>
+            <span class="c1"># to each resolution element.</span>
+            <span class="c1">############################################################</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="k">if</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">j1</span> <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">j2</span> <span class="ow">and</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">i1</span> <span class="ow">and</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">i2</span><span class="p">:</span>
+                    <span class="n">xval</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">/</span><span class="n">upsample</span>
+                    <span class="n">yval</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">/</span><span class="n">upsample</span>
+
+                    <span class="n">ix</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">xval</span><span class="p">)</span> <span class="o">-</span> <span class="n">xval</span><span class="p">)</span><span class="o">*</span><span class="n">upsample</span>
+                    <span class="n">iy</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">yval</span><span class="p">)</span> <span class="o">-</span> <span class="n">yval</span><span class="p">)</span><span class="o">*</span><span class="n">upsample</span>
+
+                    <span class="k">if</span> <span class="n">ix</span> <span class="o">==</span> <span class="n">upsample</span><span class="p">:</span>
+                        <span class="n">ix</span> <span class="o">-=</span> <span class="n">upsample</span>
+                    <span class="k">if</span> <span class="n">iy</span> <span class="o">==</span> <span class="n">upsample</span><span class="p">:</span>
+                        <span class="n">iy</span> <span class="o">-=</span> <span class="n">upsample</span>
+
+                    <span class="n">iy1</span><span class="p">,</span> <span class="n">ix1</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">yval</span><span class="p">)</span> <span class="o">-</span> <span class="n">npix</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">xval</span><span class="p">)</span> <span class="o">-</span> <span class="n">npix</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span>
+                    <span class="n">cutout</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">iy1</span><span class="p">:</span><span class="n">iy1</span> <span class="o">+</span> <span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ix1</span><span class="p">:</span><span class="n">ix1</span> <span class="o">+</span> <span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                    <span class="n">subim</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">iy</span><span class="p">::</span><span class="n">upsample</span><span class="p">,</span> <span class="n">ix</span><span class="p">::</span><span class="n">upsample</span><span class="p">]</span> <span class="o">=</span> <span class="n">cutout</span>
+                    <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="n">meanpsf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">upsample</span><span class="o">*</span><span class="p">(</span><span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">upsample</span><span class="o">*</span><span class="p">(</span><span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">upsample</span><span class="o">*</span><span class="p">(</span><span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">upsample</span><span class="o">*</span><span class="p">(</span><span class="n">npix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+
+            <span class="c1">############################################################</span>
+            <span class="c1"># Take the trimmed mean (middle 60% of the data) for each</span>
+            <span class="c1"># PSFlet to avoid contamination by bad pixels.  Then</span>
+            <span class="c1"># convolve with a narrow Gaussian to mitigate the effects</span>
+            <span class="c1"># of poor sampling.</span>
+            <span class="c1">############################################################</span>
+
+            <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+
+                <span class="n">window1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">r2</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="mi">1</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">upsample</span><span class="o">/</span><span class="mf">5.</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+                <span class="n">window2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">r2</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="mi">1</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">upsample</span><span class="o">/</span><span class="mf">5.</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">ii</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">window</span> <span class="o">=</span> <span class="n">window2</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">window</span> <span class="o">=</span> <span class="n">window1</span>                    
+
+                <span class="k">if</span> <span class="n">ii</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">kk</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                        <span class="n">mask</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">*</span><span class="p">(</span><span class="n">subim</span><span class="p">[</span><span class="n">kk</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">subim</span><span class="p">[</span><span class="n">kk</span><span class="p">]</span><span class="o">*</span><span class="n">meanpsf</span><span class="o">*</span><span class="n">mask</span><span class="p">)</span>
+                            <span class="n">A</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">meanpsf</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">mask</span><span class="p">)</span>
+
+                            <span class="k">if</span> <span class="n">A</span> <span class="o">&gt;</span> <span class="mf">0.5</span> <span class="ow">and</span> <span class="n">A</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                                <span class="n">subim</span><span class="p">[</span><span class="n">kk</span><span class="p">]</span> <span class="o">/=</span> <span class="n">A</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">subim</span><span class="p">[</span><span class="n">kk</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+                            <span class="n">chisq</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mask</span><span class="o">*</span><span class="p">(</span><span class="n">meanpsf</span> <span class="o">-</span> <span class="n">subim</span><span class="p">[</span><span class="n">kk</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+                            <span class="n">chisq</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">meanpsf</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+
+                            <span class="n">subim</span><span class="p">[</span><span class="n">kk</span><span class="p">]</span> <span class="o">*=</span> <span class="p">(</span><span class="n">chisq</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">upsample</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+                            <span class="c1">#mask2 = np.abs(meanpsf - subim[kk])/(np.abs(meanpsf) + 0.01*np.amax(meanpsf)) &lt; 1</span>
+                            <span class="c1">#subim[kk] *= mask2</span>
+                            <span class="n">subim</span><span class="p">[</span><span class="n">kk</span><span class="p">]</span> <span class="o">*=</span> <span class="n">subim</span><span class="p">[</span><span class="n">kk</span><span class="p">]</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">3</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">meanpsf</span><span class="p">)</span>
+
+                <span class="n">subim2</span> <span class="o">=</span> <span class="n">subim</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">subim</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">subim</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]):</span>
+
+                        <span class="n">_i1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">upsample</span><span class="o">//</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="n">_i2</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">upsample</span><span class="o">//</span><span class="mi">4</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">subim</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                        <span class="n">_j1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span class="n">upsample</span><span class="o">//</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="n">_j2</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="n">upsample</span><span class="o">//</span><span class="mi">4</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">subim</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                        
+                        <span class="n">data</span> <span class="o">=</span> <span class="n">subim2</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="n">_i1</span><span class="p">:</span><span class="n">_i2</span><span class="p">,</span> <span class="n">_j1</span><span class="p">:</span><span class="n">_j2</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">subim2</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="n">_i1</span><span class="p">:</span><span class="n">_i2</span><span class="p">,</span> <span class="n">_j1</span><span class="p">:</span><span class="n">_j2</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)]</span>
+                        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="p">)[</span><span class="mi">3</span><span class="p">:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+                            <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">10</span>
+                            <span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                        
+                            <span class="n">subim</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">subim</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span><span class="o">/</span><span class="n">std</span> <span class="o">&lt;</span> <span class="mf">3.5</span>
+                        <span class="k">elif</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+                            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">data</span><span class="p">)[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                            <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">10</span>
+                            <span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                        
+                            <span class="n">subim</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">subim</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span><span class="o">/</span><span class="n">std</span> <span class="o">&lt;</span> <span class="mf">3.5</span>
+                        
+                        <span class="n">data</span> <span class="o">=</span> <span class="n">subim</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">subim</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)]</span>
+                        <span class="c1">#data = np.sort(data)</span>
+                        <span class="n">npts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">npts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">meanpsf</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                            <span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">npts</span>
+
+                <span class="n">meanpsf</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">convolve2d</span><span class="p">(</span><span class="n">meanpsf</span><span class="o">*</span><span class="n">weight</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span>
+                <span class="n">meanpsf</span> <span class="o">/=</span> <span class="n">signal</span><span class="o">.</span><span class="n">convolve2d</span><span class="p">(</span><span class="n">weight</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span>
+
+                <span class="n">val</span> <span class="o">=</span> <span class="n">meanpsf</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">jj</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+                    <span class="n">tmp</span> <span class="o">=</span> <span class="n">val</span><span class="o">/</span><span class="n">signal</span><span class="o">.</span><span class="n">convolve2d</span><span class="p">(</span><span class="n">meanpsf</span><span class="p">,</span> <span class="n">window</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span>
+                    <span class="n">meanpsf</span> <span class="o">*=</span> <span class="n">signal</span><span class="o">.</span><span class="n">convolve2d</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="n">window</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span>
+                    
+            
+            <span class="c1">############################################################</span>
+            <span class="c1"># Normalize all PSFs to unit flux when resampled with an</span>
+            <span class="c1"># interpolator.</span>
+            <span class="c1">############################################################</span>
+
+            <span class="k">if</span> <span class="n">renorm</span><span class="p">:</span>
+                <span class="n">meanpsf</span> <span class="o">*=</span> <span class="n">upsample</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">meanpsf</span><span class="p">)</span>
+            <span class="n">hires_arr</span><span class="p">[</span><span class="n">yreg</span><span class="p">,</span> <span class="n">xreg</span><span class="p">]</span> <span class="o">=</span> <span class="n">meanpsf</span>
+            
+    <span class="k">return</span> <span class="n">hires_arr</span></div>
+
+
+<div class="viewcode-block" id="make_polychrome"><a class="viewcode-back" href="../../primitives.html#primitives.buildmonochrome.make_polychrome">[docs]</a><span class="k">def</span> <span class="nf">make_polychrome</span><span class="p">(</span><span class="n">lam1</span><span class="p">,</span> <span class="n">lam2</span><span class="p">,</span> <span class="n">hires_arrs</span><span class="p">,</span> <span class="n">lam_arr</span><span class="p">,</span> <span class="n">psftool</span><span class="p">,</span> <span class="n">allcoef</span><span class="p">,</span>
+                     <span class="n">xindx</span><span class="p">,</span> <span class="n">yindx</span><span class="p">,</span> <span class="n">upsample</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">nlam</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">trans</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">padding</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2048</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">,</span> <span class="mi">2048</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">))</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="n">npix</span> <span class="o">=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">//</span><span class="n">upsample</span>
+
+    <span class="n">dloglam</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam2</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam1</span><span class="p">))</span><span class="o">/</span><span class="n">nlam</span>
+    <span class="n">loglam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam1</span><span class="p">)</span> <span class="o">+</span> <span class="n">dloglam</span><span class="o">/</span><span class="mf">2.</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nlam</span><span class="p">)</span><span class="o">*</span><span class="n">dloglam</span>
+
+    <span class="k">for</span> <span class="n">lam</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">loglam</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">trans</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">trans</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">lam</span><span class="p">))</span> <span class="o">&lt;</span> <span class="n">dloglam</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+            <span class="n">meantrans</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">trans</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">][</span><span class="n">indx</span><span class="p">])</span>
+
+        <span class="c1">################################################################</span>
+        <span class="c1"># Build the appropriate average hires image by averaging over</span>
+        <span class="c1"># the nearest wavelengths.  Then apply a spline filter to the</span>
+        <span class="c1"># interpolated high resolution PSFlet images to avoid having</span>
+        <span class="c1"># to do this later, saving a factor of a few in time.</span>
+        <span class="c1">################################################################</span>
+
+        <span class="n">hires</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">lam</span> <span class="o">&lt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">lam_arr</span><span class="p">):</span>
+            <span class="n">hires</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">lam</span> <span class="o">&gt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">lam_arr</span><span class="p">):</span>
+            <span class="n">hires</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">i1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lam_arr</span><span class="p">))[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">lam</span> <span class="o">&gt;</span> <span class="n">lam_arr</span><span class="p">)])</span>
+            <span class="n">i2</span> <span class="o">=</span> <span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">hires</span> <span class="o">=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">lam</span> <span class="o">-</span> <span class="n">lam_arr</span><span class="p">[</span><span class="n">i1</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="n">lam_arr</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">-</span> <span class="n">lam_arr</span><span class="p">[</span><span class="n">i1</span><span class="p">])</span>
+            <span class="n">hires</span> <span class="o">+=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">lam_arr</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">-</span> <span class="n">lam</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">lam_arr</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">-</span> <span class="n">lam_arr</span><span class="p">[</span><span class="n">i1</span><span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">hires</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">hires</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="n">hires</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">spline_filter</span><span class="p">(</span><span class="n">hires</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">])</span>
+
+        <span class="c1">################################################################</span>
+        <span class="c1"># Run through lenslet centroids at this wavelength using the</span>
+        <span class="c1"># fitted coefficients in psftool to get the centroids.  For</span>
+        <span class="c1"># each centroid, compute the weights for the four nearest</span>
+        <span class="c1"># regions on which the high-resolution PSFlets have been made.</span>
+        <span class="c1"># Interpolate the high-resolution PSFlets and take their</span>
+        <span class="c1"># weighted average, adding this to the image in the</span>
+        <span class="c1"># appropriate place.</span>
+        <span class="c1">################################################################</span>
+
+        <span class="n">xcen</span><span class="p">,</span> <span class="n">ycen</span> <span class="o">=</span> <span class="n">psftool</span><span class="o">.</span><span class="n">return_locations</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">allcoef</span><span class="p">,</span> <span class="n">xindx</span><span class="p">,</span> <span class="n">yindx</span><span class="p">)</span>
+        <span class="n">xcen</span> <span class="o">+=</span> <span class="n">padding</span>
+        <span class="n">ycen</span> <span class="o">+=</span> <span class="n">padding</span>
+        <span class="n">xcen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">xcen</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ycen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ycen</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xcen</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">xcen</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">npix</span><span class="o">//</span><span class="mi">2</span> <span class="ow">and</span> <span class="n">xcen</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">npix</span><span class="o">//</span><span class="mi">2</span> <span class="ow">and</span> 
+                    <span class="n">ycen</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">npix</span><span class="o">//</span><span class="mi">2</span> <span class="ow">and</span> <span class="n">ycen</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">npix</span><span class="o">//</span><span class="mi">2</span><span class="p">):</span>
+                <span class="k">continue</span>
+                
+            <span class="c1"># central pixel -&gt; npix*upsample//2</span>
+            <span class="n">iy1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ycen</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">-</span> <span class="n">npix</span><span class="o">//</span><span class="mi">2</span>
+            <span class="n">iy2</span> <span class="o">=</span> <span class="n">iy1</span> <span class="o">+</span> <span class="n">npix</span>
+            <span class="n">ix1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">xcen</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">-</span> <span class="n">npix</span><span class="o">//</span><span class="mi">2</span>
+            <span class="n">ix2</span> <span class="o">=</span> <span class="n">ix1</span> <span class="o">+</span> <span class="n">npix</span>
+            <span class="n">yinterp</span> <span class="o">=</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">iy1</span><span class="p">:</span><span class="n">iy2</span><span class="p">,</span> <span class="n">ix1</span><span class="p">:</span><span class="n">ix2</span><span class="p">]</span> <span class="o">-</span> <span class="n">ycen</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">*</span><span class="n">upsample</span> <span class="o">+</span> <span class="n">upsample</span><span class="o">*</span><span class="n">npix</span><span class="o">/</span><span class="mi">2</span>
+            <span class="n">xinterp</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">iy1</span><span class="p">:</span><span class="n">iy2</span><span class="p">,</span> <span class="n">ix1</span><span class="p">:</span><span class="n">ix2</span><span class="p">]</span> <span class="o">-</span> <span class="n">xcen</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">*</span><span class="n">upsample</span> <span class="o">+</span> <span class="n">upsample</span><span class="o">*</span><span class="n">npix</span><span class="o">/</span><span class="mi">2</span>
+            <span class="c1"># Now find the closest high-resolution PSFs</span>
+            
+            <span class="n">x_hires</span> <span class="o">=</span> <span class="n">xcen</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">y_hires</span> <span class="o">=</span> <span class="n">ycen</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            
+            <span class="n">x_hires</span> <span class="o">=</span> <span class="n">x_hires</span><span class="o">*</span><span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span>
+            <span class="n">y_hires</span> <span class="o">=</span> <span class="n">y_hires</span><span class="o">*</span><span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span>
+            
+            <span class="n">totweight</span> <span class="o">=</span> <span class="mi">0</span>
+            
+            <span class="k">if</span> <span class="n">x_hires</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">i1</span> <span class="o">=</span> <span class="n">i2</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">elif</span> <span class="n">x_hires</span> <span class="o">&gt;=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">i1</span> <span class="o">=</span> <span class="n">i2</span> <span class="o">=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">i1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">x_hires</span><span class="p">)</span>
+                <span class="n">i2</span> <span class="o">=</span> <span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">y_hires</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">j1</span> <span class="o">=</span> <span class="n">j2</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">elif</span> <span class="n">y_hires</span> <span class="o">&gt;=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">j1</span> <span class="o">=</span> <span class="n">j2</span> <span class="o">=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">j1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">y_hires</span><span class="p">)</span>
+                <span class="n">j2</span> <span class="o">=</span> <span class="n">j1</span> <span class="o">+</span> <span class="mi">1</span>
+            
+            <span class="c1">##############################################################</span>
+            <span class="c1"># Bilinear interpolation by hand.  Do not extrapolate, but</span>
+            <span class="c1"># instead use the nearest PSFlet near the edge of the</span>
+            <span class="c1"># image.  The outer regions will therefore have slightly</span>
+            <span class="c1"># less reliable PSFlet reconstructions.  Then take the</span>
+            <span class="c1"># weighted average of the interpolated PSFlets.</span>
+            <span class="c1">##############################################################</span>
+
+            <span class="n">weight22</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">x_hires</span> <span class="o">-</span> <span class="n">i1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">y_hires</span> <span class="o">-</span> <span class="n">j1</span><span class="p">))</span>
+            <span class="n">weight12</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">x_hires</span> <span class="o">-</span> <span class="n">i1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">j2</span> <span class="o">-</span> <span class="n">y_hires</span><span class="p">))</span>
+            <span class="n">weight21</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">i2</span> <span class="o">-</span> <span class="n">x_hires</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">y_hires</span> <span class="o">-</span> <span class="n">j1</span><span class="p">))</span>
+            <span class="n">weight11</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">i2</span> <span class="o">-</span> <span class="n">x_hires</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">j2</span> <span class="o">-</span> <span class="n">y_hires</span><span class="p">))</span>
+            <span class="n">totweight</span> <span class="o">=</span> <span class="n">weight11</span> <span class="o">+</span> <span class="n">weight21</span> <span class="o">+</span> <span class="n">weight12</span> <span class="o">+</span> <span class="n">weight22</span>
+            <span class="n">weight11</span> <span class="o">/=</span> <span class="n">totweight</span><span class="o">*</span><span class="n">nlam</span>
+            <span class="n">weight12</span> <span class="o">/=</span> <span class="n">totweight</span><span class="o">*</span><span class="n">nlam</span>
+            <span class="n">weight21</span> <span class="o">/=</span> <span class="n">totweight</span><span class="o">*</span><span class="n">nlam</span>
+            <span class="n">weight22</span> <span class="o">/=</span> <span class="n">totweight</span><span class="o">*</span><span class="n">nlam</span>
+
+            <span class="k">if</span> <span class="n">trans</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">weight11</span> <span class="o">*=</span> <span class="n">meantrans</span>
+                <span class="n">weight12</span> <span class="o">*=</span> <span class="n">meantrans</span>
+                <span class="n">weight21</span> <span class="o">*=</span> <span class="n">meantrans</span>
+                <span class="n">weight22</span> <span class="o">*=</span> <span class="n">meantrans</span>
+
+            <span class="n">image</span><span class="p">[</span><span class="n">iy1</span><span class="p">:</span><span class="n">iy2</span><span class="p">,</span> <span class="n">ix1</span><span class="p">:</span><span class="n">ix2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">weight11</span><span class="o">*</span><span class="n">ndimage</span><span class="o">.</span><span class="n">map_coordinates</span><span class="p">(</span><span class="n">hires</span><span class="p">[</span><span class="n">j1</span><span class="p">,</span> <span class="n">i1</span><span class="p">],</span> <span class="p">[</span><span class="n">yinterp</span><span class="p">,</span> <span class="n">xinterp</span><span class="p">],</span> <span class="n">prefilter</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">image</span><span class="p">[</span><span class="n">iy1</span><span class="p">:</span><span class="n">iy2</span><span class="p">,</span> <span class="n">ix1</span><span class="p">:</span><span class="n">ix2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">weight12</span><span class="o">*</span><span class="n">ndimage</span><span class="o">.</span><span class="n">map_coordinates</span><span class="p">(</span><span class="n">hires</span><span class="p">[</span><span class="n">j1</span><span class="p">,</span> <span class="n">i2</span><span class="p">],</span> <span class="p">[</span><span class="n">yinterp</span><span class="p">,</span> <span class="n">xinterp</span><span class="p">],</span> <span class="n">prefilter</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">image</span><span class="p">[</span><span class="n">iy1</span><span class="p">:</span><span class="n">iy2</span><span class="p">,</span> <span class="n">ix1</span><span class="p">:</span><span class="n">ix2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">weight21</span><span class="o">*</span><span class="n">ndimage</span><span class="o">.</span><span class="n">map_coordinates</span><span class="p">(</span><span class="n">hires</span><span class="p">[</span><span class="n">j2</span><span class="p">,</span> <span class="n">i1</span><span class="p">],</span> <span class="p">[</span><span class="n">yinterp</span><span class="p">,</span> <span class="n">xinterp</span><span class="p">],</span> <span class="n">prefilter</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">image</span><span class="p">[</span><span class="n">iy1</span><span class="p">:</span><span class="n">iy2</span><span class="p">,</span> <span class="n">ix1</span><span class="p">:</span><span class="n">ix2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">weight22</span><span class="o">*</span><span class="n">ndimage</span><span class="o">.</span><span class="n">map_coordinates</span><span class="p">(</span><span class="n">hires</span><span class="p">[</span><span class="n">j2</span><span class="p">,</span> <span class="n">i2</span><span class="p">],</span> <span class="p">[</span><span class="n">yinterp</span><span class="p">,</span> <span class="n">xinterp</span><span class="p">],</span> <span class="n">prefilter</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+     
+    <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">padding</span><span class="p">:</span><span class="o">-</span><span class="n">padding</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span><span class="o">-</span><span class="n">padding</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">image</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
+    Last built 13 Mar 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

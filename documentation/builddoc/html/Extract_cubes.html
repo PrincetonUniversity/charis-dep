@@ -1,0 +1,130 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Extract cubes &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
+    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="index.html" />
+    <link rel="next" title="buildcal module" href="buildcal.html" />
+    <link rel="prev" title="Run the wavelength calibration" href="Run_wavecal.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="buildcal.html" title="buildcal module">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="Run_wavecal.html" title="Run the wavelength calibration">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      
+      <li>Extract cubes</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="Extract-cubes">
+<h1>Extract cubes<a class="headerlink" href="#Extract-cubes" title="Permalink to this headline">¶</a></h1>
+<p>Now extract a cube. First, you need to create an appropriate .ini file
+by modifying sample.ini in the code directory. With the example file
+names given above and with your modified .ini file in the current
+working directory, you would run:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">extractcube</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">CRSA00000000</span><span class="o">.</span><span class="n">fits</span> <span class="n">modified</span><span class="o">.</span><span class="n">ini</span>
+</pre></div>
+</div>
+<p>The arguments are simply 1. The raw file(s) to extract into cubes 2. The
+configuration file The extracted cubes will be written to the current
+working directory. The first HDU is simply the header with some basic
+information, the second HDU is the cube, the third HDU is the inverse
+variance on the cube, and the fourth HDU has no data but saves the
+original header on HDU0 of the raw reads.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Extract cubes</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/Extract_cubes.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
+    Last built 13 Mar 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

@@ -1,0 +1,487 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>buildcal &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
+    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="../_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      <li><a href="index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for buildcal</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">primitives</span>
+    <span class="kn">import</span> <span class="nn">utr</span>
+    <span class="kn">from</span> <span class="nn">image</span> <span class="k">import</span> <span class="n">Image</span>
+    <span class="kn">from</span> <span class="nn">parallel</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Consumer</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">charis.primitives</span> <span class="k">as</span> <span class="nn">primitives</span>
+    <span class="kn">import</span> <span class="nn">charis.utr</span> <span class="k">as</span> <span class="nn">utr</span>
+    <span class="kn">from</span> <span class="nn">charis.image</span> <span class="k">import</span> <span class="n">Image</span>
+    <span class="kn">from</span> <span class="nn">charis.parallel</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Consumer</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="k">import</span> <span class="n">fits</span>
+<span class="kn">import</span> <span class="nn">multiprocessing</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pkg_resources</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;main&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="buildcalibrations"><a class="viewcode-back" href="../buildcal.html#buildcal.buildcalibrations">[docs]</a><span class="k">def</span> <span class="nf">buildcalibrations</span><span class="p">(</span><span class="n">inImage</span><span class="p">,</span> <span class="n">inLam</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">indir</span><span class="p">,</span> <span class="n">outdir</span><span class="o">=</span><span class="s2">&quot;./&quot;</span><span class="p">,</span>
+                      <span class="n">order</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">lam1</span><span class="o">=</span><span class="mi">1150</span><span class="p">,</span> <span class="n">lam2</span><span class="o">=</span><span class="mi">2400</span><span class="p">,</span> <span class="n">R</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">trans</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">upsample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">ncpus</span><span class="o">=</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build the calibration files needed to extract data cubes from</span>
+<span class="sd">    sequences of CHARIS reads.</span>
+
+<span class="sd">    Inputs:</span>
+<span class="sd">    1. inImage:  Image class, should include count rate and ivar for </span>
+<span class="sd">                 a narrow-band flatfield calibration image.</span>
+<span class="sd">    2. inLam:    wavelength in nm of inImage</span>
+<span class="sd">    3. mask:     bad pixel mask, =0 for bad pixels</span>
+<span class="sd">    4. indir:    directory where master calibration files live</span>
+
+<span class="sd">    Optional inputs:</span>
+<span class="sd">    1. outdir:   directory in which to place</span>
+<span class="sd">    1. order:    int, order of polynomial fit to position(lambda).</span>
+<span class="sd">                 Default 3 (strongly recommended).</span>
+<span class="sd">    2. lam1:     minimum wavelength (in nm) of the bandpass</span>
+<span class="sd">                 Default 1150</span>
+<span class="sd">    3. lam2:     maximum wavelength (in nm) of the bandpass</span>
+<span class="sd">                 Default 2400</span>
+<span class="sd">    4. R:        spectral resolution of the PSFlets templates  </span>
+<span class="sd">                 Default 25</span>
+<span class="sd">    5. trans:    ndarray, trans[:, 0] = wavelength in nm, trans[:, 1]</span>
+<span class="sd">                 is fractional transmission through the filter and </span>
+<span class="sd">                 atmosphere.  Default None --&gt; trans[:, 1] = 1</span>
+<span class="sd">    6. header:   FITS header, to which will be appended the shifts</span>
+<span class="sd">                 and rotation angle between the stored and the fitted</span>
+<span class="sd">                 wavelength solutions.  Default None.</span>
+<span class="sd">    7. ncpus:    number of threads for multithreading.  </span>
+<span class="sd">                 Default multiprocessing.cpu_count()</span>
+
+<span class="sd">    Returns None, writes calibration files to outdir.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">tstart</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Fit the PSFlet positions on the input image, compute the shift</span>
+    <span class="c1"># in the mean position (coefficients 0 and 10) and in the linear</span>
+    <span class="c1"># component of the fit (coefficients 1, 4, 11, and 14).  The</span>
+    <span class="c1"># comparison point is the location solution for this wavelength in</span>
+    <span class="c1"># the existing calibration files.</span>
+    <span class="c1">#################################################################</span>
+
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading wavelength solution from &quot;</span> <span class="o">+</span> <span class="n">indir</span> <span class="o">+</span> <span class="s2">&quot;/lamsol.dat&quot;</span><span class="p">)</span>
+    <span class="n">lam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indir</span><span class="p">,</span> <span class="s2">&quot;lamsol.dat&quot;</span><span class="p">))[:,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">allcoef</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indir</span><span class="p">,</span> <span class="s2">&quot;lamsol.dat&quot;</span><span class="p">))[:,</span> <span class="mi">1</span><span class="p">:]</span>
+    <span class="n">psftool</span> <span class="o">=</span> <span class="n">primitives</span><span class="o">.</span><span class="n">PSFLets</span><span class="p">()</span>
+    <span class="n">oldcoef</span> <span class="o">=</span> <span class="n">psftool</span><span class="o">.</span><span class="n">monochrome_coef</span><span class="p">(</span><span class="n">inLam</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">allcoef</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Generating new wavelength solution&#39;</span><span class="p">)</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">good</span><span class="p">,</span> <span class="n">newcoef</span> <span class="o">=</span> <span class="n">primitives</span><span class="o">.</span><span class="n">locatePSFlets</span><span class="p">(</span><span class="n">inImage</span><span class="p">,</span> <span class="n">polyorder</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">coef</span><span class="o">=</span><span class="n">oldcoef</span><span class="p">)</span>
+            
+    <span class="n">psftool</span><span class="o">.</span><span class="n">geninterparray</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">allcoef</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+    <span class="n">dcoef</span> <span class="o">=</span> <span class="n">newcoef</span> <span class="o">-</span> <span class="n">oldcoef</span>
+
+    <span class="n">indx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">14</span><span class="p">])</span>
+    <span class="n">psftool</span><span class="o">.</span><span class="n">interp_arr</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">indx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">dcoef</span><span class="p">[</span><span class="n">indx</span><span class="p">]</span>
+    <span class="n">psftool</span><span class="o">.</span><span class="n">genpixsol</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">allcoef</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">lam1</span><span class="o">=</span><span class="n">lam1</span><span class="o">/</span><span class="mf">1.05</span><span class="p">,</span> <span class="n">lam2</span><span class="o">=</span><span class="n">lam2</span><span class="o">*</span><span class="mf">1.05</span><span class="p">)</span>
+    <span class="n">psftool</span><span class="o">.</span><span class="n">savepixsol</span><span class="p">(</span><span class="n">outdir</span><span class="o">=</span><span class="n">outdir</span><span class="p">)</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Record the shift in the spot locations.</span>
+    <span class="c1">#################################################################    </span>
+
+    <span class="n">phi1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">oldcoef</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">oldcoef</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> 
+                    <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="o">-</span><span class="n">oldcoef</span><span class="p">[</span><span class="mi">11</span><span class="p">],</span> <span class="n">oldcoef</span><span class="p">[</span><span class="mi">14</span><span class="p">])])</span>
+    <span class="n">phi2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">newcoef</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">newcoef</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="o">-</span><span class="n">newcoef</span><span class="p">[</span><span class="mi">11</span><span class="p">],</span> <span class="n">newcoef</span><span class="p">[</span><span class="mi">14</span><span class="p">])])</span>
+    <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dphi</span> <span class="o">=</span> <span class="p">[</span><span class="n">dcoef</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dcoef</span><span class="p">[</span><span class="mi">10</span><span class="p">],</span> <span class="n">phi2</span> <span class="o">-</span> <span class="n">phi1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">header</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cal_dx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="s1">&#39;x-shift from archival spot positions (pixels)&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cal_dy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dy</span><span class="p">,</span> <span class="s1">&#39;y-shift from archival spot positions (pixels)&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cal_dphi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dphi</span><span class="p">,</span> <span class="s1">&#39;Rotation from archival spot positions (radians)&#39;</span><span class="p">)</span>
+        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;ifs_rot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">180.</span><span class="o">*</span><span class="n">phi2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="s1">&#39;Rotation of lenslet array (degrees)&#39;</span><span class="p">)</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Load the high-resolution PSFlet images and associated</span>
+    <span class="c1"># wavelengths.</span>
+    <span class="c1">#################################################################</span>
+
+    <span class="n">hires_list</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">indir</span> <span class="o">+</span> <span class="s1">&#39;/hires_psflets_lam????.fits&#39;</span><span class="p">))</span>
+    <span class="n">hires_arrs</span> <span class="o">=</span> <span class="p">[</span><span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">hires_list</span><span class="p">]</span>
+    <span class="n">lam_hires</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.*lam&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)))</span>
+                 <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">hires_list</span><span class="p">]</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Wavelengths at which to return the PSFlet templates</span>
+    <span class="c1">#################################################################</span>
+
+    <span class="n">Nspec</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam2</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="n">lam1</span><span class="p">)</span><span class="o">*</span><span class="n">R</span> <span class="o">+</span> <span class="mf">1.5</span><span class="p">)</span>
+    <span class="n">loglam_endpts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam2</span><span class="p">),</span> <span class="n">Nspec</span><span class="p">)</span>
+    <span class="n">loglam_midpts</span> <span class="o">=</span> <span class="p">(</span><span class="n">loglam_endpts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">loglam_endpts</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">lam_endpts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">loglam_endpts</span><span class="p">)</span>
+    <span class="n">lam_midpts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">loglam_midpts</span><span class="p">)</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Compute the PSFlets integrated over small ranges in wavelength,</span>
+    <span class="c1"># accounting for atmospheric+filter transmission.  Do this</span>
+    <span class="c1"># calculation in parallel.</span>
+    <span class="c1">#################################################################</span>
+
+    <span class="n">xindx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span> <span class="mi">101</span><span class="p">)</span>
+    <span class="n">xindx</span><span class="p">,</span> <span class="n">yindx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">xindx</span><span class="p">,</span> <span class="n">xindx</span><span class="p">)</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Oversampling in x in final calibration frame.  If &gt;1, fitting a</span>
+    <span class="c1"># subpixel shift is possible in cube extraction.</span>
+    <span class="c1">#################################################################</span>
+
+    <span class="k">if</span> <span class="n">upsample</span><span class="p">:</span>
+        <span class="n">upsamp</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">upsamp</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">psflet_res</span> <span class="o">=</span> <span class="mi">9</span> <span class="c1"># Oversampling of high-resolution PSFlet images</span>
+    <span class="n">nlam</span> <span class="o">=</span> <span class="mi">10</span>      <span class="c1"># Number of monochromatic PSFlets per integrated PSFlet</span>
+
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+    <span class="n">consumers</span> <span class="o">=</span> <span class="p">[</span> <span class="n">Consumer</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span>
+                  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncpus</span><span class="p">)</span> <span class="p">]</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">consumers</span><span class="p">:</span>
+        <span class="n">w</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">upsamp</span><span class="o">*</span><span class="p">(</span><span class="n">Nspec</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)):</span>
+        <span class="n">ilam</span> <span class="o">=</span> <span class="n">i</span><span class="o">//</span><span class="n">upsamp</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="o">%</span><span class="n">upsamp</span><span class="p">)</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="n">upsamp</span>
+        <span class="n">tool</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">psftool</span><span class="p">)</span>
+        <span class="n">tool</span><span class="o">.</span><span class="n">interp_arr</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="n">dx</span>
+        <span class="n">tasks</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">Task</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">primitives</span><span class="o">.</span><span class="n">make_polychrome</span><span class="p">,</span>
+                       <span class="p">(</span><span class="n">lam_endpts</span><span class="p">[</span><span class="n">ilam</span><span class="p">],</span> <span class="n">lam_endpts</span><span class="p">[</span><span class="n">ilam</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">hires_arrs</span><span class="p">,</span>
+                        <span class="n">lam_hires</span><span class="p">,</span> <span class="n">tool</span><span class="p">,</span> <span class="n">allcoef</span><span class="p">,</span> <span class="n">xindx</span><span class="p">,</span> <span class="n">yindx</span><span class="p">,</span> 
+                        <span class="n">psflet_res</span><span class="p">,</span> <span class="n">nlam</span><span class="p">,</span> <span class="n">trans</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncpus</span><span class="p">):</span>
+        <span class="n">tasks</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+                      
+    <span class="n">polyimage</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">Nspec</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2048</span><span class="p">,</span> <span class="mi">2048</span><span class="o">*</span><span class="n">upsamp</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Generating narrowband template images&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">upsamp</span><span class="o">*</span><span class="p">(</span><span class="n">Nspec</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)):</span>
+        <span class="n">frac_complete</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">upsamp</span><span class="o">*</span><span class="p">(</span><span class="n">Nspec</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">frac_complete</span><span class="o">*</span><span class="mi">40</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="o">*</span><span class="n">N</span> <span class="o">+</span> <span class="s1">&#39;&gt;&#39;</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span><span class="o">*</span><span class="p">(</span><span class="mi">40</span> <span class="o">-</span> <span class="n">N</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; </span><span class="si">%3d%%</span><span class="s1"> complete</span><span class="se">\r</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="mi">100</span><span class="o">*</span><span class="n">frac_complete</span><span class="p">)),</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">index</span><span class="p">,</span> <span class="n">result</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">ilam</span> <span class="o">=</span> <span class="n">index</span><span class="o">//</span><span class="n">upsamp</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="p">(</span><span class="n">index</span><span class="o">%</span><span class="n">upsamp</span><span class="p">)</span>
+        <span class="n">polyimage</span><span class="p">[</span><span class="n">ilam</span><span class="p">,</span> <span class="p">:,</span> <span class="n">dx</span><span class="p">::</span><span class="n">upsamp</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Save the positions of the PSFlet centers to cut out the</span>
+    <span class="c1"># appropriate regions in the least-squares extraction</span>
+    <span class="c1">#################################################################</span>
+
+    <span class="n">xpos</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">ypos</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">good</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Nspec</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">_x</span><span class="p">,</span> <span class="n">_y</span> <span class="o">=</span> <span class="n">psftool</span><span class="o">.</span><span class="n">return_locations</span><span class="p">(</span><span class="n">lam_midpts</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">allcoef</span><span class="p">,</span> <span class="n">xindx</span><span class="p">,</span> <span class="n">yindx</span><span class="p">)</span>
+        <span class="n">_good</span> <span class="o">=</span> <span class="p">(</span><span class="n">_x</span> <span class="o">&gt;</span> <span class="mi">8</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">_x</span> <span class="o">&lt;</span> <span class="mi">2040</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">_y</span> <span class="o">&gt;</span> <span class="mi">8</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">_y</span> <span class="o">&lt;</span> <span class="mi">2040</span><span class="p">)</span>
+        <span class="n">xpos</span> <span class="o">+=</span> <span class="p">[</span><span class="n">_x</span><span class="p">]</span>
+        <span class="n">ypos</span> <span class="o">+=</span> <span class="p">[</span><span class="n">_y</span><span class="p">]</span>
+        <span class="n">good</span> <span class="o">+=</span> <span class="p">[</span><span class="n">_good</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">upsamp</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">outdir</span> <span class="o">+</span> <span class="s1">&#39;polychromefullR</span><span class="si">%d</span><span class="s1">.npy&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R</span><span class="p">),</span> <span class="n">polyimage</span><span class="p">)</span>
+        
+    <span class="n">out</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">polyimage</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">::</span><span class="n">upsamp</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)))</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outdir</span> <span class="o">+</span> <span class="s1">&#39;polychromeR</span><span class="si">%d</span><span class="s1">.fits&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R</span><span class="p">),</span> <span class="n">clobber</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">outkey</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">lam_midpts</span><span class="p">))</span>
+    <span class="n">outkey</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">xpos</span><span class="p">)))</span>
+    <span class="n">outkey</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ypos</span><span class="p">)))</span>
+    <span class="n">outkey</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">good</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)))</span>
+    <span class="n">outkey</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">outdir</span> <span class="o">+</span> <span class="s1">&#39;polychromekeyR</span><span class="si">%d</span><span class="s1">.fits&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R</span><span class="p">),</span> <span class="n">clobber</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Total time elapsed: </span><span class="si">%.0f</span><span class="s2"> seconds&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">tstart</span><span class="p">))</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+    
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Must call buildcal with at least three arguments:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  1: The path to the narrow-band flatfield image&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  2: The wavelength, in nm, of the narrow-band image&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  3: The band/filter: &#39;J&#39;, &#39;H&#39;, &#39;K&#39;, or &#39;lowres&#39;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Example: buildcal CRSA00000000.fits 1550 lowres&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Optional additional arguments: filenames of darks&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  taken with the same observing setup.&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Example: buildcal CRSA00000000.fits 1550 lowres darks/CRSA*.fits&quot;</span><span class="p">)</span>
+        <span class="n">exit</span><span class="p">()</span>
+
+    <span class="n">infile</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">lam</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">band</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">bgfiles</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">bgimages</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)):</span>
+        <span class="n">bgfiles</span> <span class="o">+=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>        
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Oversample PSFlet templates to enable fitting a subpixel offset in cube&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;extraction?  Cost is a factor of ~2-4 in the time to build calibrations.&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">upsample</span> <span class="o">=</span> <span class="n">raw_input</span><span class="p">(</span><span class="s2">&quot;     Oversample? [Y/n]: &quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">upsample</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;Y&#39;</span><span class="p">]:</span>
+            <span class="n">upsample</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">break</span>
+        <span class="k">elif</span> <span class="n">upsample</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;N&#39;</span><span class="p">]:</span>
+            <span class="n">upsample</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Invalid input.&quot;</span><span class="p">)</span>
+
+    <span class="n">ncpus</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;How many threads would you like to use?  </span><span class="si">%d</span><span class="s2"> threads detected.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncpus</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">nthreads</span> <span class="o">=</span> <span class="n">raw_input</span><span class="p">(</span><span class="s2">&quot;     Number of threads to use [</span><span class="si">%d</span><span class="s2">]: &quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncpus</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">nthreads</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nthreads</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nthreads</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">nthreads</span> <span class="o">&gt;</span> <span class="n">ncpus</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Must use between 1 and </span><span class="si">%d</span><span class="s2"> threads.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ncpus</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">nthreads</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                <span class="n">nthreads</span> <span class="o">=</span> <span class="n">ncpus</span>
+                <span class="k">break</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Invalid input.&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Building calibration files, placing results in current directory:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Settings:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using </span><span class="si">%d</span><span class="s2"> threads&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">nthreads</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Narrow-band flatfield image: &quot;</span> <span class="o">+</span> <span class="n">infile</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Wavelength:&quot;</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="s2">&quot;nm&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Observing mode: &quot;</span> <span class="o">+</span> <span class="n">band</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Upsample PSFlet templates? &quot;</span><span class="p">,</span> <span class="n">upsample</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bgfiles</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Background count rates will be computed.&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No background will be computed.&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">do_calib</span> <span class="o">=</span> <span class="n">raw_input</span><span class="p">(</span><span class="s2">&quot;     Continue with these settings? [Y/n]: &quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">do_calib</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;Y&#39;</span><span class="p">]:</span>
+            <span class="k">break</span>
+        <span class="k">elif</span> <span class="n">do_calib</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;N&#39;</span><span class="p">]:</span>
+            <span class="n">exit</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Invalid input.&quot;</span><span class="p">)</span>
+   
+    <span class="c1">###############################################################</span>
+    <span class="c1"># Wavelength limits in nm</span>
+    <span class="c1">###############################################################</span>
+
+    <span class="k">if</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;J&#39;</span><span class="p">:</span>   
+        <span class="n">lam1</span><span class="p">,</span> <span class="n">lam2</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1155</span><span class="p">,</span> <span class="mi">1340</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;H&#39;</span><span class="p">:</span>
+        <span class="n">lam1</span><span class="p">,</span> <span class="n">lam2</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1470</span><span class="p">,</span> <span class="mi">1800</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;K&#39;</span><span class="p">:</span>
+        <span class="n">lam1</span><span class="p">,</span> <span class="n">lam2</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2005</span><span class="p">,</span> <span class="mi">2380</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">band</span> <span class="o">==</span> <span class="s1">&#39;lowres&#39;</span><span class="p">:</span>
+        <span class="n">lam1</span><span class="p">,</span> <span class="n">lam2</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1140</span><span class="p">,</span> <span class="mi">2410</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Band must be one of: J, H, K, lowres&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">lam</span> <span class="o">&lt;</span> <span class="n">lam1</span> <span class="ow">or</span> <span class="n">lam</span> <span class="o">&gt;</span> <span class="n">lam2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Error: wavelength &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; outside range (&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lam1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lam2</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;) of mode &quot;</span> <span class="o">+</span> <span class="n">band</span><span class="p">)</span>
+
+
+    <span class="c1">#prefix = os.path.dirname(os.path.realpath(__file__))</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">pkg_resources</span><span class="o">.</span><span class="n">resource_filename</span><span class="p">(</span><span class="s1">&#39;charis&#39;</span><span class="p">,</span> <span class="s1">&#39;calibrations&#39;</span><span class="p">)</span>
+
+    <span class="c1">###############################################################</span>
+    <span class="c1"># Spectral resolutions for the final calibration files</span>
+    <span class="c1">###############################################################</span>
+
+    <span class="k">if</span> <span class="n">band</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;J&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">]:</span>
+        <span class="n">indir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="s2">&quot;highres_&quot;</span> <span class="o">+</span> <span class="n">band</span><span class="p">)</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">indir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="s2">&quot;lowres&quot;</span><span class="p">)</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="mi">30</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;mask.fits&#39;</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+
+    <span class="n">hdr</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">()</span><span class="o">.</span><span class="n">header</span>
+    <span class="n">hdr</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="n">infilelist</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">infilelist</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No CHARIS file found for calibration.&quot;</span><span class="p">)</span>
+
+    <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;calfname&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.*/&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">infilelist</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                       <span class="s1">&#39;Monochromatic image used for calibration&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;cal_date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">infilelist</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;mjd&#39;</span><span class="p">],</span>
+                           <span class="s1">&#39;MJD date of calibration image&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;cal_date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;unavailable&#39;</span><span class="p">,</span> <span class="s1">&#39;MJD date of calibration image&#39;</span><span class="p">)</span>
+    <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;cal_lam&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="s1">&#39;Wavelength of calibration image (nm)&#39;</span><span class="p">)</span>
+    <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;cal_band&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">band</span><span class="p">,</span> <span class="s1">&#39;Band/mode of calibration image (J/H/K/lowres)&#39;</span><span class="p">)</span>
+
+    <span class="c1">###############################################################</span>
+    <span class="c1"># Mean background count rate, weighted by inverse variance</span>
+    <span class="c1">###############################################################</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Computing ramps from sequences of raw reads&#39;</span><span class="p">)</span>
+    <span class="n">num</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">denom</span> <span class="o">=</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">100</span>
+    <span class="n">ibg</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">bgfiles</span><span class="p">:</span>
+        <span class="n">bg</span> <span class="o">=</span> <span class="n">utr</span><span class="o">.</span><span class="n">calcramp</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span> <span class="n">maxcpus</span><span class="o">=</span><span class="n">nthreads</span><span class="p">)</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">num</span> <span class="o">+</span> <span class="n">bg</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">bg</span><span class="o">.</span><span class="n">ivar</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="n">denom</span> <span class="o">+</span> <span class="n">bg</span><span class="o">.</span><span class="n">ivar</span>
+        <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;bkgnd</span><span class="si">%03d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ibg</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.*/&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span>
+                                    <span class="s1">&#39;Dark(s) used for background subtraction&#39;</span><span class="p">)</span>
+        <span class="n">ibg</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bgfiles</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">background</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">num</span><span class="o">/</span><span class="n">denom</span><span class="p">,</span> <span class="n">ivar</span><span class="o">=</span><span class="mf">1.</span><span class="o">/</span><span class="n">denom</span><span class="p">)</span>
+        <span class="n">background</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;background.fits&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;bkgnd001&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;None&#39;</span><span class="p">,</span> <span class="s1">&#39;Dark(s) used for background subtraction&#39;</span><span class="p">)</span>
+        
+    <span class="c1">###############################################################</span>
+    <span class="c1"># Monochromatic flatfield image</span>
+    <span class="c1">###############################################################</span>
+
+    <span class="n">num</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">denom</span> <span class="o">=</span> <span class="mi">1</span><span class="n">e</span><span class="o">-</span><span class="mi">100</span>
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">infilelist</span><span class="p">:</span>
+        <span class="n">im</span> <span class="o">=</span> <span class="n">utr</span><span class="o">.</span><span class="n">calcramp</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span> <span class="n">maxcpus</span><span class="o">=</span><span class="n">nthreads</span><span class="p">)</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">num</span> <span class="o">+</span> <span class="n">im</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">im</span><span class="o">.</span><span class="n">ivar</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="n">denom</span> <span class="o">+</span> <span class="n">im</span><span class="o">.</span><span class="n">ivar</span>
+    <span class="n">inImage</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">num</span><span class="o">/</span><span class="n">denom</span><span class="p">,</span> <span class="n">ivar</span><span class="o">=</span><span class="n">mask</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="n">denom</span><span class="p">)</span>
+
+    <span class="n">trans</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indir</span><span class="p">,</span> <span class="n">band</span> <span class="o">+</span> <span class="s1">&#39;_tottrans.dat&#39;</span><span class="p">))</span>
+
+    <span class="n">buildcalibrations</span><span class="p">(</span><span class="n">inImage</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">indir</span><span class="p">,</span> <span class="n">lam1</span><span class="o">=</span><span class="n">lam1</span><span class="p">,</span> <span class="n">lam2</span><span class="o">=</span><span class="n">lam2</span><span class="p">,</span>
+                      <span class="n">upsample</span><span class="o">=</span><span class="n">upsample</span><span class="p">,</span> <span class="n">R</span><span class="o">=</span><span class="n">R</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">trans</span><span class="o">=</span><span class="n">trans</span><span class="p">,</span>
+                      <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">,</span> <span class="n">ncpus</span><span class="o">=</span><span class="n">nthreads</span><span class="p">)</span>
+
+    <span class="n">out</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">hdr</span><span class="p">))</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="s1">&#39;cal_params.fits&#39;</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indir</span><span class="p">,</span> <span class="s1">&#39;lensletflat.fits&#39;</span><span class="p">),</span> <span class="s1">&#39;./lensletflat.fits&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;mask.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;pixelflat.fits&#39;</span><span class="p">]:</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="s1">&#39;./&#39;</span> <span class="o">+</span> <span class="n">filename</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
+    Last built 13 Mar 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

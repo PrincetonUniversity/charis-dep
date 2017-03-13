@@ -1,0 +1,466 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>tools.charisLogger &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../../_static/astropy_logo.ico"/>
+    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="../../_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../../index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../../index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      <li><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tools.charisLogger</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">import</span> <span class="nn">psutil</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+
+<span class="n">log_dict</span><span class="o">=</span><span class="p">{}</span>
+
+<div class="viewcode-block" id="CharisLogger"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger">[docs]</a><span class="k">class</span> <span class="nc">CharisLogger</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">getLoggerClass</span><span class="p">()):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This is the advanced logging object used throughout the CHARIS</span>
+<span class="sd">    Data Extraction Pipeline.  It inherits from the standard </span>
+<span class="sd">    Python library &#39;logging&#39; and provides added features.</span>
+<span class="sd">    The default log level for the output file will be 1, ie ALL messages;</span>
+<span class="sd">    while the default for the screen will be INFO, and can be changed easily </span>
+<span class="sd">    using the setStreamLevel(lvl) member function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>       
+    
+<div class="viewcode-block" id="CharisLogger.setStreamLevel"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.setStreamLevel">[docs]</a>    <span class="k">def</span> <span class="nf">setStreamLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set/change the level for the stream handler for a logging object.</span>
+<span class="sd">        Any file handlers will be left alone.</span>
+<span class="sd">        All messages of a higher severity level than &#39;lvl&#39; will be printed </span>
+<span class="sd">        to the screen.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:    </span>
+<span class="sd">            lvl (int): The severity level of messages printed to the screen with </span>
+<span class="sd">                    the stream handler, default = 20.</span>
+<span class="sd">        </span>
+<span class="sd">        +---------------------+----------------------+</span>
+<span class="sd">        |    Standard Levels  |        New Levels    |</span>
+<span class="sd">        +---------------+-----+----------------+-----+</span>
+<span class="sd">        |    Name       |Level|  Name          |Level|</span>
+<span class="sd">        +===============+=====+================+=====+</span>
+<span class="sd">        |CRITICAL       |  50 | MAINCRITICAL   | 80  | </span>
+<span class="sd">        +---------------+-----+----------------+-----+</span>
+<span class="sd">        |ERROR          |  40 | MAINERROR      | 75  |</span>
+<span class="sd">        +---------------+-----+----------------+-----+</span>
+<span class="sd">        |WARNING        |  30 | MAINWARNING    | 70  |</span>
+<span class="sd">        +---------------+-----+----------------+-----+</span>
+<span class="sd">        |INFO           |  20 | MAININFO       | 65  |</span>
+<span class="sd">        +---------------+-----+----------------+-----+</span>
+<span class="sd">        |DEBUG          |  10 | MAINDEBUG      | 60  |</span>
+<span class="sd">        +---------------+-----+----------------+-----+</span>
+<span class="sd">        |NOTSET         |  0  | PRIMCRITICAL   | 55  |</span>
+<span class="sd">        +---------------+-----+----------------+-----+</span>
+<span class="sd">        |               |     | PRIMERROR      | 49  |</span>
+<span class="sd">        +               +     +----------------+-----+</span>
+<span class="sd">        |               |     | PRIMWARNING    | 45  |</span>
+<span class="sd">        +               +     +----------------+-----+</span>
+<span class="sd">        |               |     | PRIMINFO       | 39  |</span>
+<span class="sd">        +               +     +----------------+-----+</span>
+<span class="sd">        |               |     | PRIMDEBUG      | 35  |</span>
+<span class="sd">        +               +     +----------------+-----+</span>
+<span class="sd">        |               |     | TOOLCRITICAL   | 29  |</span>
+<span class="sd">        +               +     +----------------+-----+</span>
+<span class="sd">        |               |     | TOOLERROR      | 25  |</span>
+<span class="sd">        +               +     +----------------+-----+</span>
+<span class="sd">        |               |     | TOOLWARNING    | 19  |</span>
+<span class="sd">        +               +     +----------------+-----+</span>
+<span class="sd">        |               |     | TOOLINFO       | 15  |</span>
+<span class="sd">        +               +     +----------------+-----+         </span>
+<span class="sd">        |               |     | TOOLDEBUG      | 9   |</span>
+<span class="sd">        +               +     +----------------+-----+</span>
+<span class="sd">        |               |     | SUMMARY        | 5   |</span>
+<span class="sd">        +---------------+-----+----------------+-----+</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s1">&#39;Changing logging level to &#39;</span><span class="o">+</span><span class="nb">repr</span><span class="p">(</span><span class="n">lvl</span><span class="p">)</span>  
+        <span class="c1"># Kill off the old handlers and reset them with the setHandlers func</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handlers</span><span class="p">)):</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handlers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">h</span><span class="p">,</span><span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span> <span class="s1">&#39;filehandler type&#39;</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">h</span><span class="p">,</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">):</span>
+                <span class="c1">#print &#39;stream handler type&#39;</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;removing handler </span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="nb">str</span><span class="p">(</span><span class="n">h</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">removeHandler</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> more to go&#39;</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handlers</span><span class="p">))</span>
+        <span class="n">addStreamHandler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">lvl</span><span class="p">)</span></div>
+        
+    <span class="c1"># Add the new log levels needed for the 3 tier hierarchy plus the summary</span>
+    <span class="c1"># level to the logging object.</span>
+    <span class="c1"># Levels for the &#39;main&#39;, or top, tier.</span>
+    <span class="n">MAINCRITICAL</span> <span class="o">=</span> <span class="mi">80</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">MAINCRITICAL</span><span class="p">,</span> <span class="s1">&#39;MAINCRITICAL&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.maincritical"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.maincritical">[docs]</a>    <span class="k">def</span> <span class="nf">maincritical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">MAINCRITICAL</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">maincritical</span> <span class="o">=</span> <span class="n">maincritical</span>
+    <span class="n">MAINERROR</span> <span class="o">=</span> <span class="mi">75</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">MAINERROR</span><span class="p">,</span> <span class="s1">&#39;MAINERROR&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.mainerror"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.mainerror">[docs]</a>    <span class="k">def</span> <span class="nf">mainerror</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">MAINERROR</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">mainerror</span> <span class="o">=</span> <span class="n">mainerror</span>
+    <span class="n">MAINWARNING</span> <span class="o">=</span> <span class="mi">70</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">MAINWARNING</span><span class="p">,</span> <span class="s1">&#39;MAINWARNING&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.mainwarning"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.mainwarning">[docs]</a>    <span class="k">def</span> <span class="nf">mainwarning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">MAINWARNING</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">mainwarning</span> <span class="o">=</span> <span class="n">mainwarning</span>
+    <span class="n">MAININFO</span> <span class="o">=</span> <span class="mi">65</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">MAININFO</span><span class="p">,</span> <span class="s1">&#39;MAININFO&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.maininfo"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.maininfo">[docs]</a>    <span class="k">def</span> <span class="nf">maininfo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">MAININFO</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">maininfo</span> <span class="o">=</span> <span class="n">maininfo</span>
+    <span class="n">MAINDEBUG</span> <span class="o">=</span> <span class="mi">60</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">MAINDEBUG</span><span class="p">,</span> <span class="s1">&#39;MAINDEBUG&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.maindebug"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.maindebug">[docs]</a>    <span class="k">def</span> <span class="nf">maindebug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">MAINDEBUG</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">maindebug</span> <span class="o">=</span> <span class="n">maindebug</span>
+    <span class="c1"># Levels for the &#39;prims&#39; tier.</span>
+    <span class="n">PRIMCRITICAL</span> <span class="o">=</span> <span class="mi">55</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">PRIMCRITICAL</span><span class="p">,</span> <span class="s1">&#39;PRIMCRITICAL&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.primcritical"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.primcritical">[docs]</a>    <span class="k">def</span> <span class="nf">primcritical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">PRIMCRITICAL</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">primcritical</span> <span class="o">=</span> <span class="n">primcritical</span>
+    <span class="n">PRIMERROR</span> <span class="o">=</span> <span class="mi">49</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">PRIMERROR</span><span class="p">,</span> <span class="s1">&#39;PRIMERROR&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.primerror"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.primerror">[docs]</a>    <span class="k">def</span> <span class="nf">primerror</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">PRIMERROR</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">primerror</span> <span class="o">=</span> <span class="n">primerror</span>
+    <span class="n">PRIMWARNING</span> <span class="o">=</span> <span class="mi">45</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">PRIMWARNING</span><span class="p">,</span> <span class="s1">&#39;PRIMWARNING&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.primwarning"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.primwarning">[docs]</a>    <span class="k">def</span> <span class="nf">primwarning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">PRIMWARNING</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">primwarning</span> <span class="o">=</span> <span class="n">primwarning</span>
+    <span class="n">PRIMINFO</span> <span class="o">=</span> <span class="mi">39</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">PRIMINFO</span><span class="p">,</span> <span class="s1">&#39;PRIMINFO&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.priminfo"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.priminfo">[docs]</a>    <span class="k">def</span> <span class="nf">priminfo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">PRIMINFO</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">priminfo</span> <span class="o">=</span> <span class="n">priminfo</span>
+    <span class="n">PRIMDEBUG</span> <span class="o">=</span> <span class="mi">35</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">PRIMDEBUG</span><span class="p">,</span> <span class="s1">&#39;PRIMDEBUG&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.primdebug"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.primdebug">[docs]</a>    <span class="k">def</span> <span class="nf">primdebug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">PRIMDEBUG</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">primdebug</span> <span class="o">=</span> <span class="n">primdebug</span>
+    <span class="c1"># Levels for the &#39;tools&#39; tier.</span>
+    <span class="n">TOOLCRITICAL</span> <span class="o">=</span> <span class="mi">29</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">TOOLCRITICAL</span><span class="p">,</span> <span class="s1">&#39;TOOLCRITICAL&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.toolcritical"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.toolcritical">[docs]</a>    <span class="k">def</span> <span class="nf">toolcritical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">TOOLCRITICAL</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">toolcritical</span> <span class="o">=</span> <span class="n">toolcritical</span>
+    <span class="n">TOOLERROR</span> <span class="o">=</span> <span class="mi">25</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">TOOLERROR</span><span class="p">,</span> <span class="s1">&#39;TOOLERROR&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.toolerror"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.toolerror">[docs]</a>    <span class="k">def</span> <span class="nf">toolerror</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">TOOLERROR</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">toolerror</span> <span class="o">=</span> <span class="n">toolerror</span>
+    <span class="n">TOOLWARNING</span> <span class="o">=</span> <span class="mi">19</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">TOOLWARNING</span><span class="p">,</span> <span class="s1">&#39;TOOLWARNING&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.toolwarning"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.toolwarning">[docs]</a>    <span class="k">def</span> <span class="nf">toolwarning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">TOOLWARNING</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">toolwarning</span> <span class="o">=</span> <span class="n">toolwarning</span>
+    <span class="n">TOOLINFO</span> <span class="o">=</span> <span class="mi">15</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">TOOLINFO</span><span class="p">,</span> <span class="s1">&#39;TOOLINFO&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.toolinfo"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.toolinfo">[docs]</a>    <span class="k">def</span> <span class="nf">toolinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">TOOLINFO</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">toolinfo</span> <span class="o">=</span> <span class="n">toolinfo</span>
+    <span class="n">TOOLDEBUG</span> <span class="o">=</span> <span class="mi">9</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">TOOLDEBUG</span><span class="p">,</span> <span class="s1">&#39;TOOLDEBUG&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.tooldebug"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.tooldebug">[docs]</a>    <span class="k">def</span> <span class="nf">tooldebug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">TOOLDEBUG</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">tooldebug</span> <span class="o">=</span> <span class="n">tooldebug</span>
+    <span class="c1"># Level for the &#39;summary&#39; info used for the main log file and the </span>
+    <span class="c1"># special summary file and the fits headers.</span>
+    <span class="n">SUMMARY</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">addLevelName</span><span class="p">(</span><span class="n">SUMMARY</span><span class="p">,</span> <span class="s1">&#39;SUMMARY&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="CharisLogger.summary"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.CharisLogger.summary">[docs]</a>    <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="n">SUMMARY</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">summary</span> <span class="o">=</span> <span class="n">summary</span></div>
+    
+<div class="viewcode-block" id="getLogger"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.getLogger">[docs]</a><span class="k">def</span> <span class="nf">getLogger</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;generalLoggerName&#39;</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="n">addFH</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">addSH</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This will either return the logging object already</span>
+<span class="sd">    instantiated, or instantiate a new one and return it.  </span>
+<span class="sd">    **Use this function to both create and return any logger** to avoid </span>
+<span class="sd">    accidentally adding additional handlers by using the setUpLogger function </span>
+<span class="sd">    instead.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        name (str): The name for the logging object and </span>
+<span class="sd">                    name.log will be the output file written to disk.</span>
+<span class="sd">        lvl (int): The severity level of messages printed to the screen with </span>
+<span class="sd">                    the stream handler, default = 20.</span>
+<span class="sd">        addFH (boolean): Add a file handler to this logger?  Default severity </span>
+<span class="sd">                         level for it will be 1, and it will be named following</span>
+<span class="sd">                         name+&#39;.log&#39;.  Default = True.</span>
+<span class="sd">        addSH (boolean): Add a stream handler to this logger? Severity set with </span>
+<span class="sd">                        the lvl argument.  Default = True.        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        log (CharisLogger object): A CharisLogger object that was either </span>
+<span class="sd">                                  freshly instantiated or determined to </span>
+<span class="sd">                                  already exist, then returned.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="n">log_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="nb">repr</span><span class="p">(</span><span class="n">log_dict</span><span class="p">)</span>
+            <span class="nb">print</span> <span class="s1">&#39;found a log by the name already exists so returning it&#39;</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="s1">&#39;No logger object found so creating one with the name &#39;</span><span class="o">+</span><span class="n">name</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="n">setUpLogger</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">lvl</span><span class="p">,</span><span class="n">addFH</span><span class="p">,</span><span class="n">addSH</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">log</span></div>
+    
+<div class="viewcode-block" id="setUpLogger"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.setUpLogger">[docs]</a><span class="k">def</span> <span class="nf">setUpLogger</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;generalLoggerName&#39;</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="n">addFH</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">addSH</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; This function is utilized by getLogger to set up a new logging object.</span>
+<span class="sd">    It will have the default name &#39;generalLoggerName&#39; and stream handler level</span>
+<span class="sd">    of 20 unless redefined in the function call.  </span>
+<span class="sd">    NOTE:</span>
+<span class="sd">    If a file handler is added, it will have the lowest severity level by </span>
+<span class="sd">    default (Currently no need for changing this setting, so it will stay </span>
+<span class="sd">    this way for now).  Remember that any messages will be passed up to any </span>
+<span class="sd">    parent loggers, so children do not always need their own file handler.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        name (str): The name for the logging object and </span>
+<span class="sd">                    name.log will be the output file written to disk.</span>
+<span class="sd">        lvl (int): The severity level of messages printed to the screen with </span>
+<span class="sd">                    the stream handler, default = 20.</span>
+<span class="sd">        addFH (boolean): Add a file handler to this logger?  Default severity </span>
+<span class="sd">                         level for it will be 1, and it will be named following</span>
+<span class="sd">                         name+&#39;.log&#39;.  Default = True.</span>
+<span class="sd">        addSH (boolean): Add a stream handler to this logger? Severity set with </span>
+<span class="sd">                        the lvl argument.  Default = True.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        log (CharisLogger object): A CharisLogger object that was freshly </span>
+<span class="sd">                                   instantiated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">setLoggerClass</span><span class="p">(</span><span class="n">CharisLogger</span><span class="p">)</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">log_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">=</span><span class="n">log</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># add the requested handlers to the log</span>
+    <span class="k">if</span> <span class="n">addFH</span><span class="p">:</span>
+        <span class="n">addFileHandler</span><span class="p">(</span><span class="n">log</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># make a stream handler</span>
+    <span class="k">if</span> <span class="n">addSH</span><span class="p">:</span>
+        <span class="n">addStreamHandler</span><span class="p">(</span><span class="n">log</span><span class="p">,</span><span class="n">lvl</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">log</span>    </div>
+
+<div class="viewcode-block" id="addFileHandler"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.addFileHandler">[docs]</a><span class="k">def</span> <span class="nf">addFileHandler</span><span class="p">(</span><span class="n">log</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function will add a file handler to a log with the provided level.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        log (CharisLogger object): A CharisLogger object that was freshly </span>
+<span class="sd">                                   instantiated.</span>
+<span class="sd">        lvl (int): The severity level of messages printed to the file with </span>
+<span class="sd">                    the file handler, default = 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Setting FileHandler level to &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">lvl</span><span class="p">)</span>
+    <span class="n">fh</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">log</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s1">&#39;.log&#39;</span><span class="p">)</span>
+    <span class="n">fh</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">lvl</span><span class="p">)</span>
+    <span class="n">frmtString</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+    <span class="n">fFrmt</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span><span class="n">frmtString</span><span class="p">)</span>
+    <span class="n">fh</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">fFrmt</span><span class="p">)</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="addStreamHandler"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.addStreamHandler">[docs]</a><span class="k">def</span> <span class="nf">addStreamHandler</span><span class="p">(</span><span class="n">log</span><span class="p">,</span><span class="n">lvl</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function will add a stream handler to a log with the provided level.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        log (CharisLogger object): A CharisLogger object that was freshly </span>
+<span class="sd">                                   instantiated.</span>
+<span class="sd">        lvl (int): The severity level of messages printed to the screen with </span>
+<span class="sd">                    the stream handler, default = 20.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Setting StreamHandler level to &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">lvl</span><span class="p">)</span>
+    <span class="n">sh</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+    <span class="n">sh</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">lvl</span><span class="p">)</span>
+    <span class="n">sFrmt</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">sh</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">sFrmt</span><span class="p">)</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">sh</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="addFitsStyleHandler"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.addFitsStyleHandler">[docs]</a><span class="k">def</span> <span class="nf">addFitsStyleHandler</span><span class="p">(</span><span class="n">log</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function will add a file handler with a string format ideal for </span>
+<span class="sd">    directly loading into a FITS header.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        log (CharisLogger object): A CharisLogger object that was freshly </span>
+<span class="sd">                                   instantiated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fitsFhLevel</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="s1">&#39;Setting FITS FileHandler level to &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">fitsFhLevel</span><span class="p">)</span>
+    <span class="n">fh2</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">log</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s1">&#39;.fitsFormat.log&#39;</span><span class="p">)</span>
+    <span class="n">fh2</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">fitsFhLevel</span><span class="p">)</span>
+    <span class="n">frmtString2</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+    <span class="n">fFrmt2</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span><span class="n">frmtString2</span><span class="p">)</span>
+    <span class="n">fh2</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">fFrmt2</span><span class="p">)</span>
+    <span class="c1"># add the Handler to the logger</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">fh2</span><span class="p">)</span></div>
+    
+
+<div class="viewcode-block" id="logSystemInfo"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.logSystemInfo">[docs]</a><span class="k">def</span> <span class="nf">logSystemInfo</span><span class="p">(</span><span class="n">log</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A function to be called just after a logging object is instantiated </span>
+<span class="sd">    for the DEP to load the log up with info about the computer it is </span>
+<span class="sd">    being ran on and the software version.  This function utilizes the </span>
+<span class="sd">    psutil and platform libraries, so they must be install for it to work.  </span>
+<span class="sd">    For clarity of the log, it is suggested to perform immediately after </span>
+<span class="sd">    instantiation to put it at the top of the log file.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        log (Python logging object): logging object to have the system&#39;s </span>
+<span class="sd">                                    info summarized in.</span>
+<span class="sd">                                    </span>
+<span class="sd">    The messages this prints to the log will look like:</span>
+<span class="sd">    </span>
+<span class="sd">    | System Information Summary:</span>
+<span class="sd">    | OS type = Linux</span>
+<span class="sd">    | OS Version = 3.9.10-100.fc17.x86_64</span>
+<span class="sd">    | Machine UserName = xxxxxx.astron.s.u-tokyo.ac.jp</span>
+<span class="sd">    | Machine Processor Type = x86_64</span>
+<span class="sd">    | Number of cores = 8</span>
+<span class="sd">    | Total RAM [GB] = 23.5403785706, % used = 15.9</span>
+<span class="sd">    | Python Version = &#39;2.7.3&#39;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">11</span><span class="o">+</span><span class="s1">&#39; System Information Summary &#39;</span><span class="o">+</span><span class="s1">&#39;-&#39;</span><span class="o">*</span><span class="mi">11</span><span class="p">)</span>
+    <span class="c1">#log.info(&#39;Machine Type = &#39;+platform.machine())</span>
+    <span class="c1">#log.info(&#39;Machine Version = &#39;+platform.version())</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;OS type = &#39;</span><span class="o">+</span><span class="n">platform</span><span class="o">.</span><span class="n">uname</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;OS Version = &#39;</span><span class="o">+</span><span class="n">platform</span><span class="o">.</span><span class="n">uname</span><span class="p">()[</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Machine UserName = &#39;</span><span class="o">+</span><span class="n">platform</span><span class="o">.</span><span class="n">uname</span><span class="p">()[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Machine Processor Type = &#39;</span><span class="o">+</span><span class="n">platform</span><span class="o">.</span><span class="n">processor</span><span class="p">())</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Number of cores = &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">psutil</span><span class="o">.</span><span class="n">NUM_CPUS</span><span class="p">))</span>
+    <span class="n">totMem</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mf">1073741824.0</span>
+    <span class="n">percentMem</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Total RAM [GB] = &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">totMem</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;, </span><span class="si">% u</span><span class="s1">sed = &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">percentMem</span><span class="p">))</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Python Version = &#39;</span><span class="o">+</span><span class="nb">repr</span><span class="p">(</span><span class="n">platform</span><span class="o">.</span><span class="n">python_version</span><span class="p">()))</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="logFileProcessInfo"><a class="viewcode-back" href="../../tools.html#tools.charisLogger.logFileProcessInfo">[docs]</a><span class="k">def</span> <span class="nf">logFileProcessInfo</span><span class="p">(</span><span class="n">log</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">12</span><span class="o">+</span><span class="s1">&#39; File and Process Summary &#39;</span><span class="o">+</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">12</span><span class="p">)</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;NOTHING HAPPENING IN THIS FUNCTION YET!!!!!!&quot;</span><span class="p">)</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span></div>
+    
+    
+<span class="c1">#     def __tracebacker(self):</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Internal function for creating nicely formatted </span>
+<span class="c1">#         tracebacks for the ERROR level messages if requested.</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         ex_type, ex, tb = sys.exc_info()</span>
+<span class="c1">#         tb_list = traceback.extract_tb(tb,6)</span>
+<span class="c1">#         s=&#39;\nTraceback:\n&#39;</span>
+<span class="c1">#         for i in range(0,len(tb_list)):</span>
+<span class="c1">#             line_str = &#39;, Line: &#39;+tb_list[i][3]</span>
+<span class="c1">#             func_str = &#39;, Function: &#39;+tb_list[i][2]</span>
+<span class="c1">#             ln_str = &#39;, Line Number: &#39;+str(tb_list[i][1])</span>
+<span class="c1">#             file_str = &#39; File: &#39;+tb_list[i][0]</span>
+<span class="c1">#             s = s+file_str+func_str+ln_str+&#39;\n&#39;</span>
+<span class="c1">#         return s</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
+    Last built 13 Mar 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

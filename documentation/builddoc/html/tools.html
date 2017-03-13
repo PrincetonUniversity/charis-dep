@@ -1,0 +1,560 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>tools package &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
+    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="index.html" />
+    <link rel="next" title="utr package" href="utr.html" />
+    <link rel="prev" title="primitives package" href="primitives.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="utr.html" title="utr package">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="primitives.html" title="primitives package">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      
+      <li>tools package</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="tools-package">
+<h1>tools package<a class="headerlink" href="#tools-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-tools.badpix">
+<span id="tools-badpix-module"></span><h2>tools.badpix module<a class="headerlink" href="#module-tools.badpix" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="tools.badpix.gen_bad_pix_mask">
+<code class="descclassname">tools.badpix.</code><code class="descname">gen_bad_pix_mask</code><span class="sig-paren">(</span><em>image</em>, <em>filsize=5</em>, <em>threshold=5.0</em>, <em>return_smoothed_image=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/badpix.html#gen_bad_pix_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.badpix.gen_bad_pix_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-tools.charisLogger">
+<span id="tools-charislogger-module"></span><h2>tools.charisLogger module<a class="headerlink" href="#module-tools.charisLogger" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="tools.charisLogger.CharisLogger">
+<em class="property">class </em><code class="descclassname">tools.charisLogger.</code><code class="descname">CharisLogger</code><span class="sig-paren">(</span><em>name</em>, <em>level=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/2/library/logging.html#logging.Logger" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">logging.Logger</span></code></a></p>
+<p>This is the advanced logging object used throughout the CHARIS
+Data Extraction Pipeline.  It inherits from the standard 
+Python library &#8216;logging&#8217; and provides added features.
+The default log level for the output file will be 1, ie ALL messages;
+while the default for the screen will be INFO, and can be changed easily 
+using the setStreamLevel(lvl) member function.</p>
+<p>Initialize the logger with a name and an optional level.</p>
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.MAINCRITICAL">
+<code class="descname">MAINCRITICAL</code><em class="property"> = 80</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.MAINCRITICAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.MAINDEBUG">
+<code class="descname">MAINDEBUG</code><em class="property"> = 60</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.MAINDEBUG" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.MAINERROR">
+<code class="descname">MAINERROR</code><em class="property"> = 75</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.MAINERROR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.MAININFO">
+<code class="descname">MAININFO</code><em class="property"> = 65</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.MAININFO" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.MAINWARNING">
+<code class="descname">MAINWARNING</code><em class="property"> = 70</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.MAINWARNING" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.PRIMCRITICAL">
+<code class="descname">PRIMCRITICAL</code><em class="property"> = 55</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.PRIMCRITICAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.PRIMDEBUG">
+<code class="descname">PRIMDEBUG</code><em class="property"> = 35</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.PRIMDEBUG" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.PRIMERROR">
+<code class="descname">PRIMERROR</code><em class="property"> = 49</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.PRIMERROR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.PRIMINFO">
+<code class="descname">PRIMINFO</code><em class="property"> = 39</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.PRIMINFO" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.PRIMWARNING">
+<code class="descname">PRIMWARNING</code><em class="property"> = 45</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.PRIMWARNING" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.SUMMARY">
+<code class="descname">SUMMARY</code><em class="property"> = 5</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.SUMMARY" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.TOOLCRITICAL">
+<code class="descname">TOOLCRITICAL</code><em class="property"> = 29</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.TOOLCRITICAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.TOOLDEBUG">
+<code class="descname">TOOLDEBUG</code><em class="property"> = 9</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.TOOLDEBUG" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.TOOLERROR">
+<code class="descname">TOOLERROR</code><em class="property"> = 25</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.TOOLERROR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.TOOLINFO">
+<code class="descname">TOOLINFO</code><em class="property"> = 15</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.TOOLINFO" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tools.charisLogger.CharisLogger.TOOLWARNING">
+<code class="descname">TOOLWARNING</code><em class="property"> = 19</em><a class="headerlink" href="#tools.charisLogger.CharisLogger.TOOLWARNING" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.maincritical">
+<code class="descname">maincritical</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=80</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.maincritical"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.maincritical" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.maindebug">
+<code class="descname">maindebug</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=60</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.maindebug"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.maindebug" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.mainerror">
+<code class="descname">mainerror</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=75</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.mainerror"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.mainerror" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.maininfo">
+<code class="descname">maininfo</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=65</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.maininfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.maininfo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.mainwarning">
+<code class="descname">mainwarning</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=70</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.mainwarning"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.mainwarning" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.primcritical">
+<code class="descname">primcritical</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=55</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.primcritical"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.primcritical" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.primdebug">
+<code class="descname">primdebug</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=35</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.primdebug"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.primdebug" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.primerror">
+<code class="descname">primerror</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=49</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.primerror"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.primerror" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.priminfo">
+<code class="descname">priminfo</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=39</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.priminfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.priminfo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.primwarning">
+<code class="descname">primwarning</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=45</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.primwarning"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.primwarning" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.setStreamLevel">
+<code class="descname">setStreamLevel</code><span class="sig-paren">(</span><em>lvl=20</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.setStreamLevel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.setStreamLevel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set/change the level for the stream handler for a logging object.
+Any file handlers will be left alone.
+All messages of a higher severity level than &#8216;lvl&#8217; will be printed 
+to the screen.</p>
+<dl class="docutils">
+<dt>Args:    </dt>
+<dd><dl class="first last docutils">
+<dt>lvl (int): The severity level of messages printed to the screen with </dt>
+<dd>the stream handler, default = 20.</dd>
+</dl>
+</dd>
+</dl>
+<table border="1" class="docutils">
+<colgroup>
+<col width="37%" />
+<col width="12%" />
+<col width="39%" />
+<col width="12%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head" colspan="2">Standard Levels</th>
+<th class="head" colspan="2">New Levels</th>
+</tr>
+<tr class="row-even"><th class="head">Name</th>
+<th class="head">Level</th>
+<th class="head">Name</th>
+<th class="head">Level</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-odd"><td>CRITICAL</td>
+<td>50</td>
+<td>MAINCRITICAL</td>
+<td>80</td>
+</tr>
+<tr class="row-even"><td>ERROR</td>
+<td>40</td>
+<td>MAINERROR</td>
+<td>75</td>
+</tr>
+<tr class="row-odd"><td>WARNING</td>
+<td>30</td>
+<td>MAINWARNING</td>
+<td>70</td>
+</tr>
+<tr class="row-even"><td>INFO</td>
+<td>20</td>
+<td>MAININFO</td>
+<td>65</td>
+</tr>
+<tr class="row-odd"><td>DEBUG</td>
+<td>10</td>
+<td>MAINDEBUG</td>
+<td>60</td>
+</tr>
+<tr class="row-even"><td>NOTSET</td>
+<td>0</td>
+<td>PRIMCRITICAL</td>
+<td>55</td>
+</tr>
+<tr class="row-odd"><td rowspan="10">&nbsp;</td>
+<td rowspan="10">&nbsp;</td>
+<td>PRIMERROR</td>
+<td>49</td>
+</tr>
+<tr class="row-even"><td>PRIMWARNING</td>
+<td>45</td>
+</tr>
+<tr class="row-odd"><td>PRIMINFO</td>
+<td>39</td>
+</tr>
+<tr class="row-even"><td>PRIMDEBUG</td>
+<td>35</td>
+</tr>
+<tr class="row-odd"><td>TOOLCRITICAL</td>
+<td>29</td>
+</tr>
+<tr class="row-even"><td>TOOLERROR</td>
+<td>25</td>
+</tr>
+<tr class="row-odd"><td>TOOLWARNING</td>
+<td>19</td>
+</tr>
+<tr class="row-even"><td>TOOLINFO</td>
+<td>15</td>
+</tr>
+<tr class="row-odd"><td>TOOLDEBUG</td>
+<td>9</td>
+</tr>
+<tr class="row-even"><td>SUMMARY</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.summary">
+<code class="descname">summary</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=5</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.summary" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.toolcritical">
+<code class="descname">toolcritical</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=29</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.toolcritical"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.toolcritical" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.tooldebug">
+<code class="descname">tooldebug</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=9</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.tooldebug"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.tooldebug" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.toolerror">
+<code class="descname">toolerror</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=25</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.toolerror"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.toolerror" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.toolinfo">
+<code class="descname">toolinfo</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=15</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.toolinfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.toolinfo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tools.charisLogger.CharisLogger.toolwarning">
+<code class="descname">toolwarning</code><span class="sig-paren">(</span><em>msg</em>, <em>lvl=19</em>, <em>*args</em>, <em>**kws</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#CharisLogger.toolwarning"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.CharisLogger.toolwarning" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tools.charisLogger.addFileHandler">
+<code class="descclassname">tools.charisLogger.</code><code class="descname">addFileHandler</code><span class="sig-paren">(</span><em>log</em>, <em>lvl=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#addFileHandler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.addFileHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function will add a file handler to a log with the provided level.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><dl class="first last docutils">
+<dt>log (CharisLogger object): A CharisLogger object that was freshly </dt>
+<dd>instantiated.</dd>
+<dt>lvl (int): The severity level of messages printed to the file with </dt>
+<dd>the file handler, default = 1.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="tools.charisLogger.addFitsStyleHandler">
+<code class="descclassname">tools.charisLogger.</code><code class="descname">addFitsStyleHandler</code><span class="sig-paren">(</span><em>log</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#addFitsStyleHandler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.addFitsStyleHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function will add a file handler with a string format ideal for 
+directly loading into a FITS header.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><dl class="first last docutils">
+<dt>log (CharisLogger object): A CharisLogger object that was freshly </dt>
+<dd>instantiated.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="tools.charisLogger.addStreamHandler">
+<code class="descclassname">tools.charisLogger.</code><code class="descname">addStreamHandler</code><span class="sig-paren">(</span><em>log</em>, <em>lvl=20</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#addStreamHandler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.addStreamHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function will add a stream handler to a log with the provided level.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><dl class="first last docutils">
+<dt>log (CharisLogger object): A CharisLogger object that was freshly </dt>
+<dd>instantiated.</dd>
+<dt>lvl (int): The severity level of messages printed to the screen with </dt>
+<dd>the stream handler, default = 20.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="tools.charisLogger.getLogger">
+<code class="descclassname">tools.charisLogger.</code><code class="descname">getLogger</code><span class="sig-paren">(</span><em>name='generalLoggerName'</em>, <em>lvl=20</em>, <em>addFH=True</em>, <em>addSH=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#getLogger"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.getLogger" title="Permalink to this definition">¶</a></dt>
+<dd><p>This will either return the logging object already
+instantiated, or instantiate a new one and return it.  
+<strong>Use this function to both create and return any logger</strong> to avoid 
+accidentally adding additional handlers by using the setUpLogger function 
+instead.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><dl class="first last docutils">
+<dt>name (str): The name for the logging object and </dt>
+<dd>name.log will be the output file written to disk.</dd>
+<dt>lvl (int): The severity level of messages printed to the screen with </dt>
+<dd>the stream handler, default = 20.</dd>
+<dt>addFH (boolean): Add a file handler to this logger?  Default severity </dt>
+<dd>level for it will be 1, and it will be named following
+name+&#8217;.log&#8217;.  Default = True.</dd>
+<dt>addSH (boolean): Add a stream handler to this logger? Severity set with </dt>
+<dd>the lvl argument.  Default = True.</dd>
+</dl>
+</dd>
+<dt>Returns:</dt>
+<dd><dl class="first last docutils">
+<dt>log (CharisLogger object): A CharisLogger object that was either </dt>
+<dd>freshly instantiated or determined to 
+already exist, then returned.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="tools.charisLogger.logFileProcessInfo">
+<code class="descclassname">tools.charisLogger.</code><code class="descname">logFileProcessInfo</code><span class="sig-paren">(</span><em>log</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#logFileProcessInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.logFileProcessInfo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tools.charisLogger.logSystemInfo">
+<code class="descclassname">tools.charisLogger.</code><code class="descname">logSystemInfo</code><span class="sig-paren">(</span><em>log</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#logSystemInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.logSystemInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>A function to be called just after a logging object is instantiated 
+for the DEP to load the log up with info about the computer it is 
+being ran on and the software version.  This function utilizes the 
+psutil and platform libraries, so they must be install for it to work.  
+For clarity of the log, it is suggested to perform immediately after 
+instantiation to put it at the top of the log file.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><dl class="first last docutils">
+<dt>log (Python logging object): logging object to have the system&#8217;s </dt>
+<dd>info summarized in.</dd>
+</dl>
+</dd>
+</dl>
+<p>The messages this prints to the log will look like:</p>
+<div class="line-block">
+<div class="line">System Information Summary:</div>
+<div class="line">OS type = Linux</div>
+<div class="line">OS Version = 3.9.10-100.fc17.x86_64</div>
+<div class="line">Machine UserName = xxxxxx.astron.s.u-tokyo.ac.jp</div>
+<div class="line">Machine Processor Type = x86_64</div>
+<div class="line">Number of cores = 8</div>
+<div class="line">Total RAM [GB] = 23.5403785706, % used = 15.9</div>
+<div class="line">Python Version = &#8216;2.7.3&#8217;</div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="tools.charisLogger.setUpLogger">
+<code class="descclassname">tools.charisLogger.</code><code class="descname">setUpLogger</code><span class="sig-paren">(</span><em>name='generalLoggerName'</em>, <em>lvl=20</em>, <em>addFH=True</em>, <em>addSH=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/charisLogger.html#setUpLogger"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tools.charisLogger.setUpLogger" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is utilized by getLogger to set up a new logging object.
+It will have the default name &#8216;generalLoggerName&#8217; and stream handler level
+of 20 unless redefined in the function call.  
+NOTE:
+If a file handler is added, it will have the lowest severity level by 
+default (Currently no need for changing this setting, so it will stay 
+this way for now).  Remember that any messages will be passed up to any 
+parent loggers, so children do not always need their own file handler.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd><dl class="first last docutils">
+<dt>name (str): The name for the logging object and </dt>
+<dd>name.log will be the output file written to disk.</dd>
+<dt>lvl (int): The severity level of messages printed to the screen with </dt>
+<dd>the stream handler, default = 20.</dd>
+<dt>addFH (boolean): Add a file handler to this logger?  Default severity </dt>
+<dd>level for it will be 1, and it will be named following
+name+&#8217;.log&#8217;.  Default = True.</dd>
+<dt>addSH (boolean): Add a stream handler to this logger? Severity set with </dt>
+<dd>the lvl argument.  Default = True.</dd>
+</dl>
+</dd>
+<dt>Returns:</dt>
+<dd><dl class="first last docutils">
+<dt>log (CharisLogger object): A CharisLogger object that was freshly </dt>
+<dd>instantiated.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tools">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-tools" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">tools package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-tools.badpix">tools.badpix module</a></li>
+<li><a class="reference internal" href="#module-tools.charisLogger">tools.charisLogger module</a></li>
+<li><a class="reference internal" href="#module-tools">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/tools.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
+    Last built 13 Mar 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>
