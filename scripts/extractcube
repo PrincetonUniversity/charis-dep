@@ -214,17 +214,6 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     if datacube is None:
         raise ValueError("Datacube extraction method " + method + " not implemented.")
 
-    ################################################################
-    # Add WCS for the cube 
-    # for now assume the image is centered on the cube
-    # in practice, we will have to register things with
-    # the satellite spots
-    ################################################################ 
-    ydim,xdim = datacube.data[0].shape
-    rot_angle = 113 # empirically determined
-    utr.addWCS(datacube.header,xpix=ydim//2,ypix=xdim//2,
-                    xpixscale = 0.015/3600., ypixscale = -0.015/3600.,
-                    extrarot=rot_angle)      
 
     ################################################################
     # Add the original header for reference as the last HDU
@@ -314,6 +303,19 @@ if __name__ == "__main__":
         smoothandmask = Config.getboolean('Extract', 'smoothandmask')
     except:
         smoothandmask = True
+        
+    ################################################################
+    # Add WCS for the cube 
+    # for now assume the image is centered on the cube
+    # in practice, we will have to register things with
+    # the satellite spots
+    ################################################################ 
+    ydim,xdim = datacube.data[0].shape
+    rot_angle = 113 # empirically determined
+    utr.addWCS(datacube.header,xpix=ydim//2,ypix=xdim//2,
+                    xpixscale = -0.0164/3600., ypixscale = 0.0164/3600.,
+                    extrarot=rot_angle)      
+
 
     for filename in filenames:
         cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
