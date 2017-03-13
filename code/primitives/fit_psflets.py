@@ -200,6 +200,9 @@ def _recalc_ivar(data, ivar):
 
     """
     Private function to recalculate the inverse variance
+
+    Parameters
+    ----------
     """
 
     dx = 64

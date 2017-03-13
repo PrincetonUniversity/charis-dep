@@ -19,19 +19,25 @@ def getreads(filename, header=fits.PrimaryHDU().header, read_idx=[1,None]):
     Get reads from fits file and put them in the correct 
     format for the up-the-ramp functions. 
 
-    Inputs:
-    1. filename:  string, name of the fits file
-
-    Optional inputs:
-    1. header:    FITS header object for recording the reads used.  
-    2. read_idx:  list, [first index, last index] to extract from
+    Parameters
+    ----------
+    filename:  string
+        Name of the fits file
+    header:    FITS header object
+        For recording the reads used.  
+    read_idx:  list
+        [first index, last index] to extract from
                   the hdulist: index = 1 is the first read, use 
                   last index = None to use all reads after the 
                   first index.  Default [1, None].
 
-    Returns:
-    1. reads:     3D float32 ndarray, shape = (nreads, ny, nx)
+    Returns
+    -------
+    reads:     3D float32 ndarray
+        shape = (nreads, ny, nx)
 
+    Notes
+    -----
     The input header, if given, will contain keywords for the first
     and last reads used.
 
@@ -66,37 +72,47 @@ def calcramp(filename, mask=None, gain=2., noisefac=0,
     Function calcramp computes the up-the-ramp count rates and their
     inverse variance using the cython function fit_ramp.
 
-    Input:
-    1. filename  string, name of the file containing the reads, to be
+    Parameters
+    ----------
+    filename:  string
+        name of the file containing the reads, to be
                  opened by astropy.io.fits.open().  Reads are assumed 
                  to reside in HDU 1, 2, ..., N.
-    Optional inputs:
-    1. mask      boolean array, nonzero for good pixels and zero for 
+    mask:      boolean array
+        nonzero for good pixels and zero for 
                  bad pixels.  Default None (no masking)
-    2. gain      Float, electrons/ADU, used to compute shot noise on 
+    gain:      float
+        electrons/ADU, used to compute shot noise on 
                  count rates.  Default 2.
-    3. noisefac  Float, extra noise to add to derived count rates.  
+    noisefac:  float
+        extra noise to add to derived count rates.  
                  This noise will be added in quadrature but will be 
                  assumed to be a fixed fraction of the count rate;
                  it is appropriate for handing imperfect PSFlet 
                  models.  Default 0.
-    4. header    FITS header to hold information on the ramp.  Create
+    header:    FITS header
+        Header to hold information on the ramp.  Create
                  a new header if this is not given.
-    5. read_idx  Reads to use to compute the ramp.  Default [1, None],
+    read_idx:  list
+        Reads to use to compute the ramp.  Default [1, None],
                  i.e., use the first and all subsequent reads.
-    6. maxcpus   Maximum number of threads for OpenMP parallelization
+    maxcpus:   Maximum number of threads for OpenMP parallelization
                  in Cython.  Default multiprocessing.cpu_count().
-    7. fitnonlin  Boolean, fit an approximately measured nonlinear 
+    fitnonlin:  boolean
+        fit an approximately measured nonlinear 
                  response to each pixel's count rate?  Adds very 
                  little to the computational cost.  Default True.
-    8. fitexpdecay  Boolean, fit for the exponential decay of the 
+    fitexpdecay:  boolean
+        fit for the exponential decay of the 
                  reference voltage in the first read (if using the
                  first read)?  Strongly recommended for CHARIS data.
                  Default True.  Only possible if there are at least 
                  three reads.
 
-    Returns:    
-    1. Image     an Image class containing the derived count rates,
+    Returns
+    -------    
+    image:     Image instance
+        An Image class containing the derived count rates,
                  their inverse variance, and a FITS header.
 
 
@@ -152,26 +168,36 @@ def _interp_coef(nreads, sig_rn, cmin, cmax, cpad=500, interp_meth='linear'):
     nreads. This function returns interpolation objects for the 
     coefficients needed to calculate a and c. 
 
-    Inputs:
-    1. nreads:      int, the number of reads in the ramp
-    2. sig_rn:      float, the std of the read noise in electrons
-    3. cmin:        float, the minimum possible count rate in electrons
-    4. cmax:        float, the maximum possible count rate in electrons
-
-    Optional inputs:
-    1. cpad:        int, pad for count rate, which may be necessary to
+    Parameters
+    ----------
+    nreads:      int
+        The number of reads in the ramp
+    sig_rn:      float
+        The std of the read noise in electrons
+    cmin:        float
+        The minimum possible count rate in electrons
+    cmax:        float
+        The maximum possible count rate in electrons
+    cpad:        int
+        Pad for count rate, which may be necessary to
                     ensure that the interpolation range is large enough
-    2. interp_meth: string, interpolation method. Possible methods 
+    interp_meth: string
+        Interpolation method. Possible methods 
                     are the same as for scipy's interp1d.
 
-    Returns: 
-    1. ia_coef:     Interpolation object for the coefficients needed to 
+    Returns
+    ------- 
+    ia_coef:     list
+        Interpolation object for the coefficients needed to 
                     calculate a: ia_coef(count) = [w1, w2, w3...w_nreads]
-    2. ic_coef:     Interpolation object for the coefficients needed to 
+    ic_coef:     list
+        Interpolation object for the coefficients needed to 
                     calculate c: ic_coef(count) = [w1, w2, w3...w_nreads]
-    3. ic_ivar:     Interpolation object for count rate inverse variance
+    ic_ivar:     list
+        Interpolation object for count rate inverse variance
 
-    Note:
+    Notes
+    -----
     The weights are given by the generalized least squares solution 
     for a linear model. It turns out that, if we know the read noise
     and the number of reads, the weights are only a function of the 
@@ -229,20 +255,25 @@ def utr_rn(reads=None, filename=None, gain=2, return_im=False, header=fits.Prima
     user can either pass the reads directly to this function or give the 
     data directory and file name containing the reads. 
 
-    Inputs:
-    1. reads:      3D ndarray, the reads to be read up the ramp. Currently
+    Parameters
+    ----------
+    reads:      3D ndarray
+        The reads to be read up the ramp. Currently
                    the shape should be (nreads, 2048, 2112) or
                    (nreads, 2048, 2048), i.e. with or without the reference 
                    channel
-    2. filename:   string, fits file name. Only needed when the reads 
+    filename:   string
+        Fits file name. Only needed when the reads 
                    are not given. Should include the full path to file.
+    sig_rn:     float
+        The std of the read noise in ADU 
+    return_im:  bool
+        If True, return an Image class object
 
-    Optional inputs:
-    1. sig_rn:     float, the std of the read noise in ADU 
-    2. return_im:  bool, if True, return an Image class object
-
-    Returns:
-    1. c_arr:      2D ndarry of Image class object, best-fit 
+    Returns
+    -------
+    c_arr:      2D ndarray
+        Array of Image class object, best-fit 
                    count in each pixel
     """
 
@@ -315,23 +346,30 @@ def utr(reads=None, filename=None, sig_rn=20.0, gain=2.0,
     the reads directly to this function or give the data directory 
     and file name containing the reads. 
 
-    Inputs:
-    1. reads:      3D ndarray, the reads to be read up the ramp. Currently
+    Parameters
+    ----------
+    reads:      3D ndarray
+        The reads to be read up the ramp. Currently
                    the shape should be (2048, 2112, nreads) or
                    (2048, 2048, nreads), i.e. with or without the reference 
                    channel
-    2. filename:   string, fits file name. Only needed when the reads 
+    filename:   string
+        Fits file name. Only needed when the reads 
                    are not given. Should include the full path to file.
 
-    Optional inputs:
-    1. sig_rn:        float, the std of the read noise in ADU 
-    2. gain:          float, the detector gain (electrons/ADU) 
-    3. interp_meth:   string, the interpolation method to use when 
+    sig_rn:        float
+        The std of the read noise in ADU 
+    gain:          float
+        The detector gain (electrons/ADU) 
+    interp_meth:   string
+        The interpolation method to use when 
                       interpolating over the up-the-ramp coefficients.
                       Possible methods are the same as for scipy's interp1d.
 
-    Returns:
-    1. im             Image class object containing the count in electrons, 
+    Returns
+    -------
+    im :            Image object
+        Image object containing the count in electrons, 
                       ivar, and flags (not yet) for every pixel in the image. 
     """
     
