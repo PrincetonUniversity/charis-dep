@@ -2,6 +2,7 @@
 import cython
 from cython.parallel import prange, parallel
 import numpy as np
+from scipy import ndimage
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -263,21 +264,32 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
 @cython.wraparound(False)
 
 def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref, 
-               float tol=1e-5, int read0=1, 
-               double a=0.991, double b=-1.8e-6, double c=-2e-11, 
-               double threshold=5000., double sat=50000., int maxproc=4):
+               unsigned short [:, :] mask, float tol=1e-5, int read0=1, 
+               double a=0.995, double b=-1.8e-6, double c=-2e-11, 
+               double threshold=5000., double sat=50000., double maxval=6e4,
+               int maxproc=4):
 
     """
 
     """
 
     cdef double rate, reset, chisq, x, y, best, num, denom
-    cdef int i, j, k, kmax, ii, its, nread, ny, nx, nchan, ichan
+    cdef int i, j, k, ii, its, nread, ny, nx, nchan, ichan
 
     cdef extern from "math.h" nogil:
         double fabs(double _x)
     
     nread, ny, nx = [cts.shape[0], cts.shape[1], cts.shape[2]]
+
+    ####################################################################
+    # Number of unsaturated reads for each pixel.  Need two arrays,
+    # one for scipy's minimum filter.
+    ####################################################################
+
+    kmax_np = np.ones((ny, nx), int)*nread
+    cdef long [:, :] kmax = kmax_np
+    kmax2_np = np.ones((ny, nx), int)*nread
+    cdef long [:, :] kmax2 = kmax2_np
 
     ####################################################################
     # Thread-safe arrays to be edited in parallel.
@@ -293,6 +305,40 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
     cdef double [:, :] dy = dy_np
 
     with nogil, parallel(num_threads=maxproc):
+
+        ################################################################
+        # Only use reads that should not be heavily saturated.  Two
+        # cuts: first two read count rate should imply that we remain
+        # below saturation; also, absolute count number (including
+        # reset) should remain below maxval, which should be less than
+        # 2^16-1 = 65535.
+        ################################################################
+
+        for i in prange(ny, schedule='dynamic'):
+            for j in range(nx):
+                if mask[i, j] == 0:
+                    continue
+                x = fabs(cts[1, i, j] - cts[0, i, j]
+                         + ref[0, j/64] - ref[1, j/64]) + 1e-10
+                
+                kmax2[i, j] = (int)(sat/x - read0)
+                if kmax2[i, j] < 2:
+                    kmax2[i, j] = 2
+                elif kmax2[i, j] > nread:
+                    kmax2[i, j] = nread
+
+                for k in range(2, nread):
+                    if cts[k, i, j] > maxval:
+                        kmax2[i, j] = k
+                        break
+
+    ################################################################
+    # Bleeding upon saturation contaminates nearest neighbors.
+    ################################################################
+
+    ndimage.filters.minimum_filter(kmax2_np, size=3, output=kmax_np)
+
+    with nogil, parallel(num_threads=maxproc):
         for i in prange(ny, schedule='dynamic'):
             for j in range(nx):
                 
@@ -302,7 +348,7 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
                 ########################################################
 
                 rate = ctrates[i, j]
-                if rate*(read0 + nread - 1) < threshold:
+                if rate*(read0 + nread - 1) < threshold and kmax[i, j] == nread:
                     continue
                     
                 ########################################################
@@ -319,22 +365,11 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
                     ichan = j/64
                     cts_local[i, k] = cts[k, i, j] - ref[k, ichan]
 
-                ########################################################
-                # Only use reads that should not be heavily saturated.
-                ########################################################
-
-                x = fabs(cts_local[i, 1] - cts_local[i, 0]) + 1e-10
-                kmax = (int)(sat/x - read0)
-                if kmax < 2:
-                    kmax = 2
-                elif kmax > nread:
-                    kmax = nread
-
                 for its in range(100):  # Maximum number of iterations
                     for ii in range(3): # Three points to fit a parabola
                         dx[i, ii] = rate + ii - 1.
 
-                        for k in range(kmax):
+                        for k in range(kmax[i, j]):
                             y = dx[i, ii]*(k + read0)
                             if y > threshold:
                                 x = y - threshold
@@ -342,12 +377,12 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
                             fit[i, k] = y
 
                         reset = 0
-                        for k in range(kmax):
+                        for k in range(kmax[i, j]):
                             reset = reset + cts_local[i, k] - fit[i, k]
-                        reset = reset/kmax
+                        reset = reset/kmax[i, j]
 
                         chisq = 0
-                        for k in range(kmax):
+                        for k in range(kmax[i, j]):
                             x = cts_local[i, k] - fit[i, k] - reset
                             chisq = chisq + x*x
                         dy[i, ii] = chisq
@@ -369,6 +404,7 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
 
                     if fabs((best - rate)/rate) < tol:  # Convergence
                         ctrates[i, j] = best
+                        #resetval[i, j] = reset
                         break
                     else:
                         rate = best
@@ -381,7 +417,7 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
 
 def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask, 
              float tol=1e-5, int read0=1, 
-             double a=0.991, double b=-1.8e-6, double c=-2e-11, 
+             double a=0.995, double b=-1.8e-6, double c=-2e-11, 
              double threshold=5000., double sat=50000.,
              double gain=2, int maxproc=4, char refsub='t',
              int fitnonlin=1, int fitexpdecay=1, int returnivar=1):
@@ -464,7 +500,7 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
                     ctrates[j, k] = ctrates[j, k] + x
 
     if fitnonlin:
-        fit_nonlin(cts, ctrates, ref, tol=tol, read0=read0, 
+        fit_nonlin(cts, ctrates, ref, mask, tol=tol, read0=read0, 
                    a=a, b=b, c=c, threshold=threshold, sat=sat, maxproc=maxproc)
 
     ####################################################################
@@ -564,13 +600,13 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
                     ichan = k/64
                     x = cts[i + 1, j, k] - cts[i, j, k]
                     x = x - (ref[i + 1, ichan] - ref[i, ichan])
-                    if x > 7*stds[ichan]:  # >7sigma in read noise
+                    if x > 10*stds[ichan]:  # >10sigma in read noise
                         y = cts[nread - 1, j, k] - cts[0, j, k]
                         y = y - (ref[nread - 1, ichan] - ref[0, ichan])
                         y = y/(nread - 1.)
                         if y < ctrates[j, k]:
                             y = ctrates[j, k]
-                        if x > 4*y:  # >4 times expected count rate
+                        if x > 5*y:  # >5 times expected count rate
                             ivar[j, k] = 0
 
     ####################################################################
