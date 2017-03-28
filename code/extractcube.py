@@ -28,7 +28,8 @@ log = logging.getLogger('main')
 def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/', 
             bgsub=True, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, suppressrn=True, fitshift=True, 
-            flatfield=True, smoothandmask=True, saveresid=False,
+            flatfield=True, smoothandmask=True, 
+            minpct=70, fitbkgnd=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count()):
 
     """Provisional routine getcube.  Construct and return a data cube
@@ -174,14 +175,29 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     datacube = None
 
     if method == 'lstsq' or suppressrn:
-        header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
+        try:
+            keyfile = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))
+            R2 = R
+        except:
+            keyfilenames = glob.glob(calibdir + '/polychromekeyR*.fits')
+            if len(keyfilenames) == 0:
+                raise IOError("No key file found in " + calibdir)
+            R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
+            keyfile = fits.open(calibdir + '/polychromekeyR%d.fits' % (R2))
+            print("Warning: calibration files not found at requested resolution of R = %d" % (R))
+            print("Found files at R = %d, using these instead." % (R2))
+
         if fitshift:
-            psflets = np.load(calibdir + '/polychromefullR%d.npy' % (R))
-            offsets = np.arange(-5, 6)
-            psflets = primitives.calc_offset(psflets, inImage, offsets, maxcpus=maxcpus)
-        else:
-            psflets = fits.open(calibdir + '/polychromeR%d.fits' % (R))[0].data
-        keyfile = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))
+            try:
+                psflets = np.load(calibdir + '/polychromefullR%d.npy' % (R2))
+                offsets = np.arange(-5, 6)
+                psflets = primitives.calc_offset(psflets, inImage, offsets, maxcpus=maxcpus)
+            except:
+                fitshift = False
+        if not fitshift:
+            psflets = fits.open(calibdir + '/polychromeR%d.fits' % (R2))[0].data
+
+        header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
         lam_midpts = keyfile[0].data
         x = keyfile[1].data
         y = keyfile[2].data
@@ -196,10 +212,10 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         ############################################################
 
         if method != 'lstsq':
-            corrnoise = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, flat=lensletflat, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, maxcpus=maxcpus, return_corrnoise=True)
+            corrnoise = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, flat=lensletflat, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, minpct=minpct, fitbkgnd=fitbkgnd, maxcpus=maxcpus, return_corrnoise=True)
             inImage.data -= corrnoise
         else:
-            result = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, flat=lensletflat, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, returnresid=saveresid, maxcpus=maxcpus)
+            result = primitives.fit_spectra(inImage, psflets, lam_midpts, x, y, good, header=inImage.header, flat=lensletflat, refine=refine, suppressrdnse=suppressrn, smoothandmask=smoothandmask, minpct=minpct, fitbkgnd=fitbkgnd, returnresid=saveresid, maxcpus=maxcpus)
             if saveresid:
                 datacube, resid = result
                 resid.write(re.sub('.*/', '', re.sub('.fits', '_resid.fits', filename)))
@@ -208,11 +224,32 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     if method == 'optext':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
-        lam_midpts = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))[0].data
-        datacube = primitives.optext_spectra(inImage, loc, lam_midpts, header=inImage.header, flat=lensletflat, maxcpus=maxcpus)
+        try:
+            lam_midpts = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))[0].data
+        except:
+            keyfilenames = glob.glob(calibdir + '/polychromekeyR*.fits')
+            if len(keyfilenames) == 0:
+                raise IOError("No key file found in " + calibdir)
+            lam = fits.open(keyfilenames[0])[0].data
+            lam1, lam2 = [lam[0], lam[-1]]
+            n = int(np.log(lam2*1./lam1)*R + 1.5)
+            lam_midpts = np.exp(np.linspace(np.log(lam1), np.log(lam2), n))
+        try:
+            sig = fits.open(calibdir + '/PSFwidths.fits')[0].data
+        except:
+            sig = 0.7
+
+        datacube = primitives.optext_spectra(inImage, loc, lam_midpts, sig=sig, header=inImage.header, flat=lensletflat, maxcpus=maxcpus)
 
     if datacube is None:
         raise ValueError("Datacube extraction method " + method + " not implemented.")
+
+
+    ################################################################
+    # Add the original header for reference as the last HDU
+    ################################################################
+
+    datacube.extrahead = fits.open(filename)[0].header
 
     ################################################################
     # Add WCS for the cube 
@@ -223,14 +260,8 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     ydim,xdim = datacube.data[0].shape
     rot_angle = 113 # empirically determined
     utr.addWCS(datacube.header,xpix=ydim//2,ypix=xdim//2,
-                    xpixscale = 0.015/3600., ypixscale = -0.015/3600.,
+                    xpixscale = -0.0164/3600., ypixscale = 0.0164/3600.,
                     extrarot=rot_angle)      
-
-    ################################################################
-    # Add the original header for reference as the last HDU
-    ################################################################
-
-    datacube.extrahead = fits.open(filename)[0].header
 
     return datacube
 
@@ -293,6 +324,16 @@ if __name__ == "__main__":
     except:
         suppressrn = True
     try:
+        minpct = Config.getint('Extract', 'minpct')
+        minpct = max(minpct, 0)
+        minpct = min(minpct, 90) # Don't allow more than 90% of the pixels to be used in estimating the read noise.
+    except:
+        minpct = 60
+    try:
+        fitbkgnd = Config.getboolean('Extract', 'fitbkgnd')
+    except:
+        fitbkgnd = True
+    try:
         saveresid = Config.getboolean('Extract', 'saveresid')
     except:
         saveresid = False
@@ -314,6 +355,7 @@ if __name__ == "__main__":
         smoothandmask = Config.getboolean('Extract', 'smoothandmask')
     except:
         smoothandmask = True
+        
 
     for filename in filenames:
         cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
@@ -322,5 +364,6 @@ if __name__ == "__main__":
                        calibdir=calibdir, R=R, method=method, 
                        smoothandmask=smoothandmask, flatfield=flatfield,
                        fitshift=fitshift, suppressrn=suppressrn,
+                       minpct=minpct, fitbkgnd=fitbkgnd,
                        saveresid=saveresid)
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
