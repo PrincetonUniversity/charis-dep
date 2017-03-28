@@ -6,6 +6,7 @@ import re
 import os
 import time
 import numpy as np
+from scipy import ndimage, interpolate
 try:
     import primitives
     import utr
@@ -105,7 +106,6 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
         header['cal_dx'] = (dx, 'x-shift from archival spot positions (pixels)')
         header['cal_dy'] = (dy, 'y-shift from archival spot positions (pixels)')
         header['cal_dphi'] = (dphi, 'Rotation from archival spot positions (radians)')
-        header['ifs_rot'] = (180.*phi2/np.pi, 'Rotation of lenslet array (degrees)')
 
     #################################################################
     # Load the high-resolution PSFlet images and associated
@@ -116,6 +116,52 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     hires_arrs = [fits.open(filename)[0].data for filename in hires_list]
     lam_hires = [int(re.sub('.*lam', '', re.sub('.fits', '', filename)))
                  for filename in hires_list]
+    psflet_res = 9 # Oversampling of high-resolution PSFlet images
+
+    #################################################################
+    # Width of high-resolution PSFlets, in pixels.  First compute the
+    # width from the images perpendicular to the dispersion direction
+    # at the central pixel along the dispersion direction.
+    #################################################################
+
+    shape = hires_arrs[0].shape
+    sigarr = np.zeros((len(hires_list), shape[0], shape[1]))
+    _x = np.arange(shape[3])/9.
+    _x -= _x[_x.shape[0]//2]
+
+    for i in range(sigarr.shape[0]):
+        for j in range(sigarr.shape[1]):
+            for k in range(sigarr.shape[2]):                
+                row = hires_arrs[i][j, k, shape[2]//2]                
+                sigarr[i, j, k] = np.sum(row*_x**2)
+                sigarr[i, j, k] /= np.sum(row)
+                
+        sigarr[i] = np.sqrt(sigarr[i])
+
+    #################################################################
+    # Now interpolate the width at the locations and wavelengths of
+    # the microspectra for optimal extraction.  First interpolate in
+    # location, then interpolate in wavelength for each lenslet.
+    #################################################################
+
+    mean_x = psftool.xindx[:, :, psftool.xindx.shape[-1]//2]
+    mean_y = psftool.yindx[:, :, psftool.yindx.shape[-1]//2]
+
+    longsigarr = np.zeros((len(lam_hires), mean_x.shape[0], mean_x.shape[1]))
+
+    ix = mean_x*hires_arrs[0].shape[1]/2048. - 0.5
+    iy = mean_y*hires_arrs[0].shape[0]/2048. - 0.5
+    
+    for i in range(sigarr.shape[0]):
+        longsigarr[i] = ndimage.map_coordinates(sigarr[i], [iy, ix], order=3, mode='nearest')
+    fullsigarr = np.zeros((psftool.xindx.shape))
+    for i in range(mean_x.shape[0]):
+        for j in range(mean_x.shape[1]):
+            fit = interpolate.interp1d(np.asarray(lam_hires), longsigarr[:, i, j],
+                                       bounds_error=False, fill_value='extrapolate')
+            fullsigarr[i, j] = fit(psftool.lam_indx[i, j])
+    out = fits.HDUList(fits.PrimaryHDU(fullsigarr.astype(np.float32)))
+    out.writeto('PSFwidths.fits', clobber=True)
 
     #################################################################
     # Wavelengths at which to return the PSFlet templates
@@ -145,7 +191,6 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
         upsamp = 5
     else:
         upsamp = 1
-    psflet_res = 9 # Oversampling of high-resolution PSFlet images
     nlam = 10      # Number of monochromatic PSFlets per integrated PSFlet
 
     tasks = multiprocessing.Queue()
