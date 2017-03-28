@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
-from scipy import interpolate, signal, stats
+from scipy import interpolate, signal, stats, ndimage
 try:
     from charis.image import Image
 except:
@@ -130,7 +130,7 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
         return np.mean(arr_sorted, axis=axis)
 
 
-def _get_corrnoise(resid, ivar):
+def _get_corrnoise(resid, ivar, minpct=70):
 
     """
     Private function that returns the correlated noise
@@ -163,12 +163,13 @@ def _get_corrnoise(resid, ivar):
     # to ensure a reasonable average.
     ##################################################################
 
-    thresh = min(1/np.sqrt(2), stats.scoreatpercentile(var_ratios, 60))
+    thresh = min(1/np.sqrt(2), stats.scoreatpercentile(var_ratios, 100-minpct))
 
     for i in range(resid.shape[1]//dx):
         ivar_ref = np.median(ivar[:4, i*dx:(i + 1)*dx])
         mask[:, i*dx:(i + 1)*dx] = ivar[:, i*dx:(i + 1)*dx] > thresh*ivar_ref
 
+    pctpix = np.sum(mask > 0)*100./np.sum(mask > -1)
     masked = resid*mask
     stripe = np.zeros((resid.shape[1]//(2*dx), resid.shape[0], dx))
 
@@ -194,7 +195,7 @@ def _get_corrnoise(resid, ivar):
             corr /= _trimmed_mean(noisemed**2, n=10, maskval=0)
             corrnoise[:, i+j:i+j+dx] = corr*noisemed
 
-    return corrnoise
+    return corrnoise, pctpix
 
 def _recalc_ivar(data, ivar):
 
@@ -213,56 +214,25 @@ def _recalc_ivar(data, ivar):
         var[:, i*dx:(i + 1)*dx] += 0.5*(rdnoise_new**2 - rdnoise_old**2)
     return (1/var)*(ivar > 0)
 
-def _get_corrnoise_lowf(fit, resid, ivar, sig=250):
 
-    """
-    Subtract a highly smoothed map of the residuals to get
-    rid of pow over large spatial scales (long timescales).
+def _add_row(arr, n=1, dtype=None):
     """
 
-    corrnoise = np.zeros(fit.shape)
-    dx = 64
-    
-    x = np.arange(4*sig + 1) - 2*sig
-    window = np.exp(-x**2/(2*sig**2))
-    window /= np.sum(window)
-    allstripes = np.zeros((32, fit.shape[0]))
+    """
 
-    for i in range(32):
-        
-        #################################################################
-        # We'll use the pixels where the fitted PSF intensity is modest
-        # compared to the read noise so that the residual should be 
-        # dominated by read noise.  Don't use reference pixels.
-        #################################################################
-
-        mask = fit[:, i*dx:(i + 1)*dx]**2 < 15/np.mean(ivar[-4:, i*dx:(i + 1)*dx])
-        mask *= ivar[:, i*dx:(i + 1)*dx] > 0
-
-        #################################################################
-        # Don't use spectra for which any PSFlet lies near the detector
-        # edge.  Spectral length is about 30 pixels.
-        #################################################################
-
-        mask[:40] = mask[-40:] = 0
-        if i == 0:
-            mask[:, :10] = 0
-        elif i == 31:
-            mask[:, -10:] = 0
-
-        stripe = resid[:, i*dx:(i + 1)*dx]*mask            
-        allstripes[i] = _trimmed_mean(stripe, axis=1, maskval=0, n=1)
-
-        npts = np.sum(mask, axis=1)
-        stripe = np.sum(stripe, axis=1)
-            
-        stripe = np.convolve(stripe, window, mode='same')
-        stripe /= np.convolve(npts, window, mode='same') + 2
-        
-        for j in range(dx):
-            corrnoise[:, i*dx + j] = stripe
-
-    return corrnoise
+    if n < 1:
+        return arr
+    newshape = list(arr.shape)
+    newshape[0] += n
+    if dtype is None:
+        outarr = np.zeros(tuple(newshape), arr.dtype)
+    else:
+        outarr = np.zeros(tuple(newshape), dtype)
+    outarr[:-n] = arr
+    meanval = (arr[0] + arr[-1])/2
+    for i in range(n + 1):
+        outarr[-i] = meanval
+    return outarr
 
 
 def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
@@ -375,7 +345,7 @@ def _get_cutout(im, x, y, psflets, dx=3):
     return subim, psflet_subarr, [y0, y1, x0, x1]
 
 
-def _tag_psflets(shape, x, y, good):
+def _tag_psflets(shape, x, y, good, dx=10, dy=10):
     """
     Create an array with the index of each lenslet at a given
     wavelength.  This will make it very easy to remove the best-fit
@@ -406,26 +376,54 @@ def _tag_psflets(shape, x, y, good):
     frame.
 
     """
-    
+
     psflet_indx = np.zeros(shape, np.int)
     oldshape = x.shape
     x_int = (np.reshape(x + 0.5, -1)).astype(int)
     y_int = (np.reshape(y + 0.5, -1)).astype(int)
+    
     good = np.reshape(good, -1)
+    x = np.reshape(x, -1)
+    y = np.reshape(y, -1)
+
+    x_i = np.arange(shape[1])
+    y_i = np.arange(shape[0])
+    x_i, y_i = np.meshgrid(x_i, y_i)
+
+    mindist = np.ones(shape)*1e10
 
     for i in range(x_int.shape[0]):
         if good[i]:
-            psflet_indx[y_int[i] - 6:y_int[i] + 7, x_int[i] - 6:x_int[i] + 7] = i
+            #psflet_indx[y_int[i] - 6:y_int[i] + 7, x_int[i] - 6:x_int[i] + 7] = i
+            iy1, iy2 = [y_int[i] - dy, y_int[i] + dy + 1]
+            ix1, ix2 = [x_int[i] - dx, x_int[i] + dx + 1]
 
+            dist = (y[i] - y_i[iy1:iy2, ix1:ix2])**2 
+            dist += (x[i] - x_i[iy1:iy2, ix1:ix2])**2
+            indx = np.where(dist < mindist[iy1:iy2, ix1:ix2])
+
+            psflet_indx[iy1:iy2, ix1:ix2][indx] = i
+            mindist[iy1:iy2, ix1:ix2][indx] = dist[indx]
+            
     good = np.reshape(good, oldshape)
+    x = np.reshape(x, oldshape)
+    y = np.reshape(y, oldshape)
 
     return psflet_indx
 
 
+def _interp_sig(sigarr, imshape, xindx, yindx):
+    
+    x = xindx*sigarr.shape[2]*1./imshape[1] - 0.5
+    y = yindx*sigarr.shape[1]*1./imshape[0] - 0.5
+
+    return ndimage.map_coordinates(sigarr, [y, x], order=3, mode='nearest')
+
+
 def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
                 flat=None, refine=False, smoothandmask=True, returnresid=False,
-                suppressrdnse=False, return_corrnoise=False,
-                maxcpus=multiprocessing.cpu_count()):
+                suppressrdnse=False, return_corrnoise=False, minpct=70,
+                fitbkgnd=True, maxcpus=multiprocessing.cpu_count()):
 
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -464,6 +462,13 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     returnresid: boolean
         Return a residual image in addition the data cube?  Default False.
     suppressrdnse: boolean
+        Estimate and subtract the read noise shared among the even and odd reference channels?  Default False.
+    return_corrnoise: boolean
+        Return the estimated correlated read noise (as opposed to a data cube)?  Default False.
+    minpct:  int
+        Minimum percentage of pixels to be used in estimating the correlated read noise.  Default 70.
+    fitbkgnd: float
+        Fit the undispersed background in each microspectrum?  Default False.
     maxcpus:  int
         Maximum number of threads for OpenMP parallelization in Cython.
         Default multiprocessing.cpu_count().
@@ -485,8 +490,6 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     # Fit the spectrum by minimizing chi squared
     ###################################################################
 
-    coefshape = tuple([len(x)] + list(x[0].shape))
-    
     x = np.asarray(x)
     y = np.asarray(y)
 
@@ -494,6 +497,9 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     yint = np.reshape((y + 0.5).astype(np.int64), (y.shape[0], -1))
     goodint = np.reshape(np.prod(good.astype(np.int64), axis=0), -1)
     indx = np.where(goodint)[0]
+    dx = np.ones(psflets.shape[0], np.int32)*10
+    dy = np.ones(psflets.shape[0], np.int32)*10
+
     if im.ivar is not None:
         isig = np.sqrt(im.ivar).astype(np.float64)
     else:
@@ -509,11 +515,51 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
 
     data = np.empty(im.data.shape)
     data[:] = im.data
-    if psflets.dtype != 'float64':
+    n_add = 0
+    if psflets.dtype != 'float64' and not fitbkgnd:
         psflets2 = np.empty(psflets.shape)
         psflets2[:] = psflets
         psflets = psflets2
 
+    elif fitbkgnd:
+
+        ###############################################################
+        # Add two more "wavelengths" to fit the undispersed
+        # background.  First one: uniform.  Second one: vary in
+        # alternating channels, so that the background can vary
+        # between channels if a microspectrum straddles two channels.
+        # Returned cube will omit these constants.
+        ###############################################################
+
+        n_add = 2
+        psflets = _add_row(psflets, n=n_add, dtype=np.float64)
+        _x = np.arange(psflets.shape[2])
+        _y = np.arange(psflets.shape[1])
+        _x, _y = np.meshgrid(_x, _y)
+        
+        psflets[-n_add:] = 0
+        psflets[-1, 4:-4, 4:-4] = 1
+        if n_add == 2:
+            psflets[-2, 4:-4, 4:-4] += (_x[4:-4, 4:-4]/64).astype(int)%2 == 0
+
+        xint = _add_row(xint, n=n_add)
+        yint = _add_row(yint, n=n_add)
+        x = _add_row(x, n=n_add)
+        y = _add_row(y, n=n_add)
+        good = _add_row(good, n=n_add)
+
+        ###############################################################
+        # "Crosstalk" regions in the last two "wavelengths" should be
+        # subtracted over the same regions where they are fitted.
+        ###############################################################
+
+        dx = np.ones(psflets.shape[0], np.int32)*10
+        dy = np.ones(psflets.shape[0], np.int32)*10
+        dx[-n_add:] = 3
+        dy[-n_add:] = 20
+        
+    coefshape = tuple([len(x)] + list(x[0].shape))
+    
     ###################################################################
     # Call cython implementations of _get_cutouts and _fit_cutouts.
     # Factor of 5 or so speedup on a 16 core machine.
@@ -548,11 +594,29 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     if refine or returnresid or suppressrdnse:
 
         ###############################################################
+        # Match lenslet to pixel at each wavelength.  The cython
+        # routine is much faster, so we use that, but it requires the
+        # arrays to be in native byte order.
+        ###############################################################
+
+        n = x.shape[0]
+        xx = np.empty((x.shape[0], np.prod(list(x.shape[1:]))))
+        xx[:] = np.reshape(x, (n, -1))
+        yy = np.empty(xx.shape)
+        yy[:] = np.reshape(y, (n, -1))
+        ggood = np.empty(xx.shape, np.int32)
+        ggood[:] = np.reshape(good, (n, -1))
+
+        all_psflet_indx = matutils.tag_all_psflets(psflets, xx, yy, ggood, dx, dy)
+
+        ###############################################################
         # Compute residual from fit.
         ###############################################################
 
         for i in range(len(psflets)):
-            psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
+            psflet_indx = all_psflet_indx[i]
+            #psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i],
+            #                           dx[i], dy[i])
             coefs_flat = np.reshape(coefs[i], -1)
             if flat is not None:
                 coefs_flat *= np.reshape(lenslet_ok, -1)
@@ -560,11 +624,13 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
 
         ###############################################################
         # Estimate shared noise and subtract it off.  Recompute the
-        # data cube, inverse variance, and residuals.
+        # data cube, inverse variance, and residuals.  If we are
+        # returning the read noise, also return the undispersed
+        # background.
         ###############################################################
 
         if suppressrdnse:
-            corrnoise = _get_corrnoise(data, im.ivar)
+            corrnoise, pctpix = _get_corrnoise(data, im.ivar, minpct=minpct)
             data[:] = im.data - corrnoise
             im.ivar = _recalc_ivar(data, im.ivar)
             isig = np.sqrt(im.ivar)
@@ -574,24 +640,39 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
             cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
             cov = cov.T.reshape(coefshape)
             cov[np.where(cov == 0)] = np.inf
+
+            bkgnd = np.zeros((im.data.shape))
+
             for i in range(len(psflets)):
-                psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
+                psflet_indx = all_psflet_indx[i]
+                #psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], 
+                #                           good[i], dx[i], dy[i])
                 coefs_flat = np.reshape(coefs[i], -1)
+                if fitbkgnd and return_corrnoise:
+                    if i >= len(psflets) - n_add:
+                        bkgnd += psflets[i]*coefs_flat[psflet_indx]
                 if flat is not None:
                     coefs_flat *= np.reshape(lenslet_ok, -1)
                 data -= psflets[i]*coefs_flat[psflet_indx]
 
-            dcorrnoise = _get_corrnoise(data, im.ivar)
-            data -= dcorrnoise
-            corrnoise += dcorrnoise
-            
-            fit = im.data - data - corrnoise
-            dcorrnoise = _get_corrnoise_lowf(fit, data, im.ivar, sig=250)
+            dcorrnoise, pctpix = _get_corrnoise(data, im.ivar, minpct=minpct)
             data -= dcorrnoise
             corrnoise += dcorrnoise
             
             if return_corrnoise:
-                return corrnoise
+                ####################################################
+                # Once more to get the undispersed background right
+                ####################################################
+                if fitbkgnd:
+                    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, maxproc=maxcpus)
+                    coefs, cov = matutils.lstsq(A, b, indx, size, nlens, returncov=1, maxproc=maxcpus) 
+                    coefs = coefs.T.reshape(coefshape)
+                    for i in range(len(psflets) - n_add, len(psflets)):
+                        coefs_flat = np.reshape(coefs[i], -1)
+                        psflet_indx = all_psflet_indx[i]
+                        bkgnd += psflets[i]*coefs_flat[psflet_indx]
+
+                return corrnoise + bkgnd
 
         else:
             corrnoise = 0
@@ -616,14 +697,18 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
             if returnresid:
                 data[:] = im.data - corrnoise
                 for i in range(len(psflets)):
-                    psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i])
+                    psflet_indx = all_psflet_indx[i]
+                    #psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], 
+                    #                           good[i], dx[i], dy[i])
                     coefs_flat = np.reshape(coefs[i], -1)                
                     data -= psflets[i]*coefs_flat[psflet_indx]
                 resid = Image(data=data, ivar=im.ivar)
     
     header['cubemode'] = ('Chi^2 Fit to PSFlets', 'Method used to extract data cube')
-
+    header['fitbkgnd'] = (fitbkgnd, 'Fit an undispersed background in each lenslet?')
     header['reducern'] = (suppressrdnse, 'Suppress read noise using low ct rate pixels?')
+    if suppressrdnse:
+        header['rnpctpix'] = (pctpix, '% of pixels used to estimate read noise')
     header['refine'] = (refine, 'Iterate solution to remove crosstalk?')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
@@ -641,6 +726,10 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
         datacube = _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
     
     datacube.header['maskivar'] = (smoothandmask, 'Set poor ivar to 0, smoothed I for cosmetics')
+
+    if n_add > 0:
+        datacube.data = datacube.data[:-n_add]
+        datacube.ivar = datacube.ivar[:-n_add]
 
     if returnresid:
         return datacube, resid
@@ -673,9 +762,8 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
         Odd, positive integer, the aperture width for extraction.  Default 7 (5 or 7 recommended).
     flat:        2D ndarray
         2D floating point ndarray, lenslet flat. Default None (don't flat-field).
-    sig:         float
-        1D root variance of lenslet PSF. Default 0.7 (currently cannot be a function of 
-        wavelength).  Setting sig >> delt_x is equivalent to aperture photometry.
+    sig:         float or 3D ndarray
+        1D root variance of lenslet PSF. Default 0.7.  Setting sig >> delt_x is equivalent to aperture photometry.  If sig is an array to account for the wavelength- and lenslet-dependence, its dimensions should match PSFlet_tool.xindx.
     smoothandmask: boolean
         Set inverse variance of particularly noisy lenslets to zero and replace their values 
         with interpolations for cosmetics (ivar will still be zero)?  Default True.
@@ -721,9 +809,18 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
     ivar = np.zeros(im.ivar.shape)
     ivar[:] = im.ivar
 
-    coefs, tot_ivar = matutils.optext(data, ivar, xindx, yindx, 
+    if np.shape(sig) == xindx.shape:
+        sig2 = np.empty(sig.shape)
+        sig2[:] = sig
+        sig = sig2
+    elif len(np.shape(sig)) == 0:
+        sig = np.ones(xindx.shape)*sig
+    else:
+        raise ValueError("Spot size must be either a floating point number or a 3D array of the same shape as the lenslet positions.")
+
+    coefs, tot_ivar = matutils.optext(data, ivar, xindx, yindx, sig, 
                                       loglam_indx, nlam, loglam, Nmax, 
-                                      delt_x=delt_x, sig=sig, maxproc=maxcpus)
+                                      delt_x=delt_x, maxproc=maxcpus)
 
     header['cubemode'] = ('Optimal Extraction', 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
