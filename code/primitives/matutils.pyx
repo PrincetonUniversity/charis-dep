@@ -2,6 +2,7 @@
 import cython
 from cython.parallel import prange, parallel
 import numpy as np
+import multiprocessing
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
@@ -267,6 +268,70 @@ def allcutouts(double [:, :] im, double [:, :] isig, long [:, :] x,
                         k = k + 1
 
     return A_np, b_np, size_np
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+
+def tag_all_psflets(double [:, :, :] psflets, double [:, :] x, double [:, :] y, 
+                    int [:, :] good, int [:] dx, int [:] dy,
+                    int maxproc=multiprocessing.cpu_count()):
+    
+    cdef int i, j, k, ii, jj, n1, n2, n3, ix1, ix2, iy1, iy2, nlens
+    cdef double dist_sq, xval, yval
+    
+    n1 = psflets.shape[0]
+    n2 = psflets.shape[1]
+    n3 = psflets.shape[2]
+    nlens = x.shape[1]
+    psflet_indx_np = np.zeros((n1, n2, n3), np.int32)
+    cdef int [:, :, :] psflet_indx = psflet_indx_np
+
+    distbest_np = np.ones((n1, n2, n3), np.float32)*1e10
+    cdef float [:, :, :] distbest = distbest_np
+
+    with nogil, parallel(num_threads=maxproc):
+            
+        for i in prange(n1, schedule='dynamic'):
+            for j in range(nlens):
+                if good[i, j] == 0:
+                    continue
+                yval = y[i, j]
+                xval = x[i, j]
+
+                iy1 = (int)(yval + 0.5 - dy[i])
+                if iy1 < 0:
+                    iy1 = 0
+                elif iy1 >= n2:
+                    continue
+                        
+                iy2 = (int)(yval + 0.5 + dy[i] + 1)
+                if iy2 > n2:
+                    iy2 = n2
+                elif iy2 <= 0:
+                    continue
+
+                ix1 = (int)(xval + 0.5 - dx[i])
+                if ix1 < 0:
+                    ix1 = 0
+                elif ix1 >= n3:
+                    continue
+                        
+                ix2 = (int)(xval + 0.5 + dx[i] + 1)
+                if ix2 > n3:
+                    ix2 = n3
+                elif ix2 <= 0:
+                    continue
+                    
+                for ii in range(iy1, iy2):
+                    for jj in range(ix1, ix2):
+                        dist_sq = (yval - ii)*(yval - ii)
+                        dist_sq = dist_sq + (xval - jj)*(xval - jj)
+                        if dist_sq < distbest[i, ii, jj]:
+                            distbest[i, ii, jj] = dist_sq
+                            psflet_indx[i, ii, jj] = j
+    
+    return psflet_indx_np
 
 
 @cython.wraparound(False)
@@ -618,10 +683,10 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
 @cython.boundscheck(False)
 
 def optext(double [:, :] im, double [:, :] ivar, 
-           double [:, :, :] xindx, double[:, :, :] yindx,
+           double [:, :, :] xindx, double[:, :, :] yindx, double [:, :, :] sig,
            double [:, :, :] loglamindx, int [:, :] nlam,
            double [:] refloglam, int nmax, 
-           int delt_x=7, double sig=0.7, int maxproc=4):
+           int delt_x=7, int maxproc=4):
     """
     """
 
@@ -678,7 +743,7 @@ def optext(double [:, :] im, double [:, :] ivar,
                     wtot = 0
                     for ix in range(i1, i1 + delt_x):
                         dx = x - ix
-                        w1 = exp(-dx*dx/(2.*sig*sig))
+                        w1 = exp(-dx*dx/(2.*sig[i, j, k]*sig[i, j, k]))
                         wtot = wtot + w1
 
                         iy = (int)(yindx[i, j, k])
