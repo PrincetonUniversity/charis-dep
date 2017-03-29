@@ -176,16 +176,21 @@ def metadata(filename, header=None, clear=True):
             equinox = 'J%.5f' %(2000 + (mean_mjd - 51544.5)/365.25)
             c = c.transform_to(coord.FK5(equinox=equinox))
 
-        ################################################################
-        # Compute hour angle to get parallactic angle
-        ################################################################
+            ############################################################
+            # Compute hour angle to get parallactic angle.  Put this
+            # within a try/except block in case astropy fails to fetch
+            # the files necessary to compute the sidereal time.
+            ############################################################
 
-            ha =  (t.sidereal_time('apparent') - c.ra).rad
-            lat = lat*np.pi/180
-            
-            pa = -np.arctan2(-np.sin(ha), np.cos(c.dec.rad)*np.tan(lat)
-                              - np.sin(c.dec.rad)*np.cos(ha))
-            pa = float(pa%(2*np.pi))
+            try:
+                ha =  (t.sidereal_time('apparent') - c.ra).rad
+                lat = lat*np.pi/180
+                
+                pa = -np.arctan2(-np.sin(ha), np.cos(c.dec.rad)*np.tan(lat)
+                                  - np.sin(c.dec.rad)*np.cos(ha))
+                pa = float(pa%(2*np.pi))
+            except:
+                pa = np.nan
         else:
             pa = np.nan
 
@@ -217,12 +222,31 @@ def metadata(filename, header=None, clear=True):
         header['parang'] = ('unavailable', 'Mean parallactic angle (degrees)')
     header.append(_fetch('d_imrpap', filename, comment='Image rotator pupil position angle (degrees)'))
 
-    header.append(_fetch('HIERARCH CHARIS.FILTER.NAME', filename, 
-                         comment='CHARIS filter name', newkey='filtname'))
-    header.append(_fetch('HIERARCH CHARIS.FILTER.SLOT', filename, 
-                         comment='CHARIS filter slot', newkey='filtpos'))
-    header.append(_fetch('HIERARCH CHARIS.SHUTTER', filename, 
-                         comment='CHARIS shutter position', newkey='shutter'))
+    filtnamekeys = ['Y_FLTNAM', 'FILTER01', 'HIERARCH CHARIS.FILTER.NAME']
+    filtposkeys = ['Y_FLTSLT', 'HIERARCH CHARIS.FILTER.SLOT']
+    prismnames = ['Y_PRISM', 'DISPERSR', 'Y_GRISM']
+    shutterkeys = ['Y_SHUTTR', 'HIERARCH CHARIS.SHUTTER']
+
+    for key in filtnamekeys:
+        card = _fetch(key, filename, comment='CHARIS filter name', newkey='filtname')
+        if card[1] != 'unavailable' or key == filtnamekeys[-1]:
+            header.append(card)
+            break
+    for key in filtposkeys:
+        card = _fetch(key, filename, comment='CHARIS filter slot', newkey='filtslot')
+        if card[1] != 'unavailable' or key == filtposkeys[-1]:
+            header.append(card)
+            break
+    for key in prismnames:
+        card = _fetch(key, filename, comment='CHARIS prism (lo/hi/out)', newkey='prism')
+        if card[1] != 'unavailable' or key == prismnames[-1]:
+            header.append(card)
+            break
+    for key in shutterkeys:
+        card = _fetch(key, filename, comment='CHARIS shutter position', newkey='shutter')
+        if card[1] != 'unavailable' or key == shutterkeys[-1]:
+            header.append(card)
+            break
 
     return header
 
@@ -251,7 +275,10 @@ def addWCS(header,xpix,ypix,xpixscale = -0.015/3600.,ypixscale = 0.015/3600.,ext
     '''
     ra = header['ra']
     dec = header['dec']
-    c = coord.SkyCoord(ra=ra, dec=dec, unit=(u.hourangle, u.deg), frame='fk5')
+    try:
+        c = coord.SkyCoord(ra=ra, dec=dec, unit=(u.hourangle, u.deg), frame='fk5')
+    except:
+        return
         
     ####################################################################
     # Compute the FITS header rotation and scale matrix to properly 
@@ -274,5 +301,5 @@ def addWCS(header,xpix,ypix,xpixscale = -0.015/3600.,ypixscale = 0.015/3600.,ext
     header['CD2_1'] = (-np.sin(angle)*ypixscale,'Rotation matrix coefficient')
     header['CD2_2'] = (np.cos(angle)*ypixscale,'Rotation matrix coefficient')
     
-
+    return
     
