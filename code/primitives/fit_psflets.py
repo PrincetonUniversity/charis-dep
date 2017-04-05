@@ -822,7 +822,12 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
                                       loglam_indx, nlam, loglam, Nmax, 
                                       delt_x=delt_x, maxproc=maxcpus)
 
-    header['cubemode'] = ('Optimal Extraction', 'Method used to extract data cube')
+    if np.median(sig) < 10:
+        cubemode = 'Optimal Extraction'
+    else:
+        cubemode = 'ApPhot, dx=%d' % (delt_x)    
+        
+    header['cubemode'] = (cubemode, 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
     header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
