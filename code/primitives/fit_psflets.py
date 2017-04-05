@@ -186,13 +186,13 @@ def _get_corrnoise(resid, ivar, minpct=70):
             stripe[i//(2*dx)] = masked[:, i+j:i+j+dx]
         noisemed = _trimmed_mean(stripe, axis=0, n=1, maskval=0)
         for i in range(0, resid.shape[1], 2*dx):
-            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+dx], n=10, maskval=0)
-            corr /= _trimmed_mean(noisemed**2, n=10, maskval=0)
+            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+dx], n=50, maskval=0)
+            corr /= _trimmed_mean(noisemed**2, n=5, maskval=0)
             stripe[i//(2*dx)] /= corr
         noisemed = _trimmed_mean(stripe, axis=0, n=1, maskval=0)
         for i in range(0, resid.shape[1], 2*dx):
-            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+dx], n=10, maskval=0)
-            corr /= _trimmed_mean(noisemed**2, n=10, maskval=0)
+            corr = _trimmed_mean(noisemed*masked[:, i+j:i+j+dx], n=50, maskval=0)
+            corr /= _trimmed_mean(noisemed**2, n=5, maskval=0)
             corrnoise[:, i+j:i+j+dx] = corr*noisemed
 
     return corrnoise, pctpix
