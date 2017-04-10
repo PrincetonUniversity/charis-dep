@@ -230,7 +230,7 @@ def _add_row(arr, n=1, dtype=None):
         outarr = np.zeros(tuple(newshape), dtype)
     outarr[:-n] = arr
     meanval = (arr[0] + arr[-1])/2
-    for i in range(n + 1):
+    for i in range(1, n + 1):
         outarr[-i] = meanval
     return outarr
 
