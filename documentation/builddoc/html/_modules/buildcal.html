@@ -17,7 +17,8 @@
         VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
@@ -26,8 +27,8 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="../_static/sidebar.js"></script>
     <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
-    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="../index.html" />
-    <link rel="up" title="Module code" href="index.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
 <script type="text/javascript" src="../_static/copybutton.js"></script>
 
@@ -81,6 +82,7 @@
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">ndimage</span><span class="p">,</span> <span class="n">interpolate</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">primitives</span>
     <span class="kn">import</span> <span class="nn">utr</span>
@@ -180,7 +182,6 @@
         <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cal_dx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="s1">&#39;x-shift from archival spot positions (pixels)&#39;</span><span class="p">)</span>
         <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cal_dy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dy</span><span class="p">,</span> <span class="s1">&#39;y-shift from archival spot positions (pixels)&#39;</span><span class="p">)</span>
         <span class="n">header</span><span class="p">[</span><span class="s1">&#39;cal_dphi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">dphi</span><span class="p">,</span> <span class="s1">&#39;Rotation from archival spot positions (radians)&#39;</span><span class="p">)</span>
-        <span class="n">header</span><span class="p">[</span><span class="s1">&#39;ifs_rot&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">180.</span><span class="o">*</span><span class="n">phi2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="s1">&#39;Rotation of lenslet array (degrees)&#39;</span><span class="p">)</span>
 
     <span class="c1">#################################################################</span>
     <span class="c1"># Load the high-resolution PSFlet images and associated</span>
@@ -191,6 +192,52 @@
     <span class="n">hires_arrs</span> <span class="o">=</span> <span class="p">[</span><span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">hires_list</span><span class="p">]</span>
     <span class="n">lam_hires</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.*lam&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)))</span>
                  <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">hires_list</span><span class="p">]</span>
+    <span class="n">psflet_res</span> <span class="o">=</span> <span class="mi">9</span> <span class="c1"># Oversampling of high-resolution PSFlet images</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Width of high-resolution PSFlets, in pixels.  First compute the</span>
+    <span class="c1"># width from the images perpendicular to the dispersion direction</span>
+    <span class="c1"># at the central pixel along the dispersion direction.</span>
+    <span class="c1">#################################################################</span>
+
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">sigarr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">hires_list</span><span class="p">),</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">/</span><span class="mf">9.</span>
+    <span class="n">_x</span> <span class="o">-=</span> <span class="n">_x</span><span class="p">[</span><span class="n">_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sigarr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sigarr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sigarr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]):</span>                
+                <span class="n">row</span> <span class="o">=</span> <span class="n">hires_arrs</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span>                
+                <span class="n">sigarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">row</span><span class="o">*</span><span class="n">_x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">sigarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+                
+        <span class="n">sigarr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sigarr</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="c1">#################################################################</span>
+    <span class="c1"># Now interpolate the width at the locations and wavelengths of</span>
+    <span class="c1"># the microspectra for optimal extraction.  First interpolate in</span>
+    <span class="c1"># location, then interpolate in wavelength for each lenslet.</span>
+    <span class="c1">#################################################################</span>
+
+    <span class="n">mean_x</span> <span class="o">=</span> <span class="n">psftool</span><span class="o">.</span><span class="n">xindx</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">psftool</span><span class="o">.</span><span class="n">xindx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">mean_y</span> <span class="o">=</span> <span class="n">psftool</span><span class="o">.</span><span class="n">yindx</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">psftool</span><span class="o">.</span><span class="n">yindx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="n">longsigarr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">lam_hires</span><span class="p">),</span> <span class="n">mean_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mean_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="n">ix</span> <span class="o">=</span> <span class="n">mean_x</span><span class="o">*</span><span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="mf">2048.</span> <span class="o">-</span> <span class="mf">0.5</span>
+    <span class="n">iy</span> <span class="o">=</span> <span class="n">mean_y</span><span class="o">*</span><span class="n">hires_arrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mf">2048.</span> <span class="o">-</span> <span class="mf">0.5</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sigarr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">longsigarr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">map_coordinates</span><span class="p">(</span><span class="n">sigarr</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="p">[</span><span class="n">iy</span><span class="p">,</span> <span class="n">ix</span><span class="p">],</span> <span class="n">order</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span>
+    <span class="n">fullsigarr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">psftool</span><span class="o">.</span><span class="n">xindx</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mean_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mean_x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="n">fit</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">lam_hires</span><span class="p">),</span> <span class="n">longsigarr</span><span class="p">[:,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span>
+                                       <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="s1">&#39;extrapolate&#39;</span><span class="p">)</span>
+            <span class="n">fullsigarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit</span><span class="p">(</span><span class="n">psftool</span><span class="o">.</span><span class="n">lam_indx</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">])</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">(</span><span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">fullsigarr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)))</span>
+    <span class="n">out</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="s1">&#39;PSFwidths.fits&#39;</span><span class="p">,</span> <span class="n">clobber</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1">#################################################################</span>
     <span class="c1"># Wavelengths at which to return the PSFlet templates</span>
@@ -220,7 +267,6 @@
         <span class="n">upsamp</span> <span class="o">=</span> <span class="mi">5</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">upsamp</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">psflet_res</span> <span class="o">=</span> <span class="mi">9</span> <span class="c1"># Oversampling of high-resolution PSFlet images</span>
     <span class="n">nlam</span> <span class="o">=</span> <span class="mi">10</span>      <span class="c1"># Number of monochromatic PSFlets per integrated PSFlet</span>
 
     <span class="n">tasks</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
@@ -479,8 +525,8 @@
     <a href="#">Back to Top</a></p>
   <p>
     &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
-    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
-    Last built 13 Mar 2017. <br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 15 Apr 2017. <br/>
   </p>
 </footer>
   </body>

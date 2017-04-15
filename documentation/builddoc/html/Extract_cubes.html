@@ -17,7 +17,8 @@
         VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
@@ -26,7 +27,8 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="_static/sidebar.js"></script>
     <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
-    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="index.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="buildcal module" href="buildcal.html" />
     <link rel="prev" title="Run the wavelength calibration" href="Run_wavecal.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
@@ -83,7 +85,169 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="Extract-cubes">
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput,
+div.nbinput div.prompt,
+div.nbinput div.input_area,
+div.nbinput div[class*=highlight],
+div.nbinput div[class*=highlight] pre,
+div.nboutput,
+div.nbinput div.prompt,
+div.nbinput div.output_area,
+div.nboutput div[class*=highlight],
+div.nboutput div[class*=highlight] pre {
+    background: none;
+    border: none;
+    padding: 0 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* avoid gaps between output lines */
+div.nboutput div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput,
+div.nboutput {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput,
+    div.nboutput {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput div.prompt pre {
+    color: #303F9F;
+}
+
+/* output prompt */
+div.nboutput div.prompt pre {
+    color: #D84315;
+}
+
+/* all prompts */
+div.nbinput div.prompt,
+div.nboutput div.prompt {
+    min-width: 9ex;
+    padding-top: 0.4em;
+    padding-right: 0.4em;
+    text-align: right;
+    flex: 0;
+}
+@media (max-width: 540px) {
+    div.nbinput div.prompt,
+    div.nboutput div.prompt {
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput div.prompt.empty {
+        padding: 0;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput div.prompt pre,
+div.nboutput div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput div.input_area,
+div.nboutput div.output_area {
+    padding: 0.4em;
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput div.input_area,
+    div.nboutput div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput div.input_area {
+    border: 1px solid #cfcfcf;
+    border-radius: 2px;
+    background: #f7f7f7;
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.pngmath center alignment in output cells */
+div.nboutput div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-bold { font-weight: bold; }
+</style>
+<div class="section" id="Extract-cubes">
 <h1>Extract cubes<a class="headerlink" href="#Extract-cubes" title="Permalink to this headline">¶</a></h1>
 <p>Now extract a cube. First, you need to create an appropriate .ini file
 by modifying sample.ini in the code directory. With the example file
@@ -98,6 +262,76 @@ working directory. The first HDU is simply the header with some basic
 information, the second HDU is the cube, the third HDU is the inverse
 variance on the cube, and the fourth HDU has no data but saves the
 original header on HDU0 of the raw reads.</p>
+<div class="section" id=".ini-file-example">
+<h2>.ini file example<a class="headerlink" href="#.ini-file-example" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">Ramp</span><span class="p">]</span>
+<span class="c1"># First read to use in ramp (first overall read is 1)</span>
+<span class="n">read_0</span> <span class="p">:</span> <span class="mi">1</span>
+<span class="c1"># Last read to use, None = use all reads from read_0 onwards</span>
+<span class="n">read_f</span> <span class="p">:</span> <span class="kc">None</span>
+<span class="c1"># Detector gain, used to compute photon noise</span>
+<span class="n">gain</span> <span class="p">:</span> <span class="mi">2</span>
+<span class="c1"># Fraction of the count rate to add as noise: 0.05, for example,</span>
+<span class="c1"># assumes that there is a systematic 5% error in the count rate at</span>
+<span class="c1"># each pixel from imperfect PSF-let models.  This should give a</span>
+<span class="c1"># reduced chi squared close to 1 if it is being used.  Set to zero to</span>
+<span class="c1"># use simply read noise and photon noise.</span>
+<span class="n">noisefac</span> <span class="p">:</span> <span class="mf">0.02</span>
+<span class="c1"># Save the ramp and inverse variance as its own file?</span>
+<span class="n">saveramp</span> <span class="p">:</span> <span class="kc">True</span>
+
+<span class="p">[</span><span class="n">Calib</span><span class="p">]</span>
+<span class="c1"># Location of calibration files</span>
+<span class="n">calibdir</span> <span class="p">:</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">calibration</span><span class="o">/</span><span class="n">files</span>
+<span class="c1"># Subtract the background file in calibdir above before extracting a cube?</span>
+<span class="n">bgsub</span> <span class="p">:</span> <span class="kc">False</span>
+<span class="c1"># Mask bad pixels using a mask in calibdir?</span>
+<span class="n">mask</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Apply flatfields to correct pixel-to-pixel sensitivity variations</span>
+<span class="c1"># and lenslet-to-lenslet illumination variations?</span>
+<span class="n">flatfield</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Fit for position-dependent subpixel shifts in the locations of the</span>
+<span class="c1"># microspectra in individual frames?</span>
+<span class="n">fitshift</span> <span class="p">:</span> <span class="kc">True</span>
+
+<span class="p">[</span><span class="n">Extract</span><span class="p">]</span>
+<span class="c1"># Spectral resolution for extraction.</span>
+<span class="c1"># Recommended: 30 for lowres, 100 for highres.</span>
+<span class="c1"># PSFlet template files for this resolution must already be in calibdir.</span>
+<span class="n">R</span> <span class="p">:</span> <span class="mi">30</span>
+<span class="c1"># Method of extraction, lstsq strongly preferred.  Other choice is optext</span>
+<span class="n">method</span> <span class="p">:</span> <span class="n">lstsq</span>
+<span class="c1"># Iterate one time on the least-squares data cube to remove crosstalk?</span>
+<span class="n">refine</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Supress correlated read noise?  Approximately doubles cube extraction</span>
+<span class="c1"># time, but improves read noise by up to a factor of 4.</span>
+<span class="c1"># For science reductions, refine and suppressrn should be True.</span>
+<span class="n">suppressrn</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Mask (set ivar = 0) poor spectral measurements, i.e., those with</span>
+<span class="c1"># much worse inverse variances than their average neighbors&#39;?  If</span>
+<span class="c1"># True, the software will replace these intensity measurements with</span>
+<span class="c1"># interpolated values.  As the measurements are masked anwyay (ivar=0)</span>
+<span class="c1"># this is purely cosmetic.</span>
+<span class="n">smoothandmask</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Save the residuals of the 2D image as a separate FITS file?  This</span>
+<span class="c1"># keyword does nothing unless method == &#39;lstsq&#39;</span>
+<span class="n">saveresid</span> <span class="p">:</span> <span class="kc">False</span>
+<span class="c1"># Maximum threads for parallelization.</span>
+<span class="c1"># Negative: leave that many threads free.  None: use number of cpus.</span>
+<span class="n">maxcpus</span> <span class="p">:</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none"><div class="highlight"><pre>
+<span></span>In [ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-bash"><div class="highlight"><pre>
+<span></span>
+</pre></div>
+</div>
+</div>
+</div>
 </div>
 
 
@@ -107,7 +341,10 @@ original header on HDU0 of the raw reads.</p>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
 <ul>
-<li><a class="reference internal" href="#">Extract cubes</a></li>
+<li><a class="reference internal" href="#">Extract cubes</a><ul>
+<li><a class="reference internal" href="#.ini-file-example">.ini file example</a></li>
+</ul>
+</li>
 </ul>
 
 
@@ -117,13 +354,13 @@ original header on HDU0 of the raw reads.</p>
     </div>
 <footer class="footer">
   <p class="pull-right">
-    <a href="_sources/Extract_cubes.txt"
+    <a href="_sources/Extract_cubes.ipynb.txt"
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
     &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
-    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
-    Last built 13 Mar 2017. <br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 15 Apr 2017. <br/>
   </p>
 </footer>
   </body>

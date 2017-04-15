@@ -17,7 +17,8 @@
         VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
@@ -26,7 +27,8 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="_static/sidebar.js"></script>
     <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
-    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="index.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Run the wavelength calibration" href="Run_wavecal.html" />
     <link rel="prev" title="CHARIS DATA REDUCTION PIPELINE" href="index.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
@@ -87,7 +89,8 @@
 <h1>Install the CHARIS Data reduction pipeline<a class="headerlink" href="#Install-the-CHARIS-Data-reduction-pipeline" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="Requirements">
 <h2>Requirements<a class="headerlink" href="#Requirements" title="Permalink to this headline">¶</a></h2>
-<p>Python 2.7 Cython with a C compiler and OpenMP</p>
+<p>Python 2.7 Cython with a C compiler and OpenMP. C compilers as gcc-5,
+gcc-mp-5, gcc-mp-6 are acceptable.</p>
 <p>Your computer should have at least ~2 GB of RAM to extract data cubes,
 and at least 2 GB/core (and at least 4 GB total) to build the
 calibration files. The calibration files can take a long time to
@@ -125,6 +128,69 @@ but something like this should work:</p>
 <span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
 </pre></div>
 </div>
+<p>You can check that the installation was successful by typing:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">buildcal</span>
+<span class="n">Must</span> <span class="n">call</span> <span class="n">buildcal</span> <span class="k">with</span> <span class="n">at</span> <span class="n">least</span> <span class="n">three</span> <span class="n">arguments</span><span class="p">:</span>
+  <span class="mi">1</span><span class="p">:</span> <span class="n">The</span> <span class="n">path</span> <span class="n">to</span> <span class="n">the</span> <span class="n">narrow</span><span class="o">-</span><span class="n">band</span> <span class="n">flatfield</span> <span class="n">image</span>
+  <span class="mi">2</span><span class="p">:</span> <span class="n">The</span> <span class="n">wavelength</span><span class="p">,</span> <span class="ow">in</span> <span class="n">nm</span><span class="p">,</span> <span class="n">of</span> <span class="n">the</span> <span class="n">narrow</span><span class="o">-</span><span class="n">band</span> <span class="n">image</span>
+  <span class="mi">3</span><span class="p">:</span> <span class="n">The</span> <span class="n">band</span><span class="o">/</span><span class="nb">filter</span><span class="p">:</span> <span class="s1">&#39;J&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">,</span> <span class="ow">or</span> <span class="s1">&#39;lowres&#39;</span>
+<span class="n">Example</span><span class="p">:</span> <span class="n">buildcal</span> <span class="n">CRSA00000000</span><span class="o">.</span><span class="n">fits</span> <span class="mi">1550</span> <span class="n">lowres</span>
+<span class="n">Optional</span> <span class="n">additional</span> <span class="n">arguments</span><span class="p">:</span> <span class="n">filenames</span> <span class="n">of</span> <span class="n">darks</span>
+  <span class="n">taken</span> <span class="k">with</span> <span class="n">the</span> <span class="n">same</span> <span class="n">observing</span> <span class="n">setup</span><span class="o">.</span>
+<span class="n">Example</span><span class="p">:</span> <span class="n">buildcal</span> <span class="n">CRSA00000000</span><span class="o">.</span><span class="n">fits</span> <span class="mi">1550</span> <span class="n">lowres</span> <span class="n">darks</span><span class="o">/</span><span class="n">CRSA</span><span class="o">*.</span><span class="n">fits</span>
+</pre></div>
+</div>
+<div class="section" id="Troubleshooting">
+<h3>Troubleshooting<a class="headerlink" href="#Troubleshooting" title="Permalink to this headline">¶</a></h3>
+<p>Most of the installation issues on Macs that have been encountered so
+far come from slight differences in the versions and the installations
+of python and gcc. We recommend following the steps above thoroughly.
+Here are sharing some of the issues and potential solutions.</p>
+</div>
+</div>
+<div class="section" id="Install-gcc-through-Macports">
+<h2>Install gcc through Macports<a class="headerlink" href="#Install-gcc-through-Macports" title="Permalink to this headline">¶</a></h2>
+<p>Macports is a good alternative to download and install the correct
+version of gcc. First, make sure that the latest package definitions are
+updated with &#8220;selfupdate&#8221;, and then download and install the latest
+version of gcc5.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">port</span> <span class="n">selfupdate</span>
+<span class="n">sudo</span> <span class="n">port</span> <span class="n">install</span> <span class="n">gcc5</span>
+</pre></div>
+</div>
+<p>This should have installed the latest version of gcc5. You can check
+what versions of gcc are available by typing gcc [tab][tab]. For example
+on a 2017 MacBook Pro with xcode installed, these are the programs that
+are installed:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">gcc</span>              <span class="n">gcc</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span>         <span class="n">gcc</span><span class="o">-</span><span class="n">ranlib</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span>
+<span class="n">gcc</span><span class="o">-</span><span class="n">ar</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span>      <span class="n">gcc</span><span class="o">-</span><span class="n">nm</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span>      <span class="n">gccmakedep</span>
+</pre></div>
+</div>
+<p>One would then run</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CC</span><span class="o">=</span><span class="n">gcc</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span> <span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Install-the-CHARIS-DRP-with-AstroConda-(or-if-you-regular-conda-installation-uses-Python-3.xx)">
+<h2>Install the CHARIS DRP with AstroConda (or if you regular conda installation uses Python 3.xx)<a class="headerlink" href="#Install-the-CHARIS-DRP-with-AstroConda-(or-if-you-regular-conda-installation-uses-Python-3.xx)" title="Permalink to this headline">¶</a></h2>
+<p>In order to not disturb your installation of Python 3.xx (with which the
+pipeline is not yet compatible), we can create a separate, isolated
+Python environment with conda. You can find some instructions on how to
+do this for example at
+<a class="reference external" href="https://uoa-eresearch.github.io/eresearch-cookbook/recipe/2014/11/20/conda/">https://uoa-eresearch.github.io/eresearch-cookbook/recipe/2014/11/20/conda/</a>.
+Below are the key elements:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">-</span><span class="n">n</span> <span class="n">py27</span> <span class="n">python</span><span class="o">=</span><span class="mf">2.7</span> <span class="n">anaconda</span>
+</pre></div>
+</div>
+<p>And once the installation is complete, you can activate your environment</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="n">activate</span> <span class="n">py27</span>
+</pre></div>
+</div>
+<p>To jump back out of the environment to your regular environment without
+having to close your terminal, you can type:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="n">deactivate</span> <span class="n">py27</span>
+</pre></div>
+</div>
 </div>
 </div>
 
@@ -138,7 +204,12 @@ but something like this should work:</p>
 <li><a class="reference internal" href="#">Install the CHARIS Data reduction pipeline</a><ul>
 <li><a class="reference internal" href="#Requirements">Requirements</a></li>
 <li><a class="reference internal" href="#Dependencies">Dependencies</a></li>
-<li><a class="reference internal" href="#Installation">Installation</a></li>
+<li><a class="reference internal" href="#Installation">Installation</a><ul>
+<li><a class="reference internal" href="#Troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Install-gcc-through-Macports">Install gcc through Macports</a></li>
+<li><a class="reference internal" href="#Install-the-CHARIS-DRP-with-AstroConda-(or-if-you-regular-conda-installation-uses-Python-3.xx)">Install the CHARIS DRP with AstroConda (or if you regular conda installation uses Python 3.xx)</a></li>
 </ul>
 </li>
 </ul>
@@ -150,13 +221,13 @@ but something like this should work:</p>
     </div>
 <footer class="footer">
   <p class="pull-right">
-    <a href="_sources/Installation.txt"
+    <a href="_sources/Installation.ipynb.txt"
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
     &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
-    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
-    Last built 13 Mar 2017. <br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 15 Apr 2017. <br/>
   </p>
 </footer>
   </body>

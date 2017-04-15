@@ -17,7 +17,8 @@
         VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
@@ -26,7 +27,8 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="_static/sidebar.js"></script>
     <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
-    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="#" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Install the CHARIS Data reduction pipeline" href="Installation.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
 <script type="text/javascript" src="_static/copybutton.js"></script>
@@ -88,6 +90,8 @@
 <li class="toctree-l2"><a class="reference internal" href="Installation.html#Requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Installation.html#Dependencies">Dependencies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Installation.html#Installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#Install-gcc-through-Macports">Install gcc through Macports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#Install-the-CHARIS-DRP-with-AstroConda-(or-if-you-regular-conda-installation-uses-Python-3.xx)">Install the CHARIS DRP with AstroConda (or if you regular conda installation uses Python 3.xx)</a></li>
 </ul>
 </li>
 </ul>
@@ -101,7 +105,10 @@
 <p><strong>Extract cubes*</strong></p>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="Extract_cubes.html">Extract cubes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Extract_cubes.html">Extract cubes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Extract_cubes.html#.ini-file-example">.ini file example</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <p><strong>Postprocessing</strong></p>
@@ -129,13 +136,13 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="primitives.html">primitives package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="primitives.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primitives.html#module-primitives.buildmonochrome">primitives.buildmonochrome module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primitives.html#module-primitives.fit_psflets">primitives.fit_psflets module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primitives.html#module-primitives.locate_psflets">primitives.locate_psflets module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-buildmonochrome-module">primitives.buildmonochrome module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-fit-psflets-module">primitives.fit_psflets module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-locate-psflets-module">primitives.locate_psflets module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-matutils-module">primitives.matutils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primitives.html#module-primitives.offset_cal">primitives.offset_cal module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-offset-cal-module">primitives.offset_cal module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-setup-module">primitives.setup module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="primitives.html#module-primitives">Module contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#module-contents">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">tools package</a><ul>
@@ -192,13 +199,13 @@
     </div>
 <footer class="footer">
   <p class="pull-right">
-    <a href="_sources/index.txt"
+    <a href="_sources/index.rst.txt"
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
     &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
-    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
-    Last built 13 Mar 2017. <br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 15 Apr 2017. <br/>
   </p>
 </footer>
   </body>

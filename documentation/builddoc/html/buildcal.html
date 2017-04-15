@@ -17,7 +17,8 @@
         VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
@@ -26,7 +27,8 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="_static/sidebar.js"></script>
     <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
-    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="index.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="extractcube module" href="extractcube.html" />
     <link rel="prev" title="Extract cubes" href="Extract_cubes.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
@@ -104,43 +106,37 @@ sequences of CHARIS reads.</p>
 1. order:    int, order of polynomial fit to position(lambda).</p>
 <blockquote>
 <div>Default 3 (strongly recommended).</div></blockquote>
-<ol class="arabic" start="2">
+<ol class="arabic simple" start="2">
 <li><dl class="first docutils">
 <dt>lam1:     minimum wavelength (in nm) of the bandpass</dt>
-<dd><p class="first last">Default 1150</p>
-</dd>
+<dd>Default 1150</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>lam2:     maximum wavelength (in nm) of the bandpass</dt>
-<dd><p class="first last">Default 2400</p>
-</dd>
+<dd>Default 2400</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>R:        spectral resolution of the PSFlets templates  </dt>
-<dd><p class="first last">Default 25</p>
-</dd>
+<dd>Default 25</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>trans:    ndarray, trans[:, 0] = wavelength in nm, trans[:, 1]</dt>
-<dd><p class="first last">is fractional transmission through the filter and 
-atmosphere.  Default None &#8211;&gt; trans[:, 1] = 1</p>
-</dd>
+<dd>is fractional transmission through the filter and 
+atmosphere.  Default None &#8211;&gt; trans[:, 1] = 1</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>header:   FITS header, to which will be appended the shifts</dt>
-<dd><p class="first last">and rotation angle between the stored and the fitted
-wavelength solutions.  Default None.</p>
-</dd>
+<dd>and rotation angle between the stored and the fitted
+wavelength solutions.  Default None.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>ncpus:    number of threads for multithreading.  </dt>
-<dd><p class="first last">Default multiprocessing.cpu_count()</p>
-</dd>
+<dd>Default multiprocessing.cpu_count()</dd>
 </dl>
 </li>
 </ol>
@@ -166,13 +162,13 @@ wavelength solutions.  Default None.</p>
     </div>
 <footer class="footer">
   <p class="pull-right">
-    <a href="_sources/buildcal.txt"
+    <a href="_sources/buildcal.rst.txt"
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
     &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
-    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
-    Last built 13 Mar 2017. <br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 15 Apr 2017. <br/>
   </p>
 </footer>
   </body>
