@@ -451,13 +451,17 @@ END
     allowfullscreen
 ></iframe></div>
 </div>
+<p>This system shows a companion in the bottom left of the image. Unlike
+the satellite spots and the stellar PSF, which scale with wavelength,
+the location of any off-axis source (in this case, the companion) stays
+the same across the wavelengths.</p>
 </div>
 <div class="section" id="Load-the-cube-with-Python">
 <h2>Load the cube with Python<a class="headerlink" href="#Load-the-cube-with-Python" title="Permalink to this headline">¶</a></h2>
 <p>Each cube slice corresponds to a different wavelength. One can retrieve
 the wavelength of each slice from the header using LAM_MIN, LAM_MAX,
 and DLOGLAM, with the understanding that the wavelengths are evenly
-sampled in log-space. In Python the hedaer, cube, and inverse variance
+sampled in log-space. In Python the header, cube, and inverse variance
 can be loaded as follows, and the wavelength array generated from it:</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none"><div class="highlight"><pre>
@@ -478,10 +482,6 @@ can be loaded as follows, and the wavelength array generated from it:</p>
 </pre></div>
 </div>
 </div>
-<p>This system shows a companion in the bottom left of the image. Unlike
-the satellite spots and the stellar PSF, which scale with wavelength,
-the location of any off-axis source (in this case, the companion) stays
-the same across the wavelengths.</p>
 </div>
 </div>
 
