@@ -27,9 +27,21 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "The arguments are simply\n",
+    "The arguments are simply:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
     "1. The raw file(s) to extract into cubes\n",
-    "2. The configuration file\n",
+    "2. The configuration file\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
     "The extracted cubes will be written to the current working directory.  The first HDU is simply the header with some basic information, the second HDU is the cube, the third HDU is the inverse variance on the cube, and the fourth HDU has no data but saves the original header on HDU0 of the raw reads.\n"
    ]
   },

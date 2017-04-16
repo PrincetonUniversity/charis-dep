@@ -88,10 +88,14 @@
   <div class="section" id="Run-the-wavelength-calibration">
 <h1>Run the wavelength calibration<a class="headerlink" href="#Run-the-wavelength-calibration" title="Permalink to this headline">¶</a></h1>
 <p>This is the basic usage with sample files:</p>
-<p>Example: 1. CRSA00000001.fits is a 1550-nm monochromatic flat taken in
-broadband/lowres mode 2. CRSA00000002.fits through CRSA00000005.fits are
-broadband/lowres darks 3. CRSA10000000.fits is a science frame in
-broadband/lowres mode</p>
+<p>Example:</p>
+<ol class="arabic simple">
+<li>CRSA00000001.fits is a 1550-nm monochromatic flat taken in
+broadband/lowres mode</li>
+<li>CRSA00000002.fits through CRSA00000005.fits are broadband/lowres
+darks</li>
+<li>CRSA10000000.fits is a science frame in broadband/lowres mode</li>
+</ol>
 <p>First, we must build the calibration files. Create a directory where
 they will live, make this the current working directory, and run</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">buildcal</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">CRSA00000001</span><span class="o">.</span><span class="n">fits</span> <span class="mi">1550</span> <span class="n">lowres</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">CRSA0000000</span><span class="p">[</span><span class="mi">2</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span><span class="o">.</span><span class="n">fits</span>
@@ -100,10 +104,13 @@ they will live, make this the current working directory, and run</p>
 <p>Follow the prompts to create (or not) oversampled PSFlet images. We
 recommend building them for any science analysis - not building them
 takes less time but is faster. This routine will create calibration
-files in the current working directory. The arguments to buildcal are:
-1. The monochromatic flat, as a raw sequence of CHARIS reads 2. The
-wavelength (in nm) of the monochromatic flat 3. The CHARIS mode
-(J/H/K/lowres) 4. Background frame(s)/dark(s) (optional)</p>
+files in the current working directory. The arguments to buildcal are:</p>
+<ol class="arabic simple">
+<li>The monochromatic flat, as a raw sequence of CHARIS reads</li>
+<li>The wavelength (in nm) of the monochromatic flat</li>
+<li>The CHARIS mode (J/H/K/lowres)</li>
+<li>Background frame(s)/dark(s) (optional)</li>
+</ol>
 <p>The prompt from buildcal can look like this:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span>************************************************************
 Oversample PSFlet templates to enable fitting a subpixel offset in cube
