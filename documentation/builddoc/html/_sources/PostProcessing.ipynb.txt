@@ -170,16 +170,17 @@
    },
    "outputs": [],
    "source": [
-    "hdr = fits.open(new_cubenames[0])[0].header # this is just so we have a header to attach to the data\n",
     "\n",
     "# this is our ADI function\n",
     "from ADI import apply_ADI\n",
     "outim = apply_ADI(filenames,     # List of filenames containing the aligned cubes and their variane\n",
-    "                    minsep=10,   # Minimum separation in lambda/D for ADI with respect to the center of the cube\n",
-    "                    maxsep=70,   # Maximum separation in lambda/D for ADI\n",
-    "                    ivar=True)   # whether we use the inverse variance weights or no variance at all\n",
+    "                    minsep=10,   # Radial separations at which to suppress weights\n",
+    "                    maxsep=70,   # in low-rank approximation to the PSF\n",
+    "                    nvec=10,     # Number of principal components to fit at each wavelength\n",
+    "                    ivar=True)   # whether we use the inverse variance weights or not\n",
     "\n",
     "# export the new cube which has been cleaned by ADI\n",
+    "hdr = fits.open(new_cubenames[0])[0].header # this is just so we have a header to attach to the data\n",
     "out = fits.HDUList(fits.PrimaryHDU(outim,hdr))\n",
     "out.writeto(charisfolder+'ADI_recen.fits',clobber=True)"
    ]
