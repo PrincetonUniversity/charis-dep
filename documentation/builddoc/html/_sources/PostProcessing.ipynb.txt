@@ -82,14 +82,14 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "#### First, one needs to recenter all the cubes with respect to each other"
+    "### Recentering"
    ]
   },
   {
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "The following function recreates a version of the cubes which is properly recentered, and appends \"_recen\" to the original filename. This uses the satellite spots."
+    "First, one needs to recenter all the cubes with respect to each other. The following function recreates a version of the cubes which is properly recentered, and appends \"_recen\" to the original filename. This uses the satellite spots."
    ]
   },
   {
@@ -108,7 +108,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "#### Display slice from stacked recentered cube"
+    "Display slice from stacked recentered cube"
    ]
   },
   {
@@ -152,7 +152,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "#### Apply ADI"
+    "### Apply ADI"
    ]
   },
   {
@@ -189,7 +189,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "#### Display same slice as before to show how well the PSF was cleaned"
+    "Display same slice as before to show how well the PSF was cleaned"
    ]
   },
   {
@@ -229,17 +229,8 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "#### Export & display the mean of the cube across wavelengths\n"
+    "Export & display the mean of the cube across wavelengths\n"
    ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {
-    "collapsed": true
-   },
-   "outputs": [],
-   "source": []
   },
   {
    "cell_type": "code",
@@ -288,7 +279,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "#### Also exporting the median and the sum, just to check things"
+    "Also exporting the median and the sum, just to check things"
    ]
   },
   {
@@ -344,7 +335,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "#### Display the same slice after ADI+SDI"
+    "Display the same slice after ADI+SDI"
    ]
   },
   {
