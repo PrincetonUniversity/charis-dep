@@ -40,6 +40,60 @@
     "3. The CHARIS mode (J/H/K/lowres)\n",
     "4. Background frame(s)/dark(s) (optional)\n"
    ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The prompt from buildcal can look like this:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "```\n",
+    "************************************************************\n",
+    "Oversample PSFlet templates to enable fitting a subpixel offset in cube\n",
+    "extraction?  Cost is a factor of ~2-4 in the time to build calibrations.\n",
+    "************************************************************\n",
+    "     Oversample? [Y/n]: Y\n",
+    "\n",
+    "************************************************************\n",
+    "How many threads would you like to use?  8 threads detected.\n",
+    "************************************************************\n",
+    "     Number of threads to use [8]: 8\n",
+    "\n",
+    "************************************************************\n",
+    "Building calibration files, placing results in current directory:\n",
+    "/Users/mrizzo/IFS/charis_data/broadband_flat\n",
+    "\n",
+    "Settings:\n",
+    "\n",
+    "Using 6 threads\n",
+    "Narrow-band flatfield image: CRSA00014390.fits\n",
+    "Wavelength: 1550 nm\n",
+    "Observing mode: lowres\n",
+    "Upsample PSFlet templates?  True\n",
+    "No background will be computed.\n",
+    "************************************************************\n",
+    "     Continue with these settings? [Y/n]: Y\n",
+    "     \n",
+    "Computing ramps from sequences of raw reads\n",
+    "Generating new wavelength solution\n",
+    "Generating narrowband template images\n",
+    "----------------------------------------> 100% complete\n",
+    "Total time elapsed: 1020 seconds\n",
+    "\n",
+    "```"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The process takes a while between a few minutes and up 30min depending on your number of cores. The parallelization will mostly take effect in the last step of the calibration. We recommend keeping a few threads free if you want to be able to operate your computer normally while buildcal is running."
+   ]
   }
  ],
  "metadata": {

@@ -104,6 +104,45 @@ files in the current working directory. The arguments to buildcal are:
 1. The monochromatic flat, as a raw sequence of CHARIS reads 2. The
 wavelength (in nm) of the monochromatic flat 3. The CHARIS mode
 (J/H/K/lowres) 4. Background frame(s)/dark(s) (optional)</p>
+<p>The prompt from buildcal can look like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>************************************************************
+Oversample PSFlet templates to enable fitting a subpixel offset in cube
+extraction?  Cost is a factor of ~2-4 in the time to build calibrations.
+************************************************************
+     Oversample? [Y/n]: Y
+
+************************************************************
+How many threads would you like to use?  8 threads detected.
+************************************************************
+     Number of threads to use [8]: 8
+
+************************************************************
+Building calibration files, placing results in current directory:
+/Users/mrizzo/IFS/charis_data/broadband_flat
+
+Settings:
+
+Using 6 threads
+Narrow-band flatfield image: CRSA00014390.fits
+Wavelength: 1550 nm
+Observing mode: lowres
+Upsample PSFlet templates?  True
+No background will be computed.
+************************************************************
+     Continue with these settings? [Y/n]: Y
+
+Computing ramps from sequences of raw reads
+Generating new wavelength solution
+Generating narrowband template images
+----------------------------------------&gt; 100% complete
+Total time elapsed: 1020 seconds
+</pre></div>
+</div>
+<p>The process takes a while between a few minutes and up 30min depending
+on your number of cores. The parallelization will mostly take effect in
+the last step of the calibration. We recommend keeping a few threads
+free if you want to be able to operate your computer normally while
+buildcal is running.</p>
 </div>
 
 
@@ -129,7 +168,7 @@ wavelength (in nm) of the monochromatic flat 3. The CHARIS mode
   <p>
     &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
     Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
-    Last built 15 Apr 2017. <br/>
+    Last built 16 Apr 2017. <br/>
   </p>
 </footer>
   </body>
