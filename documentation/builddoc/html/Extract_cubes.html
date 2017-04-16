@@ -451,10 +451,33 @@ END
     allowfullscreen
 ></iframe></div>
 </div>
+</div>
+<div class="section" id="Load-the-cube-with-Python">
+<h2>Load the cube with Python<a class="headerlink" href="#Load-the-cube-with-Python" title="Permalink to this headline">¶</a></h2>
 <p>Each cube slice corresponds to a different wavelength. One can retrieve
 the wavelength of each slice from the header using LAM_MIN, LAM_MAX,
 and DLOGLAM, with the understanding that the wavelengths are evenly
-sampled in log-space.</p>
+sampled in log-space. In Python the hedaer, cube, and inverse variance
+can be loaded as follows, and the wavelength array generated from it:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none"><div class="highlight"><pre>
+<span></span>In [ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="c1">### Note the order in which the extensions are laid out</span>
+<span class="n">hdulist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;myfile.fits&quot;</span><span class="p">)</span>
+<span class="n">hdr</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+<span class="n">cube</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+<span class="n">ivar</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+<span class="n">lam</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;lam_min&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cube</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;dloglam&#39;</span><span class="p">])</span>
+
+</pre></div>
+</div>
+</div>
 <p>This system shows a companion in the bottom left of the image. Unlike
 the satellite spots and the stellar PSF, which scale with wavelength,
 the location of any off-axis source (in this case, the companion) stays
@@ -476,6 +499,7 @@ the same across the wavelengths.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#Final-cube-example">Final cube example</a></li>
+<li><a class="reference internal" href="#Load-the-cube-with-Python">Load the cube with Python</a></li>
 </ul>
 </li>
 </ul>
