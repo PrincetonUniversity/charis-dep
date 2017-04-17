@@ -478,9 +478,10 @@ can be loaded as follows, and the wavelength array generated from it:</p>
 
 <span class="c1">### Note the order in which the extensions are laid out</span>
 <span class="n">hdulist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;myfile.fits&quot;</span><span class="p">)</span>
-<span class="n">hdr</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+<span class="n">hdr</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span> <span class="c1"># hdu[0] contains no data</span>
 <span class="n">cube</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
 <span class="n">ivar</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+<span class="n">rawdata_header</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
 <span class="n">lam</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;lam_min&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cube</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;dloglam&#39;</span><span class="p">])</span>
 
 </pre></div>
