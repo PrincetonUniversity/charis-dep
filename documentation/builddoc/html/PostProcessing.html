@@ -254,11 +254,37 @@ datacubes from CHARIS to extract your science scene. The methods shown
 here are not yet shared.</p>
 <p>You first need to reduce all of your raw data files as described in the
 reduction section. For example, this command will do this for a
-particular data set. Here, the data is in the folder &#8220;data/HR9796A&#8221;, and
-we reduced everything in the &#8220;data/HR9796A/reduced/&#8221; folder.</p>
+particular data set. Here, the data is in the folder &#8220;data/HD1160/&#8221;, and
+we reduced everything in the &#8220;data/HD1160/reduced/&#8221; folder.</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">extractcube</span> <span class="o">../*.</span><span class="n">fits</span> <span class="n">HD1160_broad</span><span class="o">.</span><span class="n">ini</span>
 </pre></div>
 </div>
+<p>A typical post-processing sequence would be:</p>
+<ol class="arabic">
+<li><p class="first">Reduce all the cubes with extractcube, e.g.:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>extractcube ../CRSA1500???.fits HD1160_broad.ini
+</pre></div>
+</div>
+</li>
+<li><p class="first">Recenter all the cubes:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">get_centroid</span><span class="o">.</span><span class="n">py</span> <span class="n">CRSA</span><span class="o">*</span><span class="n">_cube</span><span class="o">.</span><span class="n">fits</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Apply ADI:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">ADI</span><span class="o">.</span><span class="n">py</span> <span class="n">CRSA</span><span class="o">*</span><span class="n">_recen</span><span class="o">.</span><span class="n">fits</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Apply SDI on the cube obtained from ADI:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">SDI</span><span class="o">.</span><span class="n">py</span> <span class="n">ADI_cube</span><span class="o">.</span><span class="n">fits</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p>While the functions that are distributed work as command-line tools, all
+of them can also be called in a regular Python environment, as shown
+below.</p>
 </div>
 <div class="section" id="ADI">
 <h1>ADI<a class="headerlink" href="#ADI" title="Permalink to this headline">¶</a></h1>
@@ -334,7 +360,7 @@ Populating the interactive namespace from numpy and matplotlib
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/PostProcessing_8_1.png" src="_images/PostProcessing_8_1.png" />
+<img alt="_images/PostProcessing_11_1.png" src="_images/PostProcessing_11_1.png" />
 </div>
 </div>
 <div class="section" id="Recentering">
@@ -384,7 +410,7 @@ This uses the satellite spots.</p>
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/PostProcessing_13_1.png" src="_images/PostProcessing_13_1.png" />
+<img alt="_images/PostProcessing_16_1.png" src="_images/PostProcessing_16_1.png" />
 </div>
 </div>
 </div>
@@ -440,7 +466,7 @@ cubes.</p>
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/PostProcessing_18_1.png" src="_images/PostProcessing_18_1.png" />
+<img alt="_images/PostProcessing_21_1.png" src="_images/PostProcessing_21_1.png" />
 </div>
 </div>
 <p>Export &amp; display the mean of the cube across wavelengths</p>
@@ -480,7 +506,7 @@ Populating the interactive namespace from numpy and matplotlib
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/PostProcessing_20_2.png" src="_images/PostProcessing_20_2.png" />
+<img alt="_images/PostProcessing_23_2.png" src="_images/PostProcessing_23_2.png" />
 </div>
 </div>
 <p>Also exporting the median and the sum, just to check things</p>
@@ -553,7 +579,7 @@ Populating the interactive namespace from numpy and matplotlib
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/PostProcessing_27_1.png" src="_images/PostProcessing_27_1.png" />
+<img alt="_images/PostProcessing_30_1.png" src="_images/PostProcessing_30_1.png" />
 </div>
 </div>
 <div class="nbinput nblast docutils container">
