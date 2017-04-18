@@ -691,7 +691,7 @@ def optext(double [:, :] im, double [:, :] ivar,
     """
 
     cdef int i, j, k, n, nx, ny, ix, iy, xdim, ydim, nref, i1, i2
-    cdef double x, dx, num, denom, w1, w2, wtot
+    cdef double x, dx, num, denom, w1, w2, wtot, sigval
 
     cdef extern from "math.h" nogil:
         double exp(double _x)
@@ -743,7 +743,8 @@ def optext(double [:, :] im, double [:, :] ivar,
                     wtot = 0
                     for ix in range(i1, i1 + delt_x):
                         dx = x - ix
-                        w1 = exp(-dx*dx/(2.*sig[i, j, k]*sig[i, j, k]))
+                        sigval = sig[i, j, k]
+                        w1 = exp(-dx*dx/(2.*sigval*sigval))/sigval
                         wtot = wtot + w1
 
                         iy = (int)(yindx[i, j, k])
