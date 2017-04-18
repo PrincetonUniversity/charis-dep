@@ -17,7 +17,8 @@
         VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
@@ -26,7 +27,8 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="_static/sidebar.js"></script>
     <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
-    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="index.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Extract cubes" href="Extract_cubes.html" />
     <link rel="prev" title="Install the CHARIS Data reduction pipeline" href="Installation.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
@@ -85,22 +87,69 @@
             
   <div class="section" id="Run-the-wavelength-calibration">
 <h1>Run the wavelength calibration<a class="headerlink" href="#Run-the-wavelength-calibration" title="Permalink to this headline">¶</a></h1>
-<p>Quick-start tutorial, basic usage with sample files:</p>
-<p>Example: CRSA00000001.fits is a 1550-nm monochromatic flat taken in
-broadband/lowres mode CRSA00000002.fits through CRSA00000005.fits are
-broadband/lowres darks CRSA10000000.fits is a science frame in
-broadband/lowres mode</p>
+<p>This is the basic usage with sample files:</p>
+<p>Example:</p>
+<ol class="arabic simple">
+<li>CRSA00000001.fits is a 1550-nm monochromatic flat taken in
+broadband/lowres mode</li>
+<li>CRSA00000002.fits through CRSA00000005.fits are broadband/lowres
+darks</li>
+<li>CRSA10000000.fits is a science frame in broadband/lowres mode</li>
+</ol>
 <p>First, we must build the calibration files. Create a directory where
 they will live, make this the current working directory, and run</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">buildcal</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">CRSA00000001</span><span class="o">.</span><span class="n">fits</span> <span class="mi">1550</span> <span class="n">lowres</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">CRSA0000000</span><span class="p">[</span><span class="mi">2</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span><span class="o">.</span><span class="n">fits</span>
 </pre></div>
 </div>
-<p>Follow the prompts to create (or not) oversampled PSFlet images. This
-routine will create calibration files in the current working directory.
-The arguments to buildcal are: 1. The monochromatic flat, as a raw
-sequence of CHARIS reads 2. The wavelength (in nm) of the monochromatic
-flat 3. The CHARIS mode (J/H/K/lowres) 4. Background frame(s)/dark(s)
-(optional)</p>
+<p>Follow the prompts to create (or not) oversampled PSFlet images. We
+recommend building them for any science analysis - not building them
+takes less time but is faster. This routine will create calibration
+files in the current working directory. The arguments to buildcal are:</p>
+<ol class="arabic simple">
+<li>The monochromatic flat, as a raw sequence of CHARIS reads</li>
+<li>The wavelength (in nm) of the monochromatic flat</li>
+<li>The CHARIS mode (J/H/K/lowres)</li>
+<li>Background frame(s)/dark(s) (optional)</li>
+</ol>
+<p>The prompt from buildcal can look like this:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>************************************************************
+Oversample PSFlet templates to enable fitting a subpixel offset in cube
+extraction?  Cost is a factor of ~2-4 in the time to build calibrations.
+************************************************************
+     Oversample? [Y/n]: Y
+
+************************************************************
+How many threads would you like to use?  8 threads detected.
+************************************************************
+     Number of threads to use [8]: 8
+
+************************************************************
+Building calibration files, placing results in current directory:
+/Users/mrizzo/IFS/charis_data/broadband_flat
+
+Settings:
+
+Using 6 threads
+Narrow-band flatfield image: CRSA00014390.fits
+Wavelength: 1550 nm
+Observing mode: lowres
+Upsample PSFlet templates?  True
+No background will be computed.
+************************************************************
+     Continue with these settings? [Y/n]: Y
+
+Computing ramps from sequences of raw reads
+Generating new wavelength solution
+Generating narrowband template images
+----------------------------------------&gt; 100% complete
+Total time elapsed: 1020 seconds
+</pre></div>
+</div>
+<p>The process takes a while between a few minutes and up 30min depending
+on your number of cores. The parallelization will mostly take effect in
+the last step of the calibration. We recommend keeping a few threads
+free if you want to be able to operate your computer normally while
+buildcal is running.</p>
 </div>
 
 
@@ -120,13 +169,13 @@ flat 3. The CHARIS mode (J/H/K/lowres) 4. Background frame(s)/dark(s)
     </div>
 <footer class="footer">
   <p class="pull-right">
-    <a href="_sources/Run_wavecal.txt"
+    <a href="_sources/Run_wavecal.ipynb.txt"
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
     &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
-    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
-    Last built 13 Mar 2017. <br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 16 Apr 2017. <br/>
   </p>
 </footer>
   </body>

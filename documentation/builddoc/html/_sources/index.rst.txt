@@ -46,7 +46,9 @@ How the software works
 **Postprocessing**
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+
+   PostProcessing.ipynb
 
 Examples
 ========

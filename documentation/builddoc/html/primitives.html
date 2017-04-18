@@ -17,7 +17,8 @@
         VERSION:     '0.9.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
@@ -26,7 +27,8 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/javascript" src="_static/sidebar.js"></script>
     <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
-    <link rel="top" title="CHARIS DRP 0.9.1 documentation" href="index.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="tools package" href="tools.html" />
     <link rel="prev" title="image package" href="image.html" />
 <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
@@ -88,584 +90,26 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-primitives.buildmonochrome">
-<span id="primitives-buildmonochrome-module"></span><h2>primitives.buildmonochrome module<a class="headerlink" href="#module-primitives.buildmonochrome" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="primitives.buildmonochrome.gethires">
-<code class="descclassname">primitives.buildmonochrome.</code><code class="descname">gethires</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>image</em>, <em>upsample=5</em>, <em>nsubarr=5</em>, <em>npix=13</em>, <em>renorm=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/buildmonochrome.html#gethires"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.buildmonochrome.gethires" title="Permalink to this definition">¶</a></dt>
-<dd><p>Build high resolution images of the undersampled PSF using the
-monochromatic frames.</p>
-<p>Inputs:
-1.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="primitives.buildmonochrome.make_polychrome">
-<code class="descclassname">primitives.buildmonochrome.</code><code class="descname">make_polychrome</code><span class="sig-paren">(</span><em>lam1</em>, <em>lam2</em>, <em>hires_arrs</em>, <em>lam_arr</em>, <em>psftool</em>, <em>allcoef</em>, <em>xindx</em>, <em>yindx</em>, <em>upsample=5</em>, <em>nlam=10</em>, <em>trans=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/buildmonochrome.html#make_polychrome"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.buildmonochrome.make_polychrome" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="primitives-buildmonochrome-module">
+<h2>primitives.buildmonochrome module<a class="headerlink" href="#primitives-buildmonochrome-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-primitives.fit_psflets">
-<span id="primitives-fit-psflets-module"></span><h2>primitives.fit_psflets module<a class="headerlink" href="#module-primitives.fit_psflets" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="primitives.fit_psflets.fit_spectra">
-<code class="descclassname">primitives.fit_psflets.</code><code class="descname">fit_spectra</code><span class="sig-paren">(</span><em>im</em>, <em>psflets</em>, <em>lam</em>, <em>x</em>, <em>y</em>, <em>good</em>, <em>header=SIMPLE  =                    T / conforms to FITS standard                       BITPIX  =                    8 / array data type                                 NAXIS   =                    0 / number of array dimensions                      EXTEND  =                    T</em>, <em>flat=None</em>, <em>refine=False</em>, <em>smoothandmask=True</em>, <em>returnresid=False</em>, <em>suppressrdnse=False</em>, <em>return_corrnoise=False</em>, <em>maxcpus=8</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/fit_psflets.html#fit_spectra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.fit_psflets.fit_spectra" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fit the microspectra to produce a data cube.  The heavy lifting is
-done with a call to _fit_cutout; it is here that we can implement
-regularlizations, aperture photometry, etc., etc.  There is also a 
-framework to iteratively solve for the coefficients accounting for
-nearest-neighbor crosstalk.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>im:      Image instance</strong></p>
-<blockquote>
-<div><p>im.data is the data to be fit.</p>
-</div></blockquote>
-<p><strong>psflets: list of Image instances</strong></p>
-<blockquote>
-<div><p>each one having data of the same shape as im.data. 
-These are the monochromatic spots.</p>
-</div></blockquote>
-<p><strong>lam:     1D array of floats</strong></p>
-<blockquote>
-<div><p>Array of wavelengths extracted.  Should match the first dimension of psflets.</p>
-</div></blockquote>
-<p><strong>x:       list of ndarrays</strong></p>
-<blockquote>
-<div><p>x position of each lenslet spot at each wavelength</p>
-</div></blockquote>
-<p><strong>y:       list of ndarrays</strong></p>
-<blockquote>
-<div><p>y position of each lenslet spot at each wavelength</p>
-</div></blockquote>
-<p><strong>good:    list of boolean arrays</strong></p>
-<blockquote>
-<div><p>true if lenslet spot lies within the H2RG</p>
-</div></blockquote>
-<p><strong>header:  FITS header instance</strong></p>
-<blockquote>
-<div><p>Ordered dictionary or FITS header class,
-to store some information about the reduction.</p>
-</div></blockquote>
-<p><strong>flat:    ndarray</strong></p>
-<blockquote>
-<div><p>Lenslet flatfield.  Do not flatfield if this array is not given.  Default None.</p>
-</div></blockquote>
-<p><strong>refine:  boolean</strong></p>
-<blockquote>
-<div><p>Iterate solution to remove crosstalk? Approximately doubles runtime.  Default True.</p>
-</div></blockquote>
-<p><strong>smoothandmask: boolean</strong></p>
-<blockquote>
-<div><p>Set inverse variance of particularly noisy lenslets to zero and
-replace their values with interpolations for cosmetics
-(ivar will still be zero)? Default True.</p>
-</div></blockquote>
-<p><strong>returnresid: boolean</strong></p>
-<blockquote>
-<div><p>Return a residual image in addition the data cube?  Default False.</p>
-</div></blockquote>
-<p><strong>suppressrdnse: boolean</strong></p>
-<p><strong>maxcpus:  int</strong></p>
-<blockquote>
-<div><p>Maximum number of threads for OpenMP parallelization in Cython.
-Default multiprocessing.cpu_count().</p>
-</div></blockquote>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">datacube: Image instance</p>
-<blockquote class="last">
-<div><p>An Image instance containing the data cube.</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Notes</p>
-<p>the &#8216;x&#8217;, &#8216;y&#8217;, and &#8216;good&#8217; inputs are assumed to be the outputs from the function
-locatePSFlets.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="primitives.fit_psflets.optext_spectra">
-<code class="descclassname">primitives.fit_psflets.</code><code class="descname">optext_spectra</code><span class="sig-paren">(</span><em>im</em>, <em>PSFlet_tool</em>, <em>lam</em>, <em>delt_x=7</em>, <em>flat=None</em>, <em>sig=0.7</em>, <em>smoothandmask=True</em>, <em>header=SIMPLE  =                    T / conforms to FITS standard                       BITPIX  =                    8 / array data type                                 NAXIS   =                    0 / number of array dimensions                      EXTEND  =                    T</em>, <em>maxcpus=8</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/fit_psflets.html#optext_spectra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.fit_psflets.optext_spectra" title="Permalink to this definition">¶</a></dt>
-<dd><p>Function optext_spectra performs an &#8220;optimal&#8221; extraction of the
-microspectra (a truly optimal extraction would require more
-accurate dispersions; this will be implemented).  Aperture
-photometry may also be performed by setting sig=1e10 (or something
-similarly large); the aperture will then be delt_x.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>im:     Image instance</strong></p>
-<blockquote>
-<div><p>Containing the 2D count rates and inverse variances</p>
-</div></blockquote>
-<p><strong>PSFlet_tool: PSFLet_tool instance</strong></p>
-<blockquote>
-<div><p>An instance of the PSFlet_tool class containing the wavelength solution. 
-The locations of the microspectra and the wavelengths corresponding to 
-whole pixels along the dispersion direction will be used in this routine.</p>
-</div></blockquote>
-<p><strong>lam:         list of floats</strong></p>
-<blockquote>
-<div><p>List of floating point numbers or 1D array. The array of wavelengths onto which
-to interpolate the microspectra.</p>
-</div></blockquote>
-<p><strong>delt_x:      int</strong></p>
-<blockquote>
-<div><p>Odd, positive integer, the aperture width for extraction.  Default 7 (5 or 7 recommended).</p>
-</div></blockquote>
-<p><strong>flat:        2D ndarray</strong></p>
-<blockquote>
-<div><p>2D floating point ndarray, lenslet flat. Default None (don&#8217;t flat-field).</p>
-</div></blockquote>
-<p><strong>sig:         float</strong></p>
-<blockquote>
-<div><p>1D root variance of lenslet PSF. Default 0.7 (currently cannot be a function of 
-wavelength).  Setting sig &gt;&gt; delt_x is equivalent to aperture photometry.</p>
-</div></blockquote>
-<p><strong>smoothandmask: boolean</strong></p>
-<blockquote>
-<div><p>Set inverse variance of particularly noisy lenslets to zero and replace their values 
-with interpolations for cosmetics (ivar will still be zero)?  Default True.</p>
-</div></blockquote>
-<p><strong>header:      FITS header</strong></p>
-<blockquote>
-<div><p>Ordered dictionary or FITS header class, to store some information about the reduction.</p>
-</div></blockquote>
-<p><strong>maxcpus      int</strong></p>
-<blockquote>
-<div><p>Maximum number of threads for OpenMP parallelization in Cython. 
-Default multiprocessing.cpu_count().</p>
-</div></blockquote>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">datacube:    Image instance</p>
-<blockquote class="last">
-<div><p>An Image instance containing the data cube.</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Notes</p>
-<p>In the near future a position- and wavelength-dependent PSFlet
-width will be included from the measured PSFlets.</p>
-</dd></dl>
-
+<div class="section" id="primitives-fit-psflets-module">
+<h2>primitives.fit_psflets module<a class="headerlink" href="#primitives-fit-psflets-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-primitives.locate_psflets">
-<span id="primitives-locate-psflets-module"></span><h2>primitives.locate_psflets module<a class="headerlink" href="#module-primitives.locate_psflets" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="primitives.locate_psflets.PSFLets">
-<em class="property">class </em><code class="descclassname">primitives.locate_psflets.</code><code class="descname">PSFLets</code><span class="sig-paren">(</span><em>load=False</em>, <em>infile=None</em>, <em>infiledir='.'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets" title="Permalink to this definition">¶</a></dt>
-<dd><p>Helper class to deal with the PSFLets on the detector. Does most of the heavy lifting
-during the wavelength calibration step.</p>
-<p>Initialize the class</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>load: Boolean</strong></p>
-<blockquote>
-<div><p>Whether to load an already-existing wavelength calibration file</p>
-</div></blockquote>
-<p><strong>infile: String</strong></p>
-<blockquote>
-<div><p>If load is True, this is the name of the file</p>
-</div></blockquote>
-<p><strong>infiledir: String</strong></p>
-<blockquote class="last">
-<div><p>If load is True, this is the directory in which the file resides</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="primitives.locate_psflets.PSFLets.geninterparray">
-<code class="descname">geninterparray</code><span class="sig-paren">(</span><em>lam</em>, <em>allcoef</em>, <em>order=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets.geninterparray"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets.geninterparray" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set up array to solve for best-fit polynomial fits to the
-coefficients of the wavelength solution.  These will be used
-to smooth/interpolate the wavelength solution, and
-ultimately to compute its inverse.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>lam: float</strong></p>
-<blockquote>
-<div><p>Wavelength in nm</p>
-</div></blockquote>
-<p><strong>allcoef: list of lists floats</strong></p>
-<blockquote>
-<div><p>Polynomial coefficients of wavelength solution</p>
-</div></blockquote>
-<p><strong>order: int</strong></p>
-<blockquote class="last">
-<div><p>Order of polynomial wavelength solution</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Notes</p>
-<p>Populates the attribute interp_arr in PSFLet class</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="primitives.locate_psflets.PSFLets.genpixsol">
-<code class="descname">genpixsol</code><span class="sig-paren">(</span><em>lam</em>, <em>allcoef</em>, <em>order=3</em>, <em>lam1=None</em>, <em>lam2=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets.genpixsol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets.genpixsol" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculates the wavelength at the center of each pixel within a microspectrum</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>lam: float</strong></p>
-<blockquote>
-<div><p>Wavelength in nm</p>
-</div></blockquote>
-<p><strong>allcoef: list of floats</strong></p>
-<blockquote>
-<div><p>List describing the polynomial coefficients that best fit the lenslets,
-for all wavelengths</p>
-</div></blockquote>
-<p><strong>order: int</strong></p>
-<blockquote>
-<div><p>Order of the polynomical fit</p>
-</div></blockquote>
-<p><strong>lam1: float</strong></p>
-<blockquote>
-<div><p>Lowest wavelength in nm</p>
-</div></blockquote>
-<p><strong>lam2: float</strong></p>
-<blockquote class="last">
-<div><p>Highest wavelength in nm</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Notes</p>
-<p>This functions fills in most of the fields of the PSFLet class: the array
-of xindx, yindx, nlam, lam_indx and nlam_max</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="primitives.locate_psflets.PSFLets.loadpixsol">
-<code class="descname">loadpixsol</code><span class="sig-paren">(</span><em>infile=None</em>, <em>infiledir='./calibrations'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets.loadpixsol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets.loadpixsol" title="Permalink to this definition">¶</a></dt>
-<dd><p>Loads existing wavelength calibration file</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>infile: String</strong></p>
-<blockquote>
-<div><p>Name of the file</p>
-</div></blockquote>
-<p><strong>infiledir: String</strong></p>
-<blockquote class="last">
-<div><p>Directory in which the file resides</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="primitives.locate_psflets.PSFLets.monochrome_coef">
-<code class="descname">monochrome_coef</code><span class="sig-paren">(</span><em>lam</em>, <em>alllam=None</em>, <em>allcoef=None</em>, <em>order=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets.monochrome_coef"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets.monochrome_coef" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="primitives.locate_psflets.PSFLets.return_locations">
-<code class="descname">return_locations</code><span class="sig-paren">(</span><em>lam</em>, <em>allcoef</em>, <em>xindx</em>, <em>yindx</em>, <em>order=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets.return_locations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets.return_locations" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculates the detector coordinates of lenslet located at <code class="xref py py-obj docutils literal"><span class="pre">xindx</span></code>, <code class="xref py py-obj docutils literal"><span class="pre">yindx</span></code>
-for desired wavelength <code class="xref py py-obj docutils literal"><span class="pre">lam</span></code></p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>lam: float</strong></p>
-<blockquote>
-<div><p>Wavelength in nm</p>
-</div></blockquote>
-<p><strong>allcoef: list of floats</strong></p>
-<blockquote>
-<div><p>Polynomial coefficients of wavelength solution</p>
-</div></blockquote>
-<p><strong>xindx: int</strong></p>
-<blockquote>
-<div><p>X index of lenslet in lenslet array</p>
-</div></blockquote>
-<p><strong>yindx: int</strong></p>
-<blockquote>
-<div><p>Y index of lenslet in lenslet array</p>
-</div></blockquote>
-<p><strong>order: int</strong></p>
-<blockquote>
-<div><p>Order of polynomial wavelength solution</p>
-</div></blockquote>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">interp_x: float</p>
-<blockquote>
-<div><p>X coordinate on the detector</p>
-</div></blockquote>
-<p>interp_y: float</p>
-<blockquote class="last">
-<div><p>Y coordinate on the detector</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="primitives.locate_psflets.PSFLets.return_locations_short">
-<code class="descname">return_locations_short</code><span class="sig-paren">(</span><em>coef</em>, <em>xindx</em>, <em>yindx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets.return_locations_short"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets.return_locations_short" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the x,y detector location of a given lenslet for a given polynomial fit</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>coef: lists floats</strong></p>
-<blockquote>
-<div><p>Polynomial coefficients of fit for a single wavelength</p>
-</div></blockquote>
-<p><strong>xindx: int</strong></p>
-<blockquote>
-<div><p>X index of lenslet in lenslet array</p>
-</div></blockquote>
-<p><strong>yindx: int</strong></p>
-<blockquote>
-<div><p>Y index of lenslet in lenslet array</p>
-</div></blockquote>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">interp_x: float</p>
-<blockquote>
-<div><p>X coordinate on the detector</p>
-</div></blockquote>
-<p>interp_y: float</p>
-<blockquote class="last">
-<div><p>Y coordinate on the detector</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="primitives.locate_psflets.PSFLets.return_res">
-<code class="descname">return_res</code><span class="sig-paren">(</span><em>lam</em>, <em>allcoef</em>, <em>xindx</em>, <em>yindx</em>, <em>order=3</em>, <em>lam1=None</em>, <em>lam2=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets.return_res"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets.return_res" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the spectral resolution and interpolated wavelength array</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>lam: float</strong></p>
-<blockquote>
-<div><p>Wavelength in nm</p>
-</div></blockquote>
-<p><strong>allcoef: list of lists floats</strong></p>
-<blockquote>
-<div><p>Polynomial coefficients of wavelength solution</p>
-</div></blockquote>
-<p><strong>xindx: int</strong></p>
-<blockquote>
-<div><p>X index of lenslet in lenslet array</p>
-</div></blockquote>
-<p><strong>yindx: int</strong></p>
-<blockquote>
-<div><p>Y index of lenslet in lenslet array</p>
-</div></blockquote>
-<p><strong>order: int</strong></p>
-<blockquote>
-<div><p>Order of polynomial wavelength solution</p>
-</div></blockquote>
-<p><strong>lam1: float</strong></p>
-<blockquote>
-<div><p>Shortest wavelength in nm</p>
-</div></blockquote>
-<p><strong>lam2: float</strong></p>
-<blockquote>
-<div><p>Longest wavelength in nm</p>
-</div></blockquote>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">interp_lam: array</p>
-<blockquote>
-<div><p>Array of wavelengths</p>
-</div></blockquote>
-<p>R: float</p>
-<blockquote class="last">
-<div><p>Effective spectral resolution</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="primitives.locate_psflets.PSFLets.savepixsol">
-<code class="descname">savepixsol</code><span class="sig-paren">(</span><em>outdir='calibrations/'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#PSFLets.savepixsol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.PSFLets.savepixsol" title="Permalink to this definition">¶</a></dt>
-<dd><p>Saves wavelength calibration file</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>outdir: String</strong></p>
-<blockquote class="last">
-<div><p>Directory in which to put the file. The file is name PSFloc.fits and is a
-multi-extension FITS file, each extension corresponding to:
-0. the list of wavelengths at which the calibration is done
-1. a 2D ndarray with the X position of all lenslets
-2. a 2D ndarray with the Y position of all lenslets
-3. a 2D ndarray with the number of valid wavelengths for a given lenslet (some wavelengths fall outside of the detector area)</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="primitives.locate_psflets.locatePSFlets">
-<code class="descclassname">primitives.locate_psflets.</code><code class="descname">locatePSFlets</code><span class="sig-paren">(</span><em>inImage</em>, <em>polyorder=2</em>, <em>sig=0.7</em>, <em>coef=None</em>, <em>trimfrac=0.1</em>, <em>phi=2.0496941961364943</em>, <em>scale=15.02</em>, <em>fitorder=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/locate_psflets.html#locatePSFlets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.locate_psflets.locatePSFlets" title="Permalink to this definition">¶</a></dt>
-<dd><p>function locatePSFlets takes an Image class, assumed to be a
-monochromatic grid of spots with read noise and shot noise, and
-returns the esimated positions of the spot centroids.  This is
-designed to constrain the domain of the PSF-let fitting later in
-the pipeline.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>imImage: Image class</strong></p>
-<blockquote>
-<div><p>Assumed to be a monochromatic grid of spots</p>
-</div></blockquote>
-<p><strong>polyorder: float</strong></p>
-<blockquote>
-<div><p>order of the polynomial coordinate transformation. Default 2.</p>
-</div></blockquote>
-<p><strong>sig: float</strong></p>
-<blockquote>
-<div><p>standard deviation of convolving Gaussian used
-for estimating the grid of centroids.  Should be close
-to the true value for the PSF-let spots.  Default 0.7.</p>
-</div></blockquote>
-<p><strong>coef: list</strong></p>
-<blockquote>
-<div><p>initial guess of the coefficients of polynomial
-coordinate transformation</p>
-</div></blockquote>
-<p><strong>trimfrac: float</strong></p>
-<blockquote>
-<div><p>fraction of lenslet outliers (high &amp; low
-combined) to trim in the minimization.  Default 0.1
-(5% trimmed on the high end, 5% on the low end)</p>
-</div></blockquote>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">x: 2D ndarray</p>
-<blockquote>
-<div><p>Estimated spot centroids in x.</p>
-</div></blockquote>
-<p>y: 2D ndarray</p>
-<blockquote>
-<div><p>Estimated spot centroids in y.</p>
-</div></blockquote>
-<p>good:2D boolean ndarray</p>
-<blockquote>
-<div><p>True for lenslets with spots inside the detector footprint</p>
-</div></blockquote>
-<p>coef: list of floats</p>
-<blockquote class="last">
-<div><p>List of best-fit polynomial coefficients</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Notes</p>
-<p>the coefficients, if not supplied, are initially set to the 
-known pitch angle and scale.  A loop then does a quick check to find
-reasonable offsets in x and y.  With all of the first-order polynomial
-coefficients set, the optimizer refines these and the higher-order
-coefficients.  This routine seems to be relatively robust down to
-per-lenslet signal-to-noise ratios of order unity (or even a little 
-less).</p>
-<p>Important note: as of now (09/2015), the number of lenslets to grid
-is hard-coded as 1/10 the dimensionality of the final array.  This is
-sufficient to cover the detector for the fiducial lenslet spacing.</p>
-</dd></dl>
-
+<div class="section" id="primitives-locate-psflets-module">
+<h2>primitives.locate_psflets module<a class="headerlink" href="#primitives-locate-psflets-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="primitives-matutils-module">
 <h2>primitives.matutils module<a class="headerlink" href="#primitives-matutils-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-primitives.offset_cal">
-<span id="primitives-offset-cal-module"></span><h2>primitives.offset_cal module<a class="headerlink" href="#module-primitives.offset_cal" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="primitives.offset_cal.calc_offset">
-<code class="descclassname">primitives.offset_cal.</code><code class="descname">calc_offset</code><span class="sig-paren">(</span><em>psflets</em>, <em>image</em>, <em>offsets</em>, <em>dx=64</em>, <em>maxcpus=8</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/primitives/offset_cal.html#calc_offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#primitives.offset_cal.calc_offset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Function calc_offset: compute the position-dependent sub-pixel
-shift in the PSFlet spot grid using cross-correlation.</p>
-<p>Inputs:
-1. psflets:  ndarray, (nlam, ny, Nx), with Nx = upsamp*nx,</p>
-<blockquote>
-<div>i.e. oversampled by a factor upsamp in the last 
-dimension (perpendicular to the CHARIS dispersion
-direction).</div></blockquote>
-<ol class="arabic" start="2">
-<li><p class="first">image:    ndarray, (ny, nx)</p>
-</li>
-<li><dl class="first docutils">
-<dt>offsets:  ndarray, integer offsets at which to compute </dt>
-<dd><p class="first last">cross-correlation, shifting psflets by upsamp with
-respect to image.</p>
-</dd>
-</dl>
-</li>
-</ol>
-<p>Optional inputs:
-1. dx:       integer, (dx,dx) size of chunks on which to compute</p>
-<blockquote>
-<div>cross-correlation.  Default 64 (so that 32x32
-offsets are computed for a 2048x2048 image).</div></blockquote>
-<ol class="arabic" start="2">
-<li><dl class="first docutils">
-<dt>maxcpus:  number of threads for OpenMP parallelization of </dt>
-<dd><p class="first last">cython code.  Default multiprocessing.cpu_count().</p>
-</dd>
-</dl>
-</li>
-</ol>
-<p>Output:
-1. psflets:  ndarray, (nlam, ny, nx), PSFlet templates shifted</p>
-<blockquote>
-<div>by a position-dependent value to maximize the 
-cross-correlation with the input image.</div></blockquote>
-</dd></dl>
-
+<div class="section" id="primitives-offset-cal-module">
+<h2>primitives.offset_cal module<a class="headerlink" href="#primitives-offset-cal-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="primitives-setup-module">
 <h2>primitives.setup module<a class="headerlink" href="#primitives-setup-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-primitives">
-<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-primitives" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-contents">
+<h2>Module contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
 </div>
 </div>
 
@@ -678,13 +122,13 @@ cross-correlation with the input image.</div></blockquote>
 <ul>
 <li><a class="reference internal" href="#">primitives package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#module-primitives.buildmonochrome">primitives.buildmonochrome module</a></li>
-<li><a class="reference internal" href="#module-primitives.fit_psflets">primitives.fit_psflets module</a></li>
-<li><a class="reference internal" href="#module-primitives.locate_psflets">primitives.locate_psflets module</a></li>
+<li><a class="reference internal" href="#primitives-buildmonochrome-module">primitives.buildmonochrome module</a></li>
+<li><a class="reference internal" href="#primitives-fit-psflets-module">primitives.fit_psflets module</a></li>
+<li><a class="reference internal" href="#primitives-locate-psflets-module">primitives.locate_psflets module</a></li>
 <li><a class="reference internal" href="#primitives-matutils-module">primitives.matutils module</a></li>
-<li><a class="reference internal" href="#module-primitives.offset_cal">primitives.offset_cal module</a></li>
+<li><a class="reference internal" href="#primitives-offset-cal-module">primitives.offset_cal module</a></li>
 <li><a class="reference internal" href="#primitives-setup-module">primitives.setup module</a></li>
-<li><a class="reference internal" href="#module-primitives">Module contents</a></li>
+<li><a class="reference internal" href="#module-contents">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -696,13 +140,13 @@ cross-correlation with the input image.</div></blockquote>
     </div>
 <footer class="footer">
   <p class="pull-right">
-    <a href="_sources/primitives.txt"
+    <a href="_sources/primitives.rst.txt"
        rel="nofollow">Page Source</a> &nbsp;
     <a href="#">Back to Top</a></p>
   <p>
     &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
-    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.4.6. &nbsp;
-    Last built 13 Mar 2017. <br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 16 Apr 2017. <br/>
   </p>
 </footer>
   </body>
