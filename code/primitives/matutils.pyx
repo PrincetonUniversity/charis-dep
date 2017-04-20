@@ -748,8 +748,12 @@ def optext(double [:, :] im, double [:, :] ivar,
                         wtot = wtot + w1
 
                         iy = (int)(yindx[i, j, k])
-                        num = num + w1*im[iy, ix]*ivar[iy, ix]
-                        denom = denom + w1*w1*ivar[iy, ix]
+                        if sigval < 10:
+                            num = num + w1*im[iy, ix]*ivar[iy, ix]
+                            denom = denom + w1*w1*ivar[iy, ix]
+                        else:
+                            num = num + w1*im[iy, ix]
+                            denom = denom + w1*w1
 
                     coefs_num[i, j, n - k - 1] = num/wtot
                     coefs_denom[i, j, n - k - 1] = denom/(wtot*wtot)
