@@ -140,6 +140,63 @@ but something like this should work:</p>
 <span class="n">Example</span><span class="p">:</span> <span class="n">buildcal</span> <span class="n">CRSA00000000</span><span class="o">.</span><span class="n">fits</span> <span class="mi">1550</span> <span class="n">lowres</span> <span class="n">darks</span><span class="o">/</span><span class="n">CRSA</span><span class="o">*.</span><span class="n">fits</span>
 </pre></div>
 </div>
+<div class="section" id="Windows-10-install">
+<h3>Windows 10 install<a class="headerlink" href="#Windows-10-install" title="Permalink to this headline">¶</a></h3>
+<p>These instructions were provided by Zach Long and use the bash
+functionality within Windows 10. This procedure</p>
+<ol class="arabic">
+<li><p class="first">Download Anaconda 2.7 Linux installer from their website</p>
+</li>
+<li><p class="first">Download and extract CHARIS code</p>
+</li>
+<li><p class="first">Navigate to the appropriate folder (the folder is in mnt/c/
+somewhere, c refers to the windows C: drive or whatever the main
+drive is)</p>
+</li>
+<li><p class="first">Install using &#8220;bash Anaconda2-4.3.1-Linux-x86_64.sh&#8221;</p>
+</li>
+<li><p class="first">Install pip using &#8220;sudo apt-get install python-pip&#8221;</p>
+</li>
+<li><p class="first">Do a &#8220;sudo pip install cython&#8221;</p>
+</li>
+<li><p class="first">If you get an error with gcc exiting with code 1 use this command
+&#8220;sudo apt-get install python-dev&#8221;</p>
+</li>
+<li><p class="first">Do another &#8220;sudo pip install cython&#8221;</p>
+</li>
+<li><p class="first">Do a &#8220;conda install numpy&#8221; (might have to close and reopen bash for
+this)</p>
+</li>
+<li><p class="first">Do a &#8220;conda install astropy&#8221;</p>
+</li>
+<li><p class="first">Do a &#8220;pip install -U scipy&#8221; (I&#8217;m not sure why it needs the upgraded
+version but it does)</p>
+</li>
+<li><p class="first">Navigate to the charis code folder again in /mnt/c/</p>
+</li>
+<li><p class="first">Run &#8220;sudo python setup.py install&#8221;</p>
+</li>
+<li><p class="first">Run &#8220;export KMP_AFFINITY=disabled&#8221; (this is because there is a
+known bug in scipy for windows bash. You&#8217;ll know if it&#8217;s happening
+if you get the following errors when you try to run buildcal</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">OMP</span><span class="p">:</span> <span class="n">Error</span> <span class="c1">#100: Fatal system error detected.</span>
+<span class="n">OMP</span><span class="p">:</span> <span class="n">System</span> <span class="n">error</span> <span class="c1">#22: Invalid argument</span>
+<span class="n">Aborted</span> <span class="p">(</span><span class="n">core</span> <span class="n">dumped</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As far as I can tell you have to do it after you open a new bash
+terminal)</p>
+</li>
+<li><p class="first">Done, it should work at this point, it worked for me at least. If
+something doesn&#8217;t work it&#8217;s usually something to do with scipy so
+you many need to run a sudo &#8220;pip install &#8211;upgrade pip&#8221;</p>
+</li>
+<li><p class="first">Occasionally I have had to do a &#8220;alias sudo=&#8217;sudo env PATH=$PATH&#8217;&#8221;
+if Cython decides not work because it&#8217;s using the wrong python, I&#8217;m
+assuming the one that came preinstalled</p>
+</li>
+</ol>
+</div>
 </div>
 </div>
 <div class="section" id="Troubleshooting">
@@ -204,7 +261,10 @@ having to close your terminal, you can type:</p>
 <li><a class="reference internal" href="#">Install the CHARIS Data reduction pipeline</a><ul>
 <li><a class="reference internal" href="#Requirements">Requirements</a></li>
 <li><a class="reference internal" href="#Dependencies">Dependencies</a></li>
-<li><a class="reference internal" href="#Installation">Installation</a></li>
+<li><a class="reference internal" href="#Installation">Installation</a><ul>
+<li><a class="reference internal" href="#Windows-10-install">Windows 10 install</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#Troubleshooting">Troubleshooting</a><ul>

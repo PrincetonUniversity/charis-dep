@@ -142,6 +142,49 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
+    "## Windows 10 install"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "These instructions were provided by Zach Long and use the bash functionality within Windows 10. This procedure"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "1. Download Anaconda 2.7 Linux installer from their website\n",
+    "2. Download and extract CHARIS code\n",
+    "3. Navigate to the appropriate folder (the folder is in mnt/c/ somewhere, c refers to the windows C: drive or whatever the main drive is)\n",
+    "4. Install using \"bash Anaconda2-4.3.1-Linux-x86_64.sh\"\n",
+    "5. Install pip using \"sudo apt-get install python-pip\"\n",
+    "6. Do a \"sudo pip install cython\"\n",
+    "7. If you get an error with gcc exiting with code 1 use this command \"sudo apt-get install python-dev\"\n",
+    "8. Do another \"sudo pip install cython\"\n",
+    "9. Do a \"conda install numpy\" (might have to close and reopen bash for this)\n",
+    "10. Do a \"conda install astropy\"\n",
+    "11. Do a \"pip install -U scipy\" (I'm not sure why it needs the upgraded version but it does)\n",
+    "12. Navigate to the charis code folder again in /mnt/c/\n",
+    "13. Run \"sudo python setup.py install\"\n",
+    "14. Run \"export KMP_AFFINITY=disabled\" (this is because there is a known bug in scipy for windows bash. You'll know if it's happening if you get the following errors when you try to run buildcal\n",
+    "```\n",
+    "OMP: Error #100: Fatal system error detected.\n",
+    "OMP: System error #22: Invalid argument\n",
+    "Aborted (core dumped)\n",
+    "```\n",
+    "As far as I can tell you have to do it after you open a new bash terminal)\n",
+    "\n",
+    "15. Done, it should work at this point, it worked for me at least. If something doesn't work it's usually something to do with scipy so you many need to run a sudo \"pip install --upgrade pip\"\n",
+    "16. Occasionally I have had to do a \"alias sudo='sudo env PATH=$PATH'\" if Cython decides not work because it's using the wrong python, I'm assuming the one that came preinstalled\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
     "# Troubleshooting"
    ]
   },
