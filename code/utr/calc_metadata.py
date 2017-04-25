@@ -204,9 +204,12 @@ def metadata(filename, header=None, clear=True):
     if not np.isfinite(mean_mjd):
         mean_mjd = utc_date = utc_time = 'unavailable'
 
-    header['mjd'] = (mean_mjd, 'Mean MJD of exposure')    
-    header['utc-date'] = (utc_date, 'UTC date of exposure')  
-    header['utc-time'] = (utc_time, 'Mean UTC time of exposure')        
+    for key in ['object', 'imagetyp', 'telescop', 'exptime']:
+        header.append(_fetch(key, filename))
+
+    header.append(('mjd', mean_mjd, 'Mean MJD of exposure'))
+    header.append(('utc-date', utc_date, 'UTC date of exposure'))
+    header.append(('utc-time', utc_time, 'Mean UTC time of exposure'))
 
     ####################################################################
     # Attempt to fetch useful/important keywords from the original
@@ -215,7 +218,10 @@ def metadata(filename, header=None, clear=True):
 
     header.append(_fetch('ra', filename, comment='RA of telescope pointing'))
     header.append(_fetch('dec', filename, comment='DEC of telescope pointing'))
-
+    
+    for key in ['azimuth', 'altitude']:
+        header.append(_fetch(key, filename))
+    
     #header['ra'] = (ra, 'RA of telescope pointing')
     #header['dec'] = (dec, 'DEC of telescope pointing')
     
@@ -290,22 +296,28 @@ def addWCS(header,xpix,ypix,xpixscale = -0.015/3600.,ypixscale = 0.015/3600.,ext
     ####################################################################
 
     try:
-        header['XPIXSCAL'] = (xpixscale, 'Degrees/pixel')
-        header['YPIXSCAL'] = (ypixscale, 'Degrees/pixel')
-        header['CTYPE1']  = ('RA---TAN','first parameter RA  ,  projection TANgential')
-        header['CTYPE2']  = ('DEC--TAN','second parameter DEC,  projection TANgential')        
-        header['CRVAL1']  = (c.ra.deg,'Reference X pixel value')
-        header['CRVAL2']  = (c.dec.deg,'Reference Y pixel value')
-        header['CRPIX1']  = (xpix,'Reference X pixel')
-        header['CRPIX2']  = (ypix,'Reference Y pixel')
-        header['EQUINOX'] = (2000,'Equinox of coordinates')
-        header['TOT_ROT'] = (-1*(header['PARANG']+extrarot),'Total rotation angle (degrees)')
+        header.append(('comment', ''), end=True)
+        header.append(('comment', '*'*60), end=True)
+        header.append(('comment', '*'*28 + ' WCS ' + '*'*27), end=True)
+        header.append(('comment', '*'*60), end=True)    
+        header.append(('comment', ''), end=True)
+
+        header.append(('XPIXSCAL', xpixscale, 'Degrees/pixel'), end=True)
+        header.append(('YPIXSCAL', ypixscale, 'Degrees/pixel'), end=True)
+        header.append(('CTYPE1', 'RA---TAN','first parameter RA  ,  projection TANgential'), end=True)
+        header.append(('CTYPE2', 'DEC--TAN','second parameter DEC,  projection TANgential'), end=True)       
+        header.append(('CRVAL1', c.ra.deg,'Reference X pixel value'), end=True)
+        header.append(('CRVAL2', c.dec.deg,'Reference Y pixel value'), end=True)
+        header.append(('CRPIX1', xpix,'Reference X pixel'), end=True)
+        header.append(('CRPIX2', ypix,'Reference Y pixel'), end=True)
+        header.append(('EQUINOX', 2000,'Equinox of coordinates'), end=True)
+        header.append(('TOT_ROT', -1*(header['PARANG']+extrarot),'Total rotation angle (degrees)'), end=True)
         
         angle = np.pi*(header['TOT_ROT'])/180.
-        header['CD1_1'] = (np.cos(angle)*xpixscale,'Rotation matrix coefficient')
-        header['CD1_2'] = (np.sin(angle)*xpixscale,'Rotation matrix coefficient')
-        header['CD2_1'] = (-np.sin(angle)*ypixscale,'Rotation matrix coefficient')
-        header['CD2_2'] = (np.cos(angle)*ypixscale,'Rotation matrix coefficient')
+        header.append(('CD1_1', np.cos(angle)*xpixscale,'Rotation matrix coefficient'), end=True)
+        header.append(('CD1_2', np.sin(angle)*xpixscale,'Rotation matrix coefficient'), end=True)
+        header.append(('CD2_1', -np.sin(angle)*ypixscale,'Rotation matrix coefficient'), end=True)
+        header.append(('CD2_2', np.cos(angle)*ypixscale,'Rotation matrix coefficient'), end=True)
     except:
         return
 
