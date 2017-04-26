@@ -204,7 +204,7 @@ def metadata(filename, header=None, clear=True):
     if not np.isfinite(mean_mjd):
         mean_mjd = utc_date = utc_time = 'unavailable'
 
-    for key in ['object', 'imagetyp', 'telescop', 'exptime']:
+    for key in ['Name', 'object', 'imagetyp', 'telescop', 'exptime']:
         header.append(_fetch(key, filename))
 
     header.append(('mjd', mean_mjd, 'Mean MJD of exposure'))
@@ -257,6 +257,9 @@ def metadata(filename, header=None, clear=True):
         if card[1] != 'unavailable' or key == shutterkeys[-1]:
             header.append(card)
             break
+
+    for key in ['X_LYOT', 'X_CHAPKO', 'X_FPM', 'X_GRDST', 'S_GRDAMP']:
+        header.append(_fetch(key, filename))
 
     return header
 
