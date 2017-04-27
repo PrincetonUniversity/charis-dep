@@ -247,7 +247,12 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 delt_x = 5
         else:
             delt_x = 7
-            
+
+        if flatfield:
+            pixelflat = fits.open(calibdir + '/pixelflat.fits')[0].data
+            inImage.data /= pixelflat + 1e-20
+            inImage.ivar *= pixelflat**2
+
         datacube = primitives.optext_spectra(inImage, loc, lam_midpts, delt_x=delt_x, sig=sig, header=inImage.header, flat=lensletflat, maxcpus=maxcpus)
 
     if datacube is None:
