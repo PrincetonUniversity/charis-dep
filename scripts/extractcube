@@ -18,6 +18,7 @@ except:
     import charis.primitives as primitives
     import charis.utr as utr
     from charis.image import Image
+    import charis
 import sys
 import ConfigParser
 import multiprocessing
@@ -110,7 +111,11 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     # extract a cube.
     ################################################################
     
-    header = utr.metadata(filename)
+    try:
+        version = charis.__version__
+    except:
+        version = None
+    header = utr.metadata(filename, version=version)
 
     try:
         calhead = fits.open(calibdir + '/cal_params.fits')[0].header
