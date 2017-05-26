@@ -55,7 +55,7 @@ def _fetch(key, filename, comment=None, newkey=None):
         return (newkey, val, comment)
         
 
-def metadata(filename, header=None, clear=True):
+def metadata(filename, header=None, clear=True, version=None):
     
     """
     Function metadata populates a FITS header (creating a new one if
@@ -90,6 +90,8 @@ def metadata(filename, header=None, clear=True):
         header = fits.PrimaryHDU().header
     if clear:
         header.clear()
+    if version is not None:
+        header.append(('version', version, 'Pipeline Version'), end=True)
 
     header.append(('comment', ''), end=True)
     header.append(('comment', '*'*60), end=True)
