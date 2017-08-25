@@ -260,7 +260,7 @@ def metadata(filename, header=None, clear=True, version=None):
             header.append(card)
             break
 
-    for key in ['X_LYOT', 'X_CHAPKO', 'X_FPM', 'X_GRDST', 'S_GRDAMP']:
+    for key in ['X_LYOT', 'X_CHAPKO', 'X_FPM', 'X_GRDST', 'X_GRDSEP', 'X_GRDAMP']:
         header.append(_fetch(key, filename))
 
     return header
