@@ -716,6 +716,12 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
         header['dloglam'] = (np.log(lam[1]/lam[0]), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (len(lam), 'Number of extracted wavelengths')
 
+    header['CTYPE3'] = 'AWAV-LOG'
+    header['CUNIT3'] = 'nm'
+    header['CRVAL3'] = lam[0]
+    header['CDELT3'] = np.log(lam[1]/lam[0])*lam[0]
+    header['CRPIX3'] = 1
+
     datacube = Image(data=coefs, ivar=1./cov, header=header)
 
     if flat is not None:
