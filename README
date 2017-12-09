@@ -22,6 +22,8 @@ The easy way to install is to use the setup.py in this directory with
 python setup.py install
 I strongly recommend that you first install the anaconda Python 2.7 from here if you are not already using anaconda:
 https://www.continuum.io/downloads
+
+** CAUTIONARY NOTE: the method below may or may not work with the latest versions of Anaconda and Xcode; it may break either the pipeline or numpy/scipy by linking incompatible libraries.  I recommend not following these instructions.  The setup script as invoked above will attempt to install with openMP support, but will default to an installation without openMP support. **
 If you are running this on a Mac, you need gcc from Xcode, and you probably need a homebrew installation of gcc-5 to enable OpenMP linking.  Follow the instructions here:
 http://mathcancer.blogspot.com/2016/01/PrepOSXForCoding-Homebrew.html
 You may need to specify the C compiler when running the setup script using something like
@@ -31,10 +33,11 @@ CC=gcc-mp-5 python setup.py install
 Type gcc [tab][tab] in a terminal to see your available gcc compilers.  If you use tcsh instead of bash, your export command will be different, but something like this should work:
 set CC = gcc-5
 python setup.py install
-
+** END CAUTIONARY NOTE **
 
 Quick-start tutorial, basic usage with sample files:
-(note: sample files of the M5 globular cluster are currently hosted at http://sns.ias.edu/~tbrandt/charis_sample_data/)
+(note: sample files of the M5 globular cluster are currently hosted at http://web.physics.ucsb.edu/~tbrandt/charis_sample_data/)
+** NOTE: file hosting location changed December 2017 **
 
 Example: 
 CRSA00000001.fits is a 1550-nm monochromatic flat taken in broadband/lowres mode
