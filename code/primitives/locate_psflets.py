@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 
+import copy
+import glob
+import logging
+import os
+import re
+
 import numpy as np
 from astropy.io import fits
-import copy
-from scipy import signal, ndimage, optimize, interpolate
+from scipy import interpolate, ndimage, optimize, signal
+
 try:
     from charis.image import Image
 except:
     from image import Image
-import logging
-import glob
-import re
-import os
 
 log = logging.getLogger('main')
 
@@ -25,7 +27,7 @@ class PSFLets:
     def __init__(self, load=False, infile=None, infiledir='.'):
         '''
         Initialize the class
-        
+
         Parameters
         ----------
         load: Boolean
@@ -37,7 +39,7 @@ class PSFLets:
         '''
 
         self.xindx = None
-        self.yindx = None 
+        self.yindx = None
         self.lam_indx = None
         self.nlam = None
         self.nlam_max = None
@@ -47,11 +49,10 @@ class PSFLets:
         if load:
             self.loadpixsol(infile, infiledir)
 
-
     def loadpixsol(self, infile=None, infiledir='./calibrations'):
         '''
         Loads existing wavelength calibration file
-        
+
         Parameters
         ----------
         infile: String
@@ -62,20 +63,21 @@ class PSFLets:
         if infile is None:
             infile = re.sub('//', '/', infiledir + '/PSFloc.fits')
         hdulist = fits.open(infile)
-        
+
         try:
             self.xindx = hdulist[0].data
             self.yindx = hdulist[1].data
             self.lam_indx = hdulist[2].data
             self.nlam = hdulist[3].data.astype(int)
         except:
-            raise RuntimeError("File " + infile + " does not appear to contain a CHARIS wavelength solution in the appropriate format.")
+            raise RuntimeError("File " + infile +
+                               " does not appear to contain a CHARIS wavelength solution in the appropriate format.")
         self.nlam_max = np.amax(self.nlam)
-       
+
     def savepixsol(self, outdir="calibrations/"):
         '''
         Saves wavelength calibration file
-        
+
         Parameters
         ----------
         outdir: String
@@ -85,7 +87,7 @@ class PSFLets:
             1. a 2D ndarray with the X position of all lenslets
             2. a 2D ndarray with the Y position of all lenslets
             3. a 2D ndarray with the number of valid wavelengths for a given lenslet (some wavelengths fall outside of the detector area)
-            
+
         '''
         if not os.path.isdir(outdir):
             raise IOError("Attempting to save pixel solution to directory " + outdir + ".  Directory does not exist.")
@@ -100,13 +102,12 @@ class PSFLets:
             raise
 
     def geninterparray(self, lam, allcoef, order=3):
-
         '''
         Set up array to solve for best-fit polynomial fits to the
         coefficients of the wavelength solution.  These will be used
         to smooth/interpolate the wavelength solution, and
         ultimately to compute its inverse.
-        
+
         Parameters
         ----------
         lam: float
@@ -115,7 +116,7 @@ class PSFLets:
             Polynomial coefficients of wavelength solution
         order: int
             Order of polynomial wavelength solution
-        
+
         Notes
         -----
         Populates the attribute interp_arr in PSFLet class
@@ -134,7 +135,7 @@ class PSFLets:
     def return_locations_short(self, coef, xindx, yindx):
         '''
         Returns the x,y detector location of a given lenslet for a given polynomial fit
-        
+
         Parameters
         ----------
         coef: lists floats
@@ -143,7 +144,7 @@ class PSFLets:
             X index of lenslet in lenslet array
         yindx: int
             Y index of lenslet in lenslet array
-        
+
         Returns
         -------
         interp_x: float
@@ -159,7 +160,7 @@ class PSFLets:
                    order=3, lam1=None, lam2=None):
         '''
         Returns the spectral resolution and interpolated wavelength array
-        
+
         Parameters
         ----------
         lam: float
@@ -176,7 +177,7 @@ class PSFLets:
             Shortest wavelength in nm
         lam2: float
             Longest wavelength in nm
-        
+
         Returns
         -------
         interp_lam: array
@@ -184,14 +185,14 @@ class PSFLets:
         R: float
             Effective spectral resolution
         '''
-        
+
         if lam1 is None:
-            lam1 = np.amin(lam)/1.04
+            lam1 = np.amin(lam) / 1.04
         if lam2 is None:
-            lam2 = np.amax(lam)*1.03
+            lam2 = np.amax(lam) * 1.03
 
         interporder = order
-        
+
         if self.interp_arr is None:
             self.geninterparray(lam, allcoef, order=order)
 
@@ -203,18 +204,18 @@ class PSFLets:
         dx = []
 
         for i in range(n_spline):
-            coef = np.zeros((coeforder + 1)*(coeforder + 2))
+            coef = np.zeros((coeforder + 1) * (coeforder + 2))
             for k in range(1, interporder + 1):
-                coef += k*self.interp_arr[k]*np.log(interp_lam[i])**(k - 1)
+                coef += k * self.interp_arr[k] * np.log(interp_lam[i])**(k - 1)
             _dx, _dy = _transform(xindx, yindx, coeforder, coef)
 
             dx += [_dx]
             dy += [_dy]
-        
+
         R = np.sqrt(np.asarray(dy)**2 + np.asarray(dx)**2)
 
         return interp_lam, R
-    
+
     def monochrome_coef(self, lam, alllam=None, allcoef=None, order=3):
         if self.interp_arr is None:
             if alllam is None or allcoef is None:
@@ -223,14 +224,14 @@ class PSFLets:
 
         coef = np.zeros(self.interp_arr[0].shape)
         for k in range(self.order + 1):
-            coef += self.interp_arr[k]*np.log(lam)**k
+            coef += self.interp_arr[k] * np.log(lam)**k
         return coef
 
     def return_locations(self, lam, allcoef, xindx, yindx, order=3):
         '''
         Calculates the detector coordinates of lenslet located at `xindx`, `yindx`
-        for desired wavelength `lam` 
-        
+        for desired wavelength `lam`
+
         Parameters
         ----------
         lam: float
@@ -243,7 +244,7 @@ class PSFLets:
             Y index of lenslet in lenslet array
         order: int
             Order of polynomial wavelength solution
-        
+
         Returns
         -------
         interp_x: float
@@ -260,12 +261,12 @@ class PSFLets:
             self.geninterparray(lam, allcoef, order=order)
 
         coeforder = int(np.sqrt(allcoef.shape[1])) - 1
-        if not (coeforder + 1)*(coeforder + 2) == allcoef.shape[1]:
+        if not (coeforder + 1) * (coeforder + 2) == allcoef.shape[1]:
             raise ValueError("Number of coefficients incorrect for polynomial order.")
 
-        coef = np.zeros((coeforder + 1)*(coeforder + 2))
+        coef = np.zeros((coeforder + 1) * (coeforder + 2))
         for k in range(self.order + 1):
-            coef += self.interp_arr[k]*np.log(lam)**k
+            coef += self.interp_arr[k] * np.log(lam)**k
         interp_x, interp_y = _transform(xindx, yindx, coeforder, coef)
 
         return interp_x, interp_y
@@ -273,7 +274,7 @@ class PSFLets:
     def genpixsol(self, lam, allcoef, order=3, lam1=None, lam2=None):
         """
         Calculates the wavelength at the center of each pixel within a microspectrum
-        
+
         Parameters
         ----------
         lam: float
@@ -287,7 +288,7 @@ class PSFLets:
             Lowest wavelength in nm
         lam2: float
             Highest wavelength in nm
-        
+
         Notes
         -----
         This functions fills in most of the fields of the PSFLet class: the array
@@ -302,21 +303,21 @@ class PSFLets:
         ###################################################################
 
         if lam1 is None:
-            lam1 = np.amin(lam)/1.04
+            lam1 = np.amin(lam) / 1.04
         if lam2 is None:
-            lam2 = np.amax(lam)*1.03
+            lam2 = np.amax(lam) * 1.03
         interporder = order
 
         if self.interp_arr is None:
             self.geninterparray(lam, allcoef, order=order)
 
         coeforder = int(np.sqrt(allcoef.shape[1])) - 1
-        if not (coeforder + 1)*(coeforder + 2) == allcoef.shape[1]:
+        if not (coeforder + 1) * (coeforder + 2) == allcoef.shape[1]:
             raise ValueError("Number of coefficients incorrect for polynomial order.")
 
         xindx = np.arange(-100, 101)
-        xindx, yindx = np.meshgrid(xindx, xindx)   
-        
+        xindx, yindx = np.meshgrid(xindx, xindx)
+
         n_spline = 100
 
         interp_x = np.zeros(tuple([n_spline] + list(xindx.shape)))
@@ -324,9 +325,9 @@ class PSFLets:
         interp_lam = np.linspace(lam1, lam2, n_spline)
 
         for i in range(n_spline):
-            coef = np.zeros((coeforder + 1)*(coeforder + 2))
+            coef = np.zeros((coeforder + 1) * (coeforder + 2))
             for k in range(interporder + 1):
-                coef += self.interp_arr[k]*np.log(interp_lam[i])**k
+                coef += self.interp_arr[k] * np.log(interp_lam[i])**k
             interp_x[i], interp_y[i] = _transform(xindx, yindx, coeforder, coef)
 
         x = np.zeros(tuple(list(xindx.shape) + [1000]))
@@ -353,7 +354,7 @@ class PSFLets:
 
                 y1, y2 = [int(np.amin(pix_y)) + 1, int(np.amax(pix_y))]
                 tck_x = interpolate.splrep(interp_lam, pix_x, k=1, s=0)
-                
+
                 nlam[ix, iy] = y2 - y1 + 1
                 y[ix, iy, :nlam[ix, iy]] = np.arange(y1, y2 + 1)
                 lam_out[ix, iy, :nlam[ix, iy]] = interpolate.splev(y[ix, iy, :nlam[ix, iy]], tck_y)
@@ -362,7 +363,7 @@ class PSFLets:
         for nlam_max in range(x.shape[-1]):
             if np.all(y[:, :, nlam_max] == 0):
                 break
-        
+
         self.xindx = x[:, :, :nlam_max]
         self.yindx = y[:, :, :nlam_max]
         self.nlam = nlam
@@ -370,17 +371,14 @@ class PSFLets:
         self.nlam_max = np.amax(nlam)
 
 
-
-
-def _initcoef(order, scale=15.02, phi=np.arctan2(1.926,-1), x0=0, y0=0):
-
+def _initcoef(order, scale=15.02, phi=np.arctan2(1.926, -1), x0=0, y0=0):
     """
     Private function _initcoef in locate_psflets
 
     Create a set of coefficients including a rotation matrix plus zeros.
 
     Parameters
-    ---------- 
+    ----------
     order: int
         The polynomial order of the grid distortion
     scale: float
@@ -396,15 +394,15 @@ def _initcoef(order, scale=15.02, phi=np.arctan2(1.926,-1), x0=0, y0=0):
     -------
     coef: list of floats
         A list of length (order+1)*(order+2) to be optimized.
-    
+
     Notes
     -----
     The list of coefficients has space for a polynomial fit of the
     input order (i.e., for order 3, up to terms like x**3 and x**2*y,
-    but not x**3*y).  It is all zeros in the output apart from the 
-    rotation matrix given by scale and phi.    
+    but not x**3*y).  It is all zeros in the output apart from the
+    rotation matrix given by scale and phi.
     """
-    
+
     try:
         if not order == int(order):
             raise ValueError("Polynomial order must be integer")
@@ -412,18 +410,18 @@ def _initcoef(order, scale=15.02, phi=np.arctan2(1.926,-1), x0=0, y0=0):
             if order < 1 or order > 5:
                 raise ValueError("Polynomial order must be >0, <=5")
     except:
-            raise ValueError("Polynomial order must be integer")
+        raise ValueError("Polynomial order must be integer")
 
-    n = (order + 1)*(order + 2)
+    n = (order + 1) * (order + 2)
     coef = np.zeros((n))
 
     coef[0] = x0
-    coef[1] = scale*np.cos(phi)
-    coef[order + 1] = -scale*np.sin(phi)
-    coef[n/2] = y0
-    coef[n/2 + 1] = scale*np.sin(phi)
-    coef[n/2 + order + 1] = scale*np.cos(phi)
-     
+    coef[1] = scale * np.cos(phi)
+    coef[order + 1] = -scale * np.sin(phi)
+    coef[n / 2] = y0
+    coef[n / 2 + 1] = scale * np.sin(phi)
+    coef[n / 2 + order + 1] = scale * np.cos(phi)
+
     return list(coef)
 
 
@@ -443,8 +441,9 @@ def _pullorder(coef, order=1):
             if ix + iy <= order:
                 coef_short += [coef[i]]
             i += 1
-            
+
     return coef_short
+
 
 def _insertorder(coefshort, coef):
     coeforder = int(np.sqrt(len(coef) + 0.25) - 1.5 + 1e-12)
@@ -487,7 +486,7 @@ def _transform(x, y, order, coef, highordercoef=None):
         List of the coefficients.  Must match the length required by
         order = (order+1)*(order+2)
     highordercoef: Boolean
-   
+
     Returns
     -------
     _x:    ndarray
@@ -496,14 +495,14 @@ def _transform(x, y, order, coef, highordercoef=None):
         Transformed coordinates
 
     """
-    
+
     try:
-        if not len(coef) == (order + 1)*(order + 2):
-            
-            pass #raise ValueError("Number of coefficients incorrect for polynomial order.")
+        if not len(coef) == (order + 1) * (order + 2):
+
+            pass  # raise ValueError("Number of coefficients incorrect for polynomial order.")
     except:
         raise AttributeError("order must be integer, coef should be a list.")
-    
+
     try:
         if not order == int(order):
             raise ValueError("Polynomial order must be integer")
@@ -511,8 +510,7 @@ def _transform(x, y, order, coef, highordercoef=None):
             if order < 1 or order > 5:
                 raise ValueError("Polynomial order must be >0, <=5")
     except:
-            raise ValueError("Polynomial order must be integer")
-
+        raise ValueError("Polynomial order must be integer")
 
     # n**2 + 3*n + 2 = (n + 1.5)**2 - 0.25
     #                = (1/4)*((2*n + 3)**2 - 1) = len(coef)
@@ -521,15 +519,15 @@ def _transform(x, y, order, coef, highordercoef=None):
 
     _x = np.zeros(np.asarray(x).shape)
     _y = np.zeros(np.asarray(y).shape)
-    
+
     i = 0
     for ix in range(order1 + 1):
         for iy in range(order1 - ix + 1):
-            _x += coef[i]*x**ix*y**iy
+            _x += coef[i] * x**ix * y**iy
             i += 1
     for ix in range(order1 + 1):
         for iy in range(order1 - ix + 1):
-            _y += coef[i]*x**ix*y**iy
+            _y += coef[i] * x**ix * y**iy
             i += 1
 
     if highordercoef is None:
@@ -542,20 +540,19 @@ def _transform(x, y, order, coef, highordercoef=None):
             for iy in range(order1 - ix + 1):
                 if ix + iy <= order1:
                     continue
-                _x += coef[i]*x**ix*y**iy
+                _x += coef[i] * x**ix * y**iy
                 i += 1
         for ix in range(order2 + 1):
             for iy in range(order1 - ix + 1):
                 if ix + iy <= order1:
                     continue
-                _y += coef[i]*x**ix*y**iy
+                _y += coef[i] * x**ix * y**iy
                 i += 1
- 
+
         return [_x, _y]
 
 
 def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
-
     """
     Private function _corrval in locate_psflets
 
@@ -576,11 +573,11 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
     order: int
         order of the polynomial fit
     trimfrac: float
-        fraction of outliers (high & low combined) to trim 
+        fraction of outliers (high & low combined) to trim
         Default 0.1 (5% trimmed on the high end, 5% on the low end)
     highordercoef: boolean
-        
-        
+
+
     Returns
     -------
     score:    float
@@ -588,23 +585,23 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
     """
 
     #################################################################
-    # Use np.nan for lenslet coordinates outside the CHARIS FOV, 
+    # Use np.nan for lenslet coordinates outside the CHARIS FOV,
     # discard these from the calculation before trimming.
     #################################################################
 
     _x, _y = _transform(x, y, order, coef, highordercoef)
-    vals = ndimage.map_coordinates(filtered, [_y, _x], mode='constant', 
+    vals = ndimage.map_coordinates(filtered, [_y, _x], mode='constant',
                                    cval=np.nan, prefilter=False)
     vals_ok = vals[np.where(np.isfinite(vals))]
 
-    iclip = int(vals_ok.shape[0]*trimfrac/2)
+    iclip = int(vals_ok.shape[0] * trimfrac / 2)
     vals_sorted = np.sort(vals_ok)
-    score = -1*np.sum(vals_sorted[iclip:-iclip])
+    score = -1 * np.sum(vals_sorted[iclip:-iclip])
     return score
 
 
 def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
-                  phi=np.arctan2(1.926,-1), scale=15.02, fitorder=None):
+                  phi=np.arctan2(1.926, -1), scale=15.02, fitorder=None):
     """
     function locatePSFlets takes an Image class, assumed to be a
     monochromatic grid of spots with read noise and shot noise, and
@@ -643,31 +640,31 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
 
     Notes
     -----
-    the coefficients, if not supplied, are initially set to the 
+    the coefficients, if not supplied, are initially set to the
     known pitch angle and scale.  A loop then does a quick check to find
     reasonable offsets in x and y.  With all of the first-order polynomial
     coefficients set, the optimizer refines these and the higher-order
     coefficients.  This routine seems to be relatively robust down to
-    per-lenslet signal-to-noise ratios of order unity (or even a little 
+    per-lenslet signal-to-noise ratios of order unity (or even a little
     less).
 
     Important note: as of now (09/2015), the number of lenslets to grid
     is hard-coded as 1/10 the dimensionality of the final array.  This is
-    sufficient to cover the detector for the fiducial lenslet spacing.    
+    sufficient to cover the detector for the fiducial lenslet spacing.
     """
 
     #############################################################
     # Convolve with a Gaussian, centroid the filtered image.
     #############################################################
-    
-    x = np.arange(-1*int(3*sig + 1), int(3*sig + 1) + 1)
+
+    x = np.arange(-1 * int(3 * sig + 1), int(3 * sig + 1) + 1)
     x, y = np.meshgrid(x, x)
-    gaussian = np.exp(-(x**2 + y**2)/(2*sig**2))
+    gaussian = np.exp(-(x**2 + y**2) / (2 * sig**2))
 
     if inImage.ivar is None:
         unfiltered = signal.convolve2d(inImage.data, gaussian, mode='same')
     else:
-        unfiltered = signal.convolve2d(inImage.data*inImage.ivar, gaussian, mode='same')
+        unfiltered = signal.convolve2d(inImage.data * inImage.ivar, gaussian, mode='same')
         unfiltered /= signal.convolve2d(inImage.ivar, gaussian, mode='same') + 1e-10
 
     filtered = ndimage.interpolation.spline_filter(unfiltered)
@@ -676,16 +673,16 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
     # x, y: Grid of lenslet IDs, Lenslet (0, 0) is the center.
     #############################################################
 
-    gridfrac = 20  
+    gridfrac = 20
     ydim, xdim = inImage.data.shape
-    x = np.arange(-(ydim//gridfrac), ydim//gridfrac + 1)
+    x = np.arange(-(ydim // gridfrac), ydim // gridfrac + 1)
     x, y = np.meshgrid(x, x)
-    
+
     #############################################################
-    # Set up polynomial coefficients, convert from lenslet 
-    # coordinates to coordinates on the detector array.  
+    # Set up polynomial coefficients, convert from lenslet
+    # coordinates to coordinates on the detector array.
     # Then optimize the coefficients.
-    # We want to start with a decent guess, so we use a grid of 
+    # We want to start with a decent guess, so we use a grid of
     # offsets.  Seems to be robust down to SNR/PSFlet ~ 1
     # Create slice indices for subimages to perform the intial
     # fits on. The new dimensionality in both x and y is 2*subsize
@@ -704,20 +701,20 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
         init = False
 
     bestval = 0
-    subshape = xdim*3//8
-    _s = x.shape[0]*3//8
+    subshape = xdim * 3 // 8
+    _s = x.shape[0] * 3 // 8
     subfiltered = ndimage.interpolation.spline_filter(unfiltered[subshape:-subshape, subshape:-subshape])
     for ix in ix_arr:
         for iy in iy_arr:
             if init:
-                coef = _initcoef(polyorder, x0=ix+xdim/2.-subshape,
-                                 y0=iy+ydim/2.-subshape, scale=scale, phi=phi)
+                coef = _initcoef(polyorder, x0=ix + xdim / 2. - subshape,
+                                 y0=iy + ydim / 2. - subshape, scale=scale, phi=phi)
             else:
                 coef = copy.deepcopy(coef_save)
                 coef[0] += ix - subshape
-                coef[(polyorder + 1)*(polyorder + 2)/2] += iy - subshape
+                coef[(polyorder + 1) * (polyorder + 2) / 2] += iy - subshape
 
-            newval = _corrval(coef, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], 
+            newval = _corrval(coef, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s],
                               subfiltered, polyorder, trimfrac)
             if newval < bestval:
                 bestval = newval
@@ -725,18 +722,20 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
 
     if init:
         log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
-        res = optimize.minimize(_corrval, coef_opt, args=(x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac), method='Powell')
+        res = optimize.minimize(_corrval, coef_opt, args=(
+            x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac), method='Powell')
         coef_opt = res.x
     else:
         log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
         coef_lin = _pullorder(coef_opt, 1)
 
-        res = optimize.minimize(_corrval, coef_lin, args=(x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol':1e-6, 'ftol':1e-6})
+        res = optimize.minimize(_corrval, coef_lin, args=(
+            x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol': 1e-6, 'ftol': 1e-6})
         coef_lin = res.x
         coef_opt = _insertorder(coef_lin, coef_opt)
 
     coef_opt[0] += subshape
-    coef_opt[(polyorder + 1)*(polyorder + 2)/2] += subshape
+    coef_opt[(polyorder + 1) * (polyorder + 2) / 2] += subshape
 
     #############################################################
     # If we have coefficients from last time, we assume that we
@@ -745,16 +744,18 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
     #############################################################
 
     log.info("Performing final optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
-            
+
     if not init and fitorder is not None:
         coef_lin = _pullorder(coef_opt, fitorder)
 
-        res = optimize.minimize(_corrval, coef_lin, args=(x, y, filtered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol':1e-5, 'ftol':1e-5})
+        res = optimize.minimize(_corrval, coef_lin, args=(x, y, filtered, polyorder, trimfrac,
+                                                          coef_opt), method='Powell', options={'xtol': 1e-5, 'ftol': 1e-5})
 
         coef_lin = res.x
         coef_opt = _insertorder(coef_lin, coef_opt)
     else:
-        res = optimize.minimize(_corrval, coef_opt, args=(x, y, filtered, polyorder, trimfrac), method='Powell', options={'xtol':1e-5, 'ftol':1e-5})
+        res = optimize.minimize(_corrval, coef_opt, args=(x, y, filtered, polyorder, trimfrac),
+                                method='Powell', options={'xtol': 1e-5, 'ftol': 1e-5})
         coef_opt = res.x
 
     if not res.success:
@@ -763,8 +764,8 @@ def locatePSFlets(inImage, polyorder=2, sig=0.7, coef=None, trimfrac=0.1,
 
     #############################################################
     # Boolean: do the lenslet PSFlets lie within the detector?
-    #############################################################   
+    #############################################################
 
-    good = (_x > 5)*(_x < xdim - 5)*(_y > 5)*(_y < ydim - 5)
+    good = (_x > 5) * (_x < xdim - 5) * (_y > 5) * (_y < ydim - 5)
 
-    return [_x, _y, good, coef_opt] 
+    return [_x, _y, good, coef_opt]

@@ -5,8 +5,9 @@ import multiprocessing
 # Return when a 'None' job (poison pill) is reached.
 ######################################################################
 
+
 class Consumer(multiprocessing.Process):
-    
+
     def __init__(self, task_queue, result_queue):
         multiprocessing.Process.__init__(self)
         self.task_queue = task_queue
@@ -21,14 +22,13 @@ class Consumer(multiprocessing.Process):
                 break
             self.result_queue.put(next_task())
         return
-    
+
+
 class Task(object):
     def __init__(self, index, func, args):
         self.index = index
         self.func = func
         self.args = args
+
     def __call__(self):
         return self.index, self.func(*self.args)
-
-        
-

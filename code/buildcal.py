@@ -1,12 +1,22 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+
+import copy
 import glob
-import re
+import logging
+import multiprocessing
 import os
+import re
+import shutil
+import sys
 import time
+
 import numpy as np
-from scipy import ndimage, interpolate
+import pkg_resources
+from astropy.io import fits
+from scipy import interpolate, ndimage
+
 try:
     import primitives
     import utr
@@ -17,13 +27,6 @@ except:
     import charis.utr as utr
     from charis.image import Image
     from charis.parallel import Task, Consumer
-import logging
-from astropy.io import fits
-import multiprocessing
-import copy
-import shutil
-import sys
-import pkg_resources
 
 log = logging.getLogger('main')
 
@@ -37,7 +40,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     sequences of CHARIS reads.
 
     Inputs:
-    1. inImage:  Image class, should include count rate and ivar for 
+    1. inImage:  Image class, should include count rate and ivar for
                  a narrow-band flatfield calibration image.
     2. inLam:    wavelength in nm of inImage
     3. mask:     bad pixel mask, =0 for bad pixels
@@ -51,19 +54,19 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
                  Default 1150
     3. lam2:     maximum wavelength (in nm) of the bandpass
                  Default 2400
-    4. R:        spectral resolution of the PSFlets templates  
+    4. R:        spectral resolution of the PSFlets templates
                  Default 25
     5. trans:    ndarray, trans[:, 0] = wavelength in nm, trans[:, 1]
-                 is fractional transmission through the filter and 
+                 is fractional transmission through the filter and
                  atmosphere.  Default None --> trans[:, 1] = 1
     6. header:   FITS header, to which will be appended the shifts
                  and rotation angle between the stored and the fitted
                  wavelength solutions.  Default None.
-    7. ncpus:    number of threads for multithreading.  
+    7. ncpus:    number of threads for multithreading.
                  Default multiprocessing.cpu_count()
 
     Returns None, writes calibration files to outdir.
-    
+
     """
 
     tstart = time.time()
@@ -84,20 +87,20 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
 
     print('Generating new wavelength solution')
     x, y, good, newcoef = primitives.locatePSFlets(inImage, polyorder=order, coef=oldcoef)
-            
+
     psftool.geninterparray(lam, allcoef, order=order)
     dcoef = newcoef - oldcoef
 
     indx = np.asarray([0, 1, 4, 10, 11, 14])
     psftool.interp_arr[0][indx] += dcoef[indx]
-    psftool.genpixsol(lam, allcoef, order=3, lam1=lam1/1.05, lam2=lam2*1.05)
+    psftool.genpixsol(lam, allcoef, order=3, lam1=lam1 / 1.05, lam2=lam2 * 1.05)
     psftool.savepixsol(outdir=outdir)
 
     #################################################################
     # Record the shift in the spot locations.
-    #################################################################    
+    #################################################################
 
-    phi1 = np.mean([np.arctan2(oldcoef[4], oldcoef[1]), 
+    phi1 = np.mean([np.arctan2(oldcoef[4], oldcoef[1]),
                     np.arctan2(-oldcoef[11], oldcoef[14])])
     phi2 = np.mean([np.arctan2(newcoef[4], newcoef[1]),
                     np.arctan2(-newcoef[11], newcoef[14])])
@@ -116,7 +119,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     hires_arrs = [fits.open(filename)[0].data for filename in hires_list]
     lam_hires = [int(re.sub('.*lam', '', re.sub('.fits', '', filename)))
                  for filename in hires_list]
-    psflet_res = 9 # Oversampling of high-resolution PSFlet images
+    psflet_res = 9  # Oversampling of high-resolution PSFlet images
 
     #################################################################
     # Width of high-resolution PSFlets, in pixels.  First compute the
@@ -126,16 +129,16 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
 
     shape = hires_arrs[0].shape
     sigarr = np.zeros((len(hires_list), shape[0], shape[1]))
-    _x = np.arange(shape[3])/9.
-    _x -= _x[_x.shape[0]//2]
+    _x = np.arange(shape[3]) / 9.
+    _x -= _x[_x.shape[0] // 2]
 
     for i in range(sigarr.shape[0]):
         for j in range(sigarr.shape[1]):
-            for k in range(sigarr.shape[2]):                
-                row = hires_arrs[i][j, k, shape[2]//2]                
-                sigarr[i, j, k] = np.sum(row*_x**2)
+            for k in range(sigarr.shape[2]):
+                row = hires_arrs[i][j, k, shape[2] // 2]
+                sigarr[i, j, k] = np.sum(row * _x**2)
                 sigarr[i, j, k] /= np.sum(row)
-                
+
         sigarr[i] = np.sqrt(sigarr[i])
 
     #################################################################
@@ -144,14 +147,14 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     # location, then interpolate in wavelength for each lenslet.
     #################################################################
 
-    mean_x = psftool.xindx[:, :, psftool.xindx.shape[-1]//2]
-    mean_y = psftool.yindx[:, :, psftool.yindx.shape[-1]//2]
+    mean_x = psftool.xindx[:, :, psftool.xindx.shape[-1] // 2]
+    mean_y = psftool.yindx[:, :, psftool.yindx.shape[-1] // 2]
 
     longsigarr = np.zeros((len(lam_hires), mean_x.shape[0], mean_x.shape[1]))
 
-    ix = mean_x*hires_arrs[0].shape[1]/2048. - 0.5
-    iy = mean_y*hires_arrs[0].shape[0]/2048. - 0.5
-    
+    ix = mean_x * hires_arrs[0].shape[1] / 2048. - 0.5
+    iy = mean_y * hires_arrs[0].shape[0] / 2048. - 0.5
+
     for i in range(sigarr.shape[0]):
         longsigarr[i] = ndimage.map_coordinates(sigarr[i], [iy, ix], order=3, mode='nearest')
     fullsigarr = np.zeros((psftool.xindx.shape))
@@ -167,9 +170,9 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     # Wavelengths at which to return the PSFlet templates
     #################################################################
 
-    Nspec = int(np.log(lam2*1./lam1)*R + 1.5)
+    Nspec = int(np.log(lam2 * 1. / lam1) * R + 1.5)
     loglam_endpts = np.linspace(np.log(lam1), np.log(lam2), Nspec)
-    loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1])/2
+    loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2
     lam_endpts = np.exp(loglam_endpts)
     lam_midpts = np.exp(loglam_midpts)
 
@@ -195,33 +198,33 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
 
     tasks = multiprocessing.Queue()
     results = multiprocessing.Queue()
-    consumers = [ Consumer(tasks, results)
-                  for i in range(ncpus) ]
+    consumers = [Consumer(tasks, results)
+                 for i in range(ncpus)]
     for w in consumers:
         w.start()
 
-    for i in range(upsamp*(Nspec - 1)):
-        ilam = i//upsamp
-        dx = (i%upsamp)*1./upsamp
+    for i in range(upsamp * (Nspec - 1)):
+        ilam = i // upsamp
+        dx = (i % upsamp) * 1. / upsamp
         tool = copy.deepcopy(psftool)
         tool.interp_arr[0, 0] -= dx
         tasks.put(Task(i, primitives.make_polychrome,
                        (lam_endpts[ilam], lam_endpts[ilam + 1], hires_arrs,
-                        lam_hires, tool, allcoef, xindx, yindx, 
+                        lam_hires, tool, allcoef, xindx, yindx,
                         psflet_res, nlam, trans)))
     for i in range(ncpus):
         tasks.put(None)
-                      
-    polyimage = np.empty((Nspec - 1, 2048, 2048*upsamp), np.float32)
+
+    polyimage = np.empty((Nspec - 1, 2048, 2048 * upsamp), np.float32)
 
     print('Generating narrowband template images')
-    for i in range(upsamp*(Nspec - 1)):
-        frac_complete = (i + 1)*1./(upsamp*(Nspec - 1))
-        N = int(frac_complete*40)
-        print('-'*N + '>' + ' '*(40 - N) + ' %3d%% complete\r' % (int(100*frac_complete)), end='')
+    for i in range(upsamp * (Nspec - 1)):
+        frac_complete = (i + 1) * 1. / (upsamp * (Nspec - 1))
+        N = int(frac_complete * 40)
+        print('-' * N + '>' + ' ' * (40 - N) + ' %3d%% complete\r' % (int(100 * frac_complete)), end='')
         index, result = results.get()
-        ilam = index//upsamp
-        dx = (index%upsamp)
+        ilam = index // upsamp
+        dx = (index % upsamp)
         polyimage[ilam, :, dx::upsamp] = result
     print('')
 
@@ -235,14 +238,14 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     good = []
     for i in range(Nspec - 1):
         _x, _y = psftool.return_locations(lam_midpts[i], allcoef, xindx, yindx)
-        _good = (_x > 8)*(_x < 2040)*(_y > 8)*(_y < 2040)
+        _good = (_x > 8) * (_x < 2040) * (_y > 8) * (_y < 2040)
         xpos += [_x]
         ypos += [_y]
         good += [_good]
 
     if upsamp > 1:
         np.save(outdir + 'polychromefullR%d.npy' % (R), polyimage)
-        
+
     out = fits.HDUList(fits.PrimaryHDU(polyimage[:, :, ::upsamp].astype(np.float32)))
     out.writeto(outdir + 'polychromeR%d.fits' % (R), clobber=True)
 
@@ -251,10 +254,9 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     outkey.append(fits.PrimaryHDU(np.asarray(ypos)))
     outkey.append(fits.PrimaryHDU(np.asarray(good).astype(np.uint8)))
     outkey.writeto(outdir + 'polychromekeyR%d.fits' % (R), clobber=True)
-    
+
     print("Total time elapsed: %.0f seconds" % (time.time() - tstart))
     return None
-    
 
 
 if __name__ == "__main__":
@@ -276,12 +278,12 @@ if __name__ == "__main__":
     bgfiles = []
     bgimages = []
     for i in range(4, len(sys.argv)):
-        bgfiles += glob.glob(sys.argv[i])        
+        bgfiles += glob.glob(sys.argv[i])
 
-    print("\n" + "*"*60)
+    print("\n" + "*" * 60)
     print("Oversample PSFlet templates to enable fitting a subpixel offset in cube")
     print("extraction?  Cost is a factor of ~2-4 in the time to build calibrations.")
-    print("*"*60)
+    print("*" * 60)
     while True:
         upsample = raw_input("     Oversample? [Y/n]: ")
         if upsample in ['', 'y', 'Y']:
@@ -294,9 +296,9 @@ if __name__ == "__main__":
             print("Invalid input.")
 
     ncpus = multiprocessing.cpu_count()
-    print("\n" + "*"*60)
+    print("\n" + "*" * 60)
     print("How many threads would you like to use?  %d threads detected." % (ncpus))
-    print("*"*60)
+    print("*" * 60)
     while True:
         nthreads = raw_input("     Number of threads to use [%d]: " % (ncpus))
         try:
@@ -311,7 +313,7 @@ if __name__ == "__main__":
                 break
             print("Invalid input.")
 
-    print("\n" + "*"*60)
+    print("\n" + "*" * 60)
     print("Building calibration files, placing results in current directory:")
     print(os.path.abspath('.'))
     print("\nSettings:\n")
@@ -324,7 +326,7 @@ if __name__ == "__main__":
         print("Background count rates will be computed.")
     else:
         print("No background will be computed.")
-    print("*"*60)
+    print("*" * 60)
     while True:
         do_calib = raw_input("     Continue with these settings? [Y/n]: ")
         if do_calib in ['', 'y', 'Y']:
@@ -333,12 +335,12 @@ if __name__ == "__main__":
             exit()
         else:
             print("Invalid input.")
-   
+
     ###############################################################
     # Wavelength limits in nm
     ###############################################################
 
-    if band == 'J':   
+    if band == 'J':
         lam1, lam2 = [1155, 1340]
     elif band == 'H':
         lam1, lam2 = [1470, 1800]
@@ -350,8 +352,8 @@ if __name__ == "__main__":
         raise ValueError('Band must be one of: J, H, K, lowres')
 
     if lam < lam1 or lam > lam2:
-        raise ValueError("Error: wavelength " + str(lam) + " outside range (" + str(lam1) + ", " + str(lam2) + ") of mode " + band)
-
+        raise ValueError("Error: wavelength " + str(lam) + " outside range (" +
+                         str(lam1) + ", " + str(lam2) + ") of mode " + band)
 
     #prefix = os.path.dirname(os.path.realpath(__file__))
     prefix = pkg_resources.resource_filename('charis', 'calibrations')
@@ -395,17 +397,17 @@ if __name__ == "__main__":
     ibg = 1
     for filename in bgfiles:
         bg = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
-        num = num + bg.data*bg.ivar
+        num = num + bg.data * bg.ivar
         denom = denom + bg.ivar
         hdr['bkgnd%03d' % (ibg)] = (re.sub('.*/', '', filename),
                                     'Dark(s) used for background subtraction')
         ibg += 1
     if len(bgfiles) > 0:
-        background = Image(data=num/denom, ivar=1./denom)
+        background = Image(data=num / denom, ivar=1. / denom)
         background.write('background.fits')
     else:
         hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
-        
+
     ###############################################################
     # Monochromatic flatfield image
     ###############################################################
@@ -414,9 +416,9 @@ if __name__ == "__main__":
     denom = 1e-100
     for filename in infilelist:
         im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
-        num = num + im.data*im.ivar
+        num = num + im.data * im.ivar
         denom = denom + im.ivar
-    inImage = Image(data=num/denom, ivar=mask*1./denom)
+    inImage = Image(data=num / denom, ivar=mask * 1. / denom)
 
     trans = np.loadtxt(os.path.join(indir, band + '_tottrans.dat'))
 

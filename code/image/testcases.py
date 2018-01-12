@@ -1,9 +1,10 @@
 import unittest
+
 from image import Image
 
 
 class ImageTests(unittest.TestCase):
-    
+
     def setUp(self):
         self.testImage = Image('testimage/HICA_withivar.fits')
 

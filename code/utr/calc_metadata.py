@@ -1,20 +1,21 @@
-from astropy import coordinates as coord
-from astropy import units as u
-from astropy.time import Time
-from astropy.io import fits
-import numpy as np
 import re
 import time
 
-def _fetch(key, filename, comment=None, newkey=None):
+import numpy as np
+from astropy import coordinates as coord
+from astropy import units as u
+from astropy.io import fits
+from astropy.time import Time
 
+
+def _fetch(key, filename, comment=None, newkey=None):
     """
     Private function _fetch fetches a key from HDU 0 of a file.  It
     returns a tuple suitable for appending to a FITS header.
 
     Parameters
     ----------
-    
+
     key:       string
         The name of the FITS header keyword
     filename:  string
@@ -22,7 +23,7 @@ def _fetch(key, filename, comment=None, newkey=None):
     comment:   string
         Comment to use for the entry.  Default None, i.e. use the comment in the original header
     newkey:    string
-        Keyword to return.  Default None, i.e., the keyword to return is the same as the keyword in the 
+        Keyword to return.  Default None, i.e., the keyword to return is the same as the keyword in the
                  original header.
     Returns
     -------
@@ -53,13 +54,12 @@ def _fetch(key, filename, comment=None, newkey=None):
         return (newkey, val, comment0)
     else:
         return (newkey, val, comment)
-        
+
 
 def metadata(filename, header=None, clear=True, version=None):
-    
     """
     Function metadata populates a FITS header (creating a new one if
-    necessary) with important information about an observation.  
+    necessary) with important information about an observation.
 
     Parameters
     ----------
@@ -94,9 +94,9 @@ def metadata(filename, header=None, clear=True, version=None):
         header.append(('version', version, 'Pipeline Version'), end=True)
 
     header.append(('comment', ''), end=True)
-    header.append(('comment', '*'*60), end=True)
-    header.append(('comment', '*'*18 + ' Time and Pointing Data ' + '*'*18), end=True)
-    header.append(('comment', '*'*60), end=True)
+    header.append(('comment', '*' * 60), end=True)
+    header.append(('comment', '*' * 18 + ' Time and Pointing Data ' + '*' * 18), end=True)
+    header.append(('comment', '*' * 60), end=True)
     header.append(('comment', ''), end=True)
 
     try:
@@ -109,7 +109,7 @@ def metadata(filename, header=None, clear=True, version=None):
     # Attempt to get the mean time of the exposure.  Try three things:
     # 1. The mean of mjd-str and mjd-end in the main header (HDU 0)
     # 2. mjd in the main header (HDU 0)
-    # 3. The mean acquisition time in the headers of the individual 
+    # 3. The mean acquisition time in the headers of the individual
     #    reads, computed as acqtime in HDU 1 plus 1.48s/2*nreads
     ####################################################################
 
@@ -117,10 +117,10 @@ def metadata(filename, header=None, clear=True, version=None):
     try:
         head = fits.open(filename)[0].header
         try:
-            mean_mjd = 0.5*(head['mjd-str'] + head['mjd-end'])
+            mean_mjd = 0.5 * (head['mjd-str'] + head['mjd-end'])
         except:
             try:
-                mean_mjd = head['mjd'] + 1.48*0.5*len(fits.open(filename))/86400
+                mean_mjd = head['mjd'] + 1.48 * 0.5 * len(fits.open(filename)) / 86400
             except:
                 ########################################################
                 # Note: acqtime is unreliable--doesn't always update.
@@ -132,11 +132,11 @@ def metadata(filename, header=None, clear=True, version=None):
                 # This is pretty bad: use the checksum time of the
                 # middle read as the time stamp of last resort.
                 ########################################################
-                head1 = fits.open(filename)[len(fits.open(filename))//2].header
+                head1 = fits.open(filename)[len(fits.open(filename)) // 2].header
                 t = head1.comments['checksum'].split()[-1]
                 t = Time(t, format='isot')
                 t.format = 'mjd'
-                mean_mjd = float(str(t))                
+                mean_mjd = float(str(t))
     except:
         mjd_ok = False
         mean_mjd = np.nan
@@ -154,20 +154,20 @@ def metadata(filename, header=None, clear=True, version=None):
         ra, dec = [head['ra'], head['dec']]
     except:
         #ra, dec = ['05:02:27.5438', '+07:27:39.265']
- 	#ra, dec = ['04:37:36.182', '-02:28:25.87']
+        #ra, dec = ['04:37:36.182', '-02:28:25.87']
         #ra, dec = ['23:07:28.83', '+21:08:02.51']
         pos_ok = False
-        
+
     if mjd_ok:
 
         ################################################################
         # Subaru's coordinates in degrees
         ################################################################
-        
+
         lng, lat = [-155.4760187, 19.825504]
         subaru = (str(lng) + 'd', str(lat) + 'd')
         t = Time(mean_mjd, format='mjd', location=subaru)
-       
+
         if pos_ok:
 
             ############################################################
@@ -175,8 +175,8 @@ def metadata(filename, header=None, clear=True, version=None):
             ############################################################
 
             c = coord.SkyCoord(ra=ra, dec=dec, unit=(u.hourangle, u.deg), frame='fk5')
-        
-            equinox = 'J%.5f' %(2000 + (mean_mjd - 51544.5)/365.25)
+
+            equinox = 'J%.5f' % (2000 + (mean_mjd - 51544.5) / 365.25)
             c = c.transform_to(coord.FK5(equinox=equinox))
 
             ############################################################
@@ -186,12 +186,12 @@ def metadata(filename, header=None, clear=True, version=None):
             ############################################################
 
             try:
-                ha =  (t.sidereal_time('apparent') - c.ra).rad
-                lat = lat*np.pi/180
-                
-                pa = -np.arctan2(-np.sin(ha), np.cos(c.dec.rad)*np.tan(lat)
-                                  - np.sin(c.dec.rad)*np.cos(ha))
-                pa = float(pa%(2*np.pi))
+                ha = (t.sidereal_time('apparent') - c.ra).rad
+                lat = lat * np.pi / 180
+
+                pa = -np.arctan2(-np.sin(ha), np.cos(c.dec.rad) * np.tan(lat)
+                                 - np.sin(c.dec.rad) * np.cos(ha))
+                pa = float(pa % (2 * np.pi))
             except:
                 pa = np.nan
         else:
@@ -220,16 +220,16 @@ def metadata(filename, header=None, clear=True, version=None):
 
     header.append(_fetch('ra', filename, comment='RA of telescope pointing'))
     header.append(_fetch('dec', filename, comment='DEC of telescope pointing'))
-    
+
     for key in ['azimuth', 'altitude']:
         header.append(_fetch(key, filename))
-    
+
     #header['ra'] = (ra, 'RA of telescope pointing')
     #header['dec'] = (dec, 'DEC of telescope pointing')
-    
+
     if np.isfinite(pa):
-        header['parang'] = (pa*180/np.pi, 'Mean parallactic angle (degrees)')
-    
+        header['parang'] = (pa * 180 / np.pi, 'Mean parallactic angle (degrees)')
+
     else:
         header['parang'] = ('unavailable', 'Mean parallactic angle (degrees)')
     header.append(_fetch('d_imrpap', filename, comment='Image rotator pupil position angle (degrees)'))
@@ -265,15 +265,15 @@ def metadata(filename, header=None, clear=True, version=None):
 
     return header
 
-def addWCS(header,xpix,ypix,xpixscale = -0.015/3600.,ypixscale = 0.015/3600.,extrarot=113.):
-    
+
+def addWCS(header, xpix, ypix, xpixscale=-0.015 / 3600., ypixscale=0.015 / 3600., extrarot=113.):
     '''
     Add the proper keywords to align the cube into the World Coordinate System.
     This modifies the variable `header` in place
-    
+
     Parameters
     ----------
-    
+
     header: FITS header
         Header to modify. Needs to already contain 'ra' and 'dec' keywords
     xpix:   float
@@ -286,7 +286,7 @@ def addWCS(header,xpix,ypix,xpixscale = -0.015/3600.,ypixscale = 0.015/3600.,ext
         Plate scale in the Y direction in degrees
     extrarot:   float
         Additional rotation angle in degrees
-    
+
     '''
     ra = header['ra']
     dec = header['dec']
@@ -294,37 +294,36 @@ def addWCS(header,xpix,ypix,xpixscale = -0.015/3600.,ypixscale = 0.015/3600.,ext
         c = coord.SkyCoord(ra=ra, dec=dec, unit=(u.hourangle, u.deg), frame='fk5')
     except:
         return
-        
+
     ####################################################################
-    # Compute the FITS header rotation and scale matrix to properly 
+    # Compute the FITS header rotation and scale matrix to properly
     # align the image in FITS viewers
     ####################################################################
 
     try:
         header.append(('comment', ''), end=True)
-        header.append(('comment', '*'*60), end=True)
-        header.append(('comment', '*'*28 + ' WCS ' + '*'*27), end=True)
-        header.append(('comment', '*'*60), end=True)    
+        header.append(('comment', '*' * 60), end=True)
+        header.append(('comment', '*' * 28 + ' WCS ' + '*' * 27), end=True)
+        header.append(('comment', '*' * 60), end=True)
         header.append(('comment', ''), end=True)
 
         header.append(('XPIXSCAL', xpixscale, 'Degrees/pixel'), end=True)
         header.append(('YPIXSCAL', ypixscale, 'Degrees/pixel'), end=True)
-        header.append(('CTYPE1', 'RA---TAN','first parameter RA  ,  projection TANgential'), end=True)
-        header.append(('CTYPE2', 'DEC--TAN','second parameter DEC,  projection TANgential'), end=True)       
-        header.append(('CRVAL1', c.ra.deg,'Reference X pixel value'), end=True)
-        header.append(('CRVAL2', c.dec.deg,'Reference Y pixel value'), end=True)
-        header.append(('CRPIX1', xpix,'Reference X pixel'), end=True)
-        header.append(('CRPIX2', ypix,'Reference Y pixel'), end=True)
-        header.append(('EQUINOX', 2000,'Equinox of coordinates'), end=True)
-        header.append(('TOT_ROT', -1*(header['PARANG']+extrarot),'Total rotation angle (degrees)'), end=True)
-        
-        angle = np.pi*(header['TOT_ROT'])/180.
-        header.append(('CD1_1', np.cos(angle)*xpixscale,'Rotation matrix coefficient'), end=True)
-        header.append(('CD1_2', np.sin(angle)*xpixscale,'Rotation matrix coefficient'), end=True)
-        header.append(('CD2_1', -np.sin(angle)*ypixscale,'Rotation matrix coefficient'), end=True)
-        header.append(('CD2_2', np.cos(angle)*ypixscale,'Rotation matrix coefficient'), end=True)
+        header.append(('CTYPE1', 'RA---TAN', 'first parameter RA  ,  projection TANgential'), end=True)
+        header.append(('CTYPE2', 'DEC--TAN', 'second parameter DEC,  projection TANgential'), end=True)
+        header.append(('CRVAL1', c.ra.deg, 'Reference X pixel value'), end=True)
+        header.append(('CRVAL2', c.dec.deg, 'Reference Y pixel value'), end=True)
+        header.append(('CRPIX1', xpix, 'Reference X pixel'), end=True)
+        header.append(('CRPIX2', ypix, 'Reference Y pixel'), end=True)
+        header.append(('EQUINOX', 2000, 'Equinox of coordinates'), end=True)
+        header.append(('TOT_ROT', -1 * (header['PARANG'] + extrarot), 'Total rotation angle (degrees)'), end=True)
+
+        angle = np.pi * (header['TOT_ROT']) / 180.
+        header.append(('CD1_1', np.cos(angle) * xpixscale, 'Rotation matrix coefficient'), end=True)
+        header.append(('CD1_2', np.sin(angle) * xpixscale, 'Rotation matrix coefficient'), end=True)
+        header.append(('CD2_1', -np.sin(angle) * ypixscale, 'Rotation matrix coefficient'), end=True)
+        header.append(('CD2_2', np.cos(angle) * ypixscale, 'Rotation matrix coefficient'), end=True)
     except:
         return
 
     return
-    
