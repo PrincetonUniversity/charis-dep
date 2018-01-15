@@ -164,7 +164,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
                                        bounds_error=False, fill_value='extrapolate')
             fullsigarr[i, j] = fit(psftool.lam_indx[i, j])
     out = fits.HDUList(fits.PrimaryHDU(fullsigarr.astype(np.float32)))
-    out.writeto('PSFwidths.fits', clobber=True)
+    out.writeto('PSFwidths.fits', overwrite=True)
 
     #################################################################
     # Wavelengths at which to return the PSFlet templates
@@ -247,13 +247,13 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
         np.save(outdir + 'polychromefullR%d.npy' % (R), polyimage)
 
     out = fits.HDUList(fits.PrimaryHDU(polyimage[:, :, ::upsamp].astype(np.float32)))
-    out.writeto(outdir + 'polychromeR%d.fits' % (R), clobber=True)
+    out.writeto(outdir + 'polychromeR%d.fits' % (R), overwrite=True)
 
     outkey = fits.HDUList(fits.PrimaryHDU(lam_midpts))
     outkey.append(fits.PrimaryHDU(np.asarray(xpos)))
     outkey.append(fits.PrimaryHDU(np.asarray(ypos)))
     outkey.append(fits.PrimaryHDU(np.asarray(good).astype(np.uint8)))
-    outkey.writeto(outdir + 'polychromekeyR%d.fits' % (R), clobber=True)
+    outkey.writeto(outdir + 'polychromekeyR%d.fits' % (R), overwrite=True)
 
     print("Total time elapsed: %.0f seconds" % (time.time() - tstart))
     return None
@@ -427,7 +427,7 @@ if __name__ == "__main__":
                       header=hdr, ncpus=nthreads)
 
     out = fits.HDUList(fits.PrimaryHDU(None, hdr))
-    out.writeto('cal_params.fits', clobber=True)
+    out.writeto('cal_params.fits', overwrite=True)
 
     shutil.copy(os.path.join(indir, 'lensletflat.fits'), './lensletflat.fits')
 

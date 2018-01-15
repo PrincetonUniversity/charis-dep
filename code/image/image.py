@@ -111,20 +111,20 @@ class Image:
             self.header = None
             self.ivar = None
 
-    def write(self, filename, clobber=True):
+    def write(self, filename, overwrite=True):
         """
-        Image.write(outfilename, clobber=True)
+        Image.write(outfilename, overwrite=True)
 
         Creates a primary HDU using self.data and self.header, and
         attempts to write to outfilename.  If self.ivar is not None,
         append self.ivar as a second HDU before writing to a file.
-        clobber is provided as a keyword to fits.HDUList.writeto.
+        overwrite is provided as a keyword to fits.HDUList.writeto.
 
         Parameters
         ----------
         filename: string
             Name of destination file
-        clobber: boolean
+        overwrite: boolean
             When True, overwrites if file already exists
         """
 
@@ -152,7 +152,7 @@ class Image:
                 log.warn("Extra header in image class must be a FITS header.")
 
         try:
-            out.writeto(filename, clobber=clobber)
+            out.writeto(filename, overwrite=overwrite)
             log.info("Writing data to " + filename)
 
         except:

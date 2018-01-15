@@ -20,7 +20,7 @@ bckgrd_reads = getreads(datadir, bckgrd_fn, read_idx, biassub='top')
 #hdulist = fits.open(datadir+bckgrd_fn)
 #bckgrd_cds = hdulist[-1].data - hdulist[1].data
 #cds = signal_cds - bckgrd_cds
-#fits.writeto('test_cds.fits', cds, clobber=True)
+#fits.writeto('test_cds.fits', cds, overwrite=True)
 
 signal = utr(signal_reads)
 signal.write('test_utr_signal.fits')

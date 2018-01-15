@@ -97,7 +97,7 @@ class PSFLets:
         out.append(fits.PrimaryHDU(self.lam_indx))
         out.append(fits.PrimaryHDU(self.nlam.astype(int)))
         try:
-            out.writeto(outfile, clobber=True)
+            out.writeto(outfile, overwrite=True)
         except:
             raise
 

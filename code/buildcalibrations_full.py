@@ -112,7 +112,7 @@ def buildcalibrations(filelist, lamlist,
                 for jj in range(di):
                     outim[ii * dj:(ii + 1) * dj, jj * dj:(jj + 1) * dj] = hiresarr[ii, jj]
             out = fits.HDUList(fits.PrimaryHDU(hiresarr.astype(np.float32)))
-            out.writeto(outdir + 'hires_psflets_lam%d.fits' % (lamlist[index]), clobber=True)
+            out.writeto(outdir + 'hires_psflets_lam%d.fits' % (lamlist[index]), overwrite=True)
 
     Nspec = int(np.log(lam2 * 1. / lam1) * R + 1.5)
     loglam_endpts = np.linspace(np.log(lam1), np.log(lam2), Nspec)
@@ -136,13 +136,13 @@ def buildcalibrations(filelist, lamlist,
         good += [_good]
 
     out = fits.HDUList(fits.PrimaryHDU(polyimage.astype(np.float32)))
-    out.writeto(outdir + 'polychromeR%d.fits' % (R), clobber=True)
+    out.writeto(outdir + 'polychromeR%d.fits' % (R), overwrite=True)
 
     outkey = fits.HDUList(fits.PrimaryHDU(lam_midpts))
     outkey.append(fits.PrimaryHDU(np.asarray(xpos)))
     outkey.append(fits.PrimaryHDU(np.asarray(ypos)))
     outkey.append(fits.PrimaryHDU(np.asarray(good).astype(np.uint8)))
-    outkey.writeto(outdir + 'polychromekeyR%d.fits' % (R), clobber=True)
+    outkey.writeto(outdir + 'polychromekeyR%d.fits' % (R), overwrite=True)
 
     print "Total time elapsed: %.0f" % (time.time() - tstart)
 
