@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
 import glob
-from distutils.extension import Extension
 
+from setuptools import setup, Extension
 from Cython.Distutils import build_ext
-from setuptools import setup
 
 ext_modules_openMP = []
 ext_modules_openMP += [Extension("charis.primitives.matutils",
@@ -32,7 +31,7 @@ ext_modules_noopenMP += [Extension("charis.utr.fitramp",
 def setup_charis(ext_modules):
     setup(
         name='charis',
-        version='1.0.0',
+        version='1.0.1',
         description='The Data Reduction Pipeline for the CHARIS Integral-Field Spectrograph',
         author='Timothy Brandt, Maxime Rizzo',
         author_email='timothy.d.brandt@gmail.com',
@@ -59,7 +58,7 @@ def setup_charis(ext_modules):
                      ['charis/calibrations/highres_K/lensletflat.fits',
                         'charis/calibrations/highres_K/K_tottrans.dat',
                         'charis/calibrations/highres_K/lamsol.dat'])],
-        install_requires=['numpy', 'scipy', 'astropy'],
+        install_requires=['numpy', 'scipy', 'astropy', 'cython>=0.x'],
         scripts=['scripts/buildcal', 'scripts/extractcube'],
         cmdclass={'build_ext': build_ext},
         ext_modules=ext_modules
