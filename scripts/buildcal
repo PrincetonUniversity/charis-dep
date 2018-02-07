@@ -23,8 +23,8 @@ try:
     from image import Image
     from parallel import Task, Consumer
 except:
-    import charis.primitives as primitives
-    import charis.utr as utr
+    from charis import primitives
+    from charis import utr
     from charis.image import Image
     from charis.parallel import Task, Consumer
 
@@ -411,7 +411,7 @@ if __name__ == "__main__":
         indir = os.path.join(prefix, "lowres")
         R = 30
 
-    mask = fits.open(os.path.join(prefix, 'mask.fits'))[0].data
+    mask = fits.open(os.path.join(indir, 'mask.fits'))[0].data
 
     hdr = fits.PrimaryHDU().header
     hdr.clear()
@@ -474,4 +474,4 @@ if __name__ == "__main__":
     shutil.copy(os.path.join(indir, 'lensletflat.fits'), './lensletflat.fits')
 
     for filename in ['mask.fits', 'pixelflat.fits']:
-        shutil.copy(os.path.join(prefix, filename), './' + filename)
+        shutil.copy(os.path.join(indir, filename), './' + filename)
