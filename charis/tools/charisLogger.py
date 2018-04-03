@@ -69,13 +69,13 @@ class CharisLogger(logging.getLoggerClass()):
         """
         verbose = False
         if verbose:
-            print 'Changing logging level to ' + repr(lvl)
+            print('Changing logging level to ' + repr(lvl))
         # Kill off the old handlers and reset them with the setHandlers func
         for i in range(0, len(self.handlers)):
             h = self.handlers[i]
             if isinstance(h, logging.FileHandler):
                 if verbose:
-                    print 'filehandler type'
+                    print('filehandler type')
             elif isinstance(h, logging.StreamHandler):
                 # print 'stream handler type'
                 if verbose:
@@ -218,11 +218,11 @@ def getLogger(name='generalLoggerName', lvl=20, addFH=True, addSH=True):
     try:
         log = log_dict[name]
         if verbose:
-            print repr(log_dict)
-            print 'found a log by the name already exists so returning it'
+            print(repr(log_dict))
+            print('found a log by the name already exists so returning it')
     except:
         if verbose:
-            print 'No logger object found so creating one with the name ' + name
+            print('No logger object found so creating one with the name ' + name)
         log = setUpLogger(name, lvl, addFH, addSH)
     return log
 
@@ -276,7 +276,7 @@ def addFileHandler(log, lvl=1):
     """
     verbose = False
     if verbose:
-        print 'Setting FileHandler level to ' + str(lvl)
+        print('Setting FileHandler level to ' + str(lvl))
     fh = logging.FileHandler(log.name + '.log')
     fh.setLevel(lvl)
     frmtString = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -297,7 +297,7 @@ def addStreamHandler(log, lvl=20):
     """
     verbose = False
     if verbose:
-        print 'Setting StreamHandler level to ' + str(lvl)
+        print('Setting StreamHandler level to ' + str(lvl))
     sh = logging.StreamHandler(sys.stdout)
     sh.setLevel(lvl)
     sFrmt = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
@@ -317,7 +317,7 @@ def addFitsStyleHandler(log):
     fitsFhLevel = 1
     verbose = False
     if verbose:
-        print 'Setting FITS FileHandler level to ' + str(fitsFhLevel)
+        print('Setting FITS FileHandler level to ' + str(fitsFhLevel))
     fh2 = logging.FileHandler(log.name + '.fitsFormat.log')
     fh2.setLevel(fitsFhLevel)
     frmtString2 = '%(asctime)s - %(message)s'

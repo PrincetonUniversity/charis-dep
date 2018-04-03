@@ -347,7 +347,7 @@ class PSFLets:
                     try:
                         tck_y = interpolate.splrep(pix_y[::-1], interp_lam[::-1], k=1, s=0)
                     except:
-                        print pix_x, pix_y
+                        print(pix_x, pix_y)
                         raise
                 else:
                     tck_y = interpolate.splrep(pix_y, interp_lam, k=1, s=0)
