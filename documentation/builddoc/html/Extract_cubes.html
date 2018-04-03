@@ -1,0 +1,529 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Extract cubes &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Post-processing methods" href="PostProcessing.html" />
+    <link rel="prev" title="Run the wavelength calibration" href="Run_wavecal.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="PostProcessing.html" title="Post-processing methods">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="Run_wavecal.html" title="Run the wavelength calibration">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      
+      <li>Extract cubes</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput,
+div.nbinput div.prompt,
+div.nbinput div.input_area,
+div.nbinput div[class*=highlight],
+div.nbinput div[class*=highlight] pre,
+div.nboutput,
+div.nbinput div.prompt,
+div.nbinput div.output_area,
+div.nboutput div[class*=highlight],
+div.nboutput div[class*=highlight] pre {
+    background: none;
+    border: none;
+    padding: 0 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* avoid gaps between output lines */
+div.nboutput div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput,
+div.nboutput {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput,
+    div.nboutput {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput div.prompt pre {
+    color: #303F9F;
+}
+
+/* output prompt */
+div.nboutput div.prompt pre {
+    color: #D84315;
+}
+
+/* all prompts */
+div.nbinput div.prompt,
+div.nboutput div.prompt {
+    min-width: 9ex;
+    padding-top: 0.4em;
+    padding-right: 0.4em;
+    text-align: right;
+    flex: 0;
+}
+@media (max-width: 540px) {
+    div.nbinput div.prompt,
+    div.nboutput div.prompt {
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput div.prompt.empty {
+        padding: 0;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput div.prompt pre,
+div.nboutput div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput div.input_area,
+div.nboutput div.output_area {
+    padding: 0.4em;
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput div.input_area,
+    div.nboutput div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput div.input_area {
+    border: 1px solid #cfcfcf;
+    border-radius: 2px;
+    background: #f7f7f7;
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.pngmath center alignment in output cells */
+div.nboutput div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-bold { font-weight: bold; }
+</style>
+<div class="section" id="Extract-cubes">
+<h1>Extract cubes<a class="headerlink" href="#Extract-cubes" title="Permalink to this headline">¶</a></h1>
+<p>Now extract a cube. First, you need to create an appropriate .ini file
+by modifying sample.ini in the code directory. With the example file
+names given above and with your modified .ini file in the current
+working directory, you would run:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">extractcube</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">CRSA00000000</span><span class="o">.</span><span class="n">fits</span> <span class="n">modified</span><span class="o">.</span><span class="n">ini</span>
+</pre></div>
+</div>
+<p>The arguments are simply:</p>
+<ol class="arabic simple">
+<li>The raw file(s) to extract into cubes</li>
+<li>The configuration file</li>
+</ol>
+<p>The extracted cubes will be written to the current working directory.
+The first HDU is simply the header with some basic information, the
+second HDU is the cube, the third HDU is the inverse variance on the
+cube, and the fourth HDU has no data but saves the original header on
+HDU0 of the raw reads.</p>
+<div class="section" id=".ini-file-example">
+<h2>.ini file example<a class="headerlink" href="#.ini-file-example" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">Ramp</span><span class="p">]</span>
+<span class="c1"># First read to use in ramp (first overall read is 1)</span>
+<span class="n">read_0</span> <span class="p">:</span> <span class="mi">1</span>
+<span class="c1"># Last read to use, None = use all reads from read_0 onwards</span>
+<span class="n">read_f</span> <span class="p">:</span> <span class="kc">None</span>
+<span class="c1"># Detector gain, used to compute photon noise</span>
+<span class="n">gain</span> <span class="p">:</span> <span class="mi">2</span>
+<span class="c1"># Fraction of the count rate to add as noise: 0.05, for example,</span>
+<span class="c1"># assumes that there is a systematic 5% error in the count rate at</span>
+<span class="c1"># each pixel from imperfect PSF-let models.  This should give a</span>
+<span class="c1"># reduced chi squared close to 1 if it is being used.  Set to zero to</span>
+<span class="c1"># use simply read noise and photon noise.</span>
+<span class="n">noisefac</span> <span class="p">:</span> <span class="mf">0.02</span>
+<span class="c1"># Save the ramp and inverse variance as its own file?</span>
+<span class="n">saveramp</span> <span class="p">:</span> <span class="kc">True</span>
+
+<span class="p">[</span><span class="n">Calib</span><span class="p">]</span>
+<span class="c1"># Location of calibration files</span>
+<span class="n">calibdir</span> <span class="p">:</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">calibration</span><span class="o">/</span><span class="n">files</span>
+<span class="c1"># Subtract the background file in calibdir above before extracting a cube?</span>
+<span class="n">bgsub</span> <span class="p">:</span> <span class="kc">False</span>
+<span class="c1"># Mask bad pixels using a mask in calibdir?</span>
+<span class="n">mask</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Apply flatfields to correct pixel-to-pixel sensitivity variations</span>
+<span class="c1"># and lenslet-to-lenslet illumination variations?</span>
+<span class="n">flatfield</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Fit for position-dependent subpixel shifts in the locations of the</span>
+<span class="c1"># microspectra in individual frames?</span>
+<span class="n">fitshift</span> <span class="p">:</span> <span class="kc">True</span>
+
+<span class="p">[</span><span class="n">Extract</span><span class="p">]</span>
+<span class="c1"># Spectral resolution for extraction.</span>
+<span class="c1"># Recommended: 30 for lowres, 100 for highres.</span>
+<span class="c1"># PSFlet template files for this resolution must already be in calibdir.</span>
+<span class="n">R</span> <span class="p">:</span> <span class="mi">30</span>
+<span class="c1"># Method of extraction, lstsq strongly preferred.  Other choice is optext</span>
+<span class="n">method</span> <span class="p">:</span> <span class="n">lstsq</span>
+<span class="c1"># Iterate one time on the least-squares data cube to remove crosstalk?</span>
+<span class="n">refine</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Supress correlated read noise?  Approximately doubles cube extraction</span>
+<span class="c1"># time, but improves read noise by up to a factor of 4.</span>
+<span class="c1"># For science reductions, refine and suppressrn should be True.</span>
+<span class="n">suppressrn</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Mask (set ivar = 0) poor spectral measurements, i.e., those with</span>
+<span class="c1"># much worse inverse variances than their average neighbors&#39;?  If</span>
+<span class="c1"># True, the software will replace these intensity measurements with</span>
+<span class="c1"># interpolated values.  As the measurements are masked anwyay (ivar=0)</span>
+<span class="c1"># this is purely cosmetic.</span>
+<span class="n">smoothandmask</span> <span class="p">:</span> <span class="kc">True</span>
+<span class="c1"># Save the residuals of the 2D image as a separate FITS file?  This</span>
+<span class="c1"># keyword does nothing unless method == &#39;lstsq&#39;</span>
+<span class="n">saveresid</span> <span class="p">:</span> <span class="kc">False</span>
+<span class="c1"># Maximum threads for parallelization.</span>
+<span class="c1"># Negative: leave that many threads free.  None: use number of cpus.</span>
+<span class="n">maxcpus</span> <span class="p">:</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<div class="section" id="Process-all-my-files-at-once">
+<h3>Process all my files at once<a class="headerlink" href="#Process-all-my-files-at-once" title="Permalink to this headline">¶</a></h3>
+<p>We suggest a structure where all your raw data is some folder, e.g.
+data/HD1160_lowres/, and reduced everythng in
+data/HD1160_lowres/reduced. Put the .ini file with your reduction
+parameters into data/HD1160_lowres/reduced. To process all your files
+at once, cd into data/HD1160_lowres/reduced, and issue:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">extractcube</span> <span class="o">../*.</span><span class="n">fits</span> <span class="n">HD1160_lowres</span><span class="o">.</span><span class="n">ini</span>
+</pre></div>
+</div>
+<p>This will reduced all the fits files in the parent folder (make sure you
+only have data in there, and not calibration files!), and put the
+reduced cubes in the current reduced/ directory.</p>
+</div>
+<div class="section" id="Headers-of-final-cubes">
+<h3>Headers of final cubes<a class="headerlink" href="#Headers-of-final-cubes" title="Permalink to this headline">¶</a></h3>
+<p>This is an example of the types of headers you can get in the reduced
+cubes.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>SIMPLE  =                    T / conforms to FITS standard
+BITPIX  =                    8 / array data type
+NAXIS   =                    0 / number of array dimensions
+EXTEND  =                    T
+DATE    = &#39;20170415&#39;           / File creation date (yyyymmdd)
+COMMENT
+COMMENT ************************************************************
+COMMENT ****************** Time and Pointing Data ******************
+COMMENT ************************************************************
+COMMENT
+ORIGNAME= &#39;00015170&#39;           / Original file ID number
+MJD     =    57650.45685217485 / Mean MJD of exposure
+UTC-DATE= &#39;2016-09-19&#39;         / UTC date of exposure
+UTC-TIME= &#39;10:57:52.028&#39;       / Mean UTC time of exposure
+RA      = &#39;00:15:56.886&#39;       / RA of telescope pointing
+DEC     = &#39;+04:15:06.55&#39;       / DEC of telescope pointing
+PARANG  =    12.36294147157994 / Mean parallactic angle (degrees)
+D_IMRPAP=                -39.0 / Image rotator pupil position angle (degrees)
+FILTNAME= &#39;Broadband&#39;          / CHARIS filter name
+FILTSLOT=                  4.0 / CHARIS filter slot
+PRISM   = &#39;unavailable&#39;        / CHARIS prism (lo/hi/out)
+SHUTTER = &#39;open    &#39;           / CHARIS shutter position
+COMMENT
+COMMENT ************************************************************
+COMMENT ********************* Calibration Data *********************
+COMMENT ************************************************************
+COMMENT
+CALFNAME= &#39;CRSA00014390.fits&#39;  / Monochromatic image used for calibration
+CAL_DATE=     57649.6714748476 / MJD date of calibration image
+CAL_LAM =                 1550 / Wavelength of calibration image (nm)
+CAL_BAND= &#39;lowres  &#39;           / Band/mode of calibration image (J/H/K/lowres)
+BKGND001= &#39;None    &#39;           / Dark(s) used for background subtraction
+CAL_DX  =  -0.2297651730525558 / x-shift from archival spot positions (pixels)
+CAL_DY  =   -2.389031784064741 / y-shift from archival spot positions (pixels)
+CAL_DPHI= -0.00123460540812825 / Rotation from archival spot positions (radians)
+COMMENT
+COMMENT ************************************************************
+COMMENT ******************* Ramp, Masking, Noise *******************
+COMMENT ************************************************************
+COMMENT
+FIRSTRD =                    1 / First HDU of original file used
+LASTRD  =                   14 / Last HDU of original file used
+PIXMASK =                    T / Mask known bad/hot pixels?
+GAIN    =                  2.0 / Assumed detector gain for Poisson variance
+NOISEFAC=                  0.0 / Added noise (as fraction of abs(ct rate))
+FITDECAY=                    T / Fit exponential decay of ref. volt. in read 1?
+NONLIN  =                    T / Fit nonlinear pixel response?
+BGSUB   =                    F / Subtract background count rate from a dark?
+FLATFLD =                    T / Flatfield the detector and lenslet array?
+COMMENT
+COMMENT ************************************************************
+COMMENT ********************** Cube Extraction *********************
+COMMENT ************************************************************
+COMMENT
+FITSHIFT=                    T / Fit a subpixel shift in PSFlet locations?
+CUBEMODE= &#39;Chi^2 Fit to PSFlets&#39; / Method used to extract data cube
+FITBKGND=                    T / Fit an undispersed background in each lenslet?
+REDUCERN=                    T / Suppress read noise using low ct rate pixels?
+RNPCTPIX=    59.99999046325684 / % of pixels used to estimate read noise
+REFINE  =                    T / Iterate solution to remove crosstalk?
+LAM_MIN =    1159.561439621683 / Minimum (central) wavelength of extracted cube
+LAM_MAX =    2369.344052089524 / Maximum (central) wavelength of extracted cube
+DLOGLAM =  0.03402720386800707 / Log spacing of extracted wavelength bins
+NLAM    =                   22 / Number of extracted wavelengths
+MASKIVAR=                    T / Set poor ivar to 0, smoothed I for cosmetics
+XPIXSCAL= -4.5555555555555E-06 / Degrees/pixel
+YPIXSCAL= 4.55555555555555E-06 / Degrees/pixel
+CTYPE1  = &#39;RA---TAN&#39;           / first parameter RA  ,  projection TANgential
+CTYPE2  = &#39;DEC--TAN&#39;           / second parameter DEC,  projection TANgential
+CRVAL1  =             3.987025 / Reference X pixel value
+CRVAL2  =    4.251819444444444 / Reference Y pixel value
+CRPIX1  =                  100 / Reference X pixel
+CRPIX2  =                  100 / Reference Y pixel
+EQUINOX =                 2000 / Equinox of coordinates
+TOT_ROT =   -125.3629414715799 / Total rotation angle (degrees)
+CD1_1   = 2.63654523459264E-06 / Rotation matrix coefficient
+CD1_2   = 3.71506603517351E-06 / Rotation matrix coefficient
+CD2_1   = 3.71506603517351E-06 / Rotation matrix coefficient
+CD2_2   = -2.6365452345926E-06 / Rotation matrix coefficient
+END
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Final-cube-example">
+<h2>Final cube example<a class="headerlink" href="#Final-cube-example" title="Permalink to this headline">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none"><div class="highlight"><pre>
+<span></span>In [20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">YouTubeVideo</span>
+<span class="n">YouTubeVideo</span><span class="p">(</span><span class="s1">&#39;bRlC-My14kc&#39;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none"><div class="highlight"><pre>
+<span></span>Out[20]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<iframe
+    width="600"
+    height="400"
+    src="https://www.youtube.com/embed/bRlC-My14kc"
+    frameborder="0"
+    allowfullscreen
+></iframe></div>
+</div>
+<p>This system shows a companion in the bottom left of the image. Unlike
+the satellite spots and the stellar PSF, which scale with wavelength,
+the location of any off-axis source (in this case, the companion) stays
+the same across the wavelengths.</p>
+</div>
+<div class="section" id="Load-the-cube-with-Python">
+<h2>Load the cube with Python<a class="headerlink" href="#Load-the-cube-with-Python" title="Permalink to this headline">¶</a></h2>
+<p>Each cube slice corresponds to a different wavelength. One can retrieve
+the wavelength of each slice from the header using LAM_MIN, LAM_MAX,
+and DLOGLAM, with the understanding that the wavelengths are evenly
+sampled in log-space. In Python the header, cube, and inverse variance
+can be loaded as follows, and the wavelength array generated from it:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none"><div class="highlight"><pre>
+<span></span>In [ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2"><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="c1">### Note the order in which the extensions are laid out</span>
+<span class="n">hdulist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;myfile.fits&quot;</span><span class="p">)</span>
+<span class="n">hdr</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span> <span class="c1"># hdu[0] contains no data</span>
+<span class="n">cube</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+<span class="n">ivar</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+<span class="n">rawdata_header</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+<span class="n">lam</span> <span class="o">=</span> <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;lam_min&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">cube</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;dloglam&#39;</span><span class="p">])</span>
+
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Extract cubes</a><ul>
+<li><a class="reference internal" href="#.ini-file-example">.ini file example</a><ul>
+<li><a class="reference internal" href="#Process-all-my-files-at-once">Process all my files at once</a></li>
+<li><a class="reference internal" href="#Headers-of-final-cubes">Headers of final cubes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Final-cube-example">Final cube example</a></li>
+<li><a class="reference internal" href="#Load-the-cube-with-Python">Load the cube with Python</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/Extract_cubes.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 22 Apr 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

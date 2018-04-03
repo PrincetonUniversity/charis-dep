@@ -1,0 +1,219 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>extractcube module &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="image package" href="image.html" />
+    <link rel="prev" title="buildcal module" href="buildcal.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="image.html" title="image package">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="buildcal.html" title="buildcal module">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      
+      <li>extractcube module</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-extractcube">
+<span id="extractcube-module"></span><h1>extractcube module<a class="headerlink" href="#module-extractcube" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="extractcube.getcube">
+<code class="descclassname">extractcube.</code><code class="descname">getcube</code><span class="sig-paren">(</span><em>filename, read_idx=[1, None], calibdir='calibrations/20160408/', bgsub=True, mask=True, gain=2, noisefac=0, saveramp=False, R=30, method='lstsq', refine=True, suppressrn=True, fitshift=True, flatfield=True, smoothandmask=True, minpct=70, fitbkgnd=True, saveresid=False, maxcpus=8</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/extractcube.html#getcube"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#extractcube.getcube" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provisional routine getcube.  Construct and return a data cube
+from a set of reads.</p>
+<p>Inputs:
+1. filename: name of the file containing the up-the-ramp reads.</p>
+<blockquote>
+<div>Should include the full path/to/file.</div></blockquote>
+<p>Optional inputs:
+1. read_idx: list of two numbers, the first and last reads to use in</p>
+<blockquote>
+<div>the up-the-ramp combination.  Default [2, None], i.e., 
+discard the first read and use all of the rest.</div></blockquote>
+<ol class="arabic simple" start="2">
+<li><dl class="first docutils">
+<dt>calibdir: name of the directory containing the calibration files.  </dt>
+<dd>Default calibrations/20160408/</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>bgsub:    Subtract the file background.fits in calibdir?  Default</dt>
+<dd>True.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>mask:     Apply the bad pixel mask mask.fits in the directory</dt>
+<dd>calibdir?  Strongly recommended.  Default True.</dd>
+</dl>
+</li>
+<li>gain:     Detector gain, used to compute shot noise.  Default 2.</li>
+<li><dl class="first docutils">
+<dt>noisefac: Extra factor of noise to account for imperfect lenslet</dt>
+<dd>models: 
+variance = readnoise + shotnoise + noisefac*countrate
+Default zero, values of around 0.05 should give 
+reduced chi squared values of around 1 in the fit.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>R:        integer, approximate resolution lam/delta(lam) of the</dt>
+<dd>extracted data cube.  Resolutions higher than ~25 or 30
+are comparable to or finer than the pixel sampling and 
+are not recommended&#8211;there is very strong covariance.
+Default 30.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>method:   string, method used to extract data cube.  Should be </dt>
+<dd>either &#8216;lstsq&#8217; for a least-squares extraction or 
+&#8216;optext&#8217; for a quasi-optimal extraction.  Default
+&#8216;lstsq&#8217;</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>refine:   Fit the data cube twice to account for nearest neighbor</dt>
+<dd>crosstalk?  Approximately doubles runtime.  This option
+also enables read noise suppression (below).  Default 
+True</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>suppress_rn: Remove correlated read noise between channels using </dt>
+<dd>the residuals of the 50% least illuminated pixels?  
+Default True.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>fitshift: Fit a subpixel shift in the psflet locations across </dt>
+<dd>the detector?  Recommended except for quicklook.  Cost 
+is modest compared to cube extraction</dd>
+</dl>
+</li>
+</ol>
+<p>Returns:
+1. datacube: an instance of the Image class containing the data cube.</p>
+<p>Steps performed:</p>
+<p>1. Up-the-ramp combination.  As of yet no special read noise
+suppression (just a channel-by-channel correction of the reference
+voltages).  Do a full nonlinear fit for high count pixels, and 
+remove an exponential decay of the reference voltage in the first
+read.
+2. Subtraction of thermal background from file in calibration 
+directory.
+3. Application of hot pixel mask (as zero inverse variances).
+4. Load calibration files from calibration directory for the data
+cube extraction, optionally fit for subpixel shifts across the 
+detector.
+5. Extract the data cube.</p>
+<p>Notes for now: the quasi-optimal extraction isn&#8217;t really an
+optimal extraction.  Every lenslet&#8217;s spectrum natively samples a
+different set of wavelengths, so right now they are all simply
+interpolated onto the same wavelength array.  This is certainly
+not optimal, but I don&#8217;t see any particularly good alternatives
+(other than maybe convolving to a lower, but uniform, resolution).
+The lstsq extraction can include all errors and covariances.
+Errors are included (the diagonal of the covariance matrix), but
+the full covariance matrix is currently discarded.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">extractcube module</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/extractcube.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 22 Apr 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

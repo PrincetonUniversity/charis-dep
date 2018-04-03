@@ -1,0 +1,65 @@
+Software package charis, designed to build calibration files for the CHARIS integral-field spectrograph for the Subaru telescope and to extract data cubes from sequences of raw reads.
+
+
+Requirements:
+Python 2.7
+Cython with a C compiler and OpenMP
+
+
+Dependencies:
+numpy, scipy, astropy
+
+
+Documentation page:
+http://princetonuniversity.github.io/charis-dep/
+
+
+Your computer should have at least ~2 GB of RAM to extract data cubes, and at least 2 GB/core (and at least 4 GB total) to build the calibration files.  The calibration files can take a long time to generate if you do not have multiple processors.
+
+
+Installation:
+The easy way to install is to use the setup.py in this directory with
+python setup.py install
+I strongly recommend that you first install the anaconda Python 2.7 from here if you are not already using anaconda:
+https://www.continuum.io/downloads
+
+** CAUTIONARY NOTE: the method below may or may not work with the latest versions of Anaconda and Xcode; it may break either the pipeline or numpy/scipy by linking incompatible libraries.  I recommend not following these instructions.  The setup script as invoked above will attempt to install with openMP support, but will default to an installation without openMP support. **
+If you are running this on a Mac, you need gcc from Xcode, and you probably need a homebrew installation of gcc-5 to enable OpenMP linking.  Follow the instructions here:
+http://mathcancer.blogspot.com/2016/01/PrepOSXForCoding-Homebrew.html
+You may need to specify the C compiler when running the setup script using something like
+CC=gcc-5 python setup.py install
+or
+CC=gcc-mp-5 python setup.py install
+Type gcc [tab][tab] in a terminal to see your available gcc compilers.  If you use tcsh instead of bash, your export command will be different, but something like this should work:
+set CC = gcc-5
+python setup.py install
+** END CAUTIONARY NOTE **
+
+Quick-start tutorial, basic usage with sample files:
+(note: sample files of the M5 globular cluster are currently hosted at http://web.physics.ucsb.edu/~tbrandt/charis_sample_data/)
+** NOTE: file hosting location changed December 2017 **
+
+Example: 
+CRSA00000001.fits is a 1550-nm monochromatic flat taken in broadband/lowres mode
+CRSA00000002.fits through CRSA00000005.fits are broadband/lowres darks
+CRSA10000000.fits is a science frame in broadband/lowres mode 
+
+First, we must build the calibration files.  Create a directory where they will live, make this the current working directory, and run
+buildcal /path/to/CRSA00000001.fits 1550 lowres /path/to/CRSA0000000[2-5].fits
+Follow the prompts to create (or not) oversampled PSFlet images.  This routine will create calibration files in the current working directory.  The arguments to buildcal are:
+1. The monochromatic flat, as a raw sequence of CHARIS reads
+2. The wavelength (in nm) of the monochromatic flat
+3. The CHARIS mode (J/H/K/lowres)
+4. Background frame(s)/dark(s) (optional)
+
+Newer calibration files require simply, e.g.,
+buildcal /path/to/CRSA00000000.fits
+with the wavelength and observing mode encoded in the fits header.
+
+Now extract a cube.  First, you need to create an appropriate .ini file by modifying sample.ini in the code directory.  With the example file names given above and with your modified .ini file in the current working directory, you would run
+extractcube /path/to/CRSA00000000.fits modified.ini
+The arguments are simply
+1. The raw file(s) to extract into cubes
+2. The configuration file
+The extracted cubes will be written to the current working directory.  The first HDU is simply the header with some basic information, the second HDU is the cube, the third HDU is the inverse variance on the cube, and the fourth HDU has no data but saves the original header on HDU0 of the raw reads.
+

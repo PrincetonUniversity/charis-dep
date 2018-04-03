@@ -1,0 +1,225 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>CHARIS DATA REDUCTION PIPELINE &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Install the CHARIS Data reduction pipeline" href="Installation.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="#"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="Installation.html" title="Install the CHARIS Data reduction pipeline">
+	  next &raquo;
+	</a>
+      </li>
+      <li>
+	<a href="#">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="charis-data-reduction-pipeline">
+<h1>CHARIS DATA REDUCTION PIPELINE<a class="headerlink" href="#charis-data-reduction-pipeline" title="Permalink to this headline">¶</a></h1>
+<p>Software package for CHARIS, designed to build calibration files for the CHARIS integral-field spectrograph for the Subaru telescope and to extract data cubes from sequences of raw reads.</p>
+<img src="_static/HR4796A.png" width="300"/><div class="section" id="how-the-software-works">
+<h2>How the software works<a class="headerlink" href="#how-the-software-works" title="Permalink to this headline">¶</a></h2>
+<p><strong>Installation</strong></p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Install the CHARIS Data reduction pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#Requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#Dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#Installation">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html#Troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#Install-gcc-through-Macports">Install gcc through Macports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Installation.html#Install-the-CHARIS-DRP-with-AstroConda-(or-if-you-regular-conda-installation-uses-Python-3.xx)">Install the CHARIS DRP with AstroConda (or if you regular conda installation uses Python 3.xx)</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p><strong>Build a new wavecal</strong></p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Run_wavecal.html">Run the wavelength calibration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Run_wavecal.html#Data-taken-before-Apr-1,-2017">Data taken before Apr 1, 2017</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p><strong>Extract cubes*</strong></p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Extract_cubes.html">Extract cubes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Extract_cubes.html#.ini-file-example">.ini file example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Extract_cubes.html#Final-cube-example">Final cube example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Extract_cubes.html#Load-the-cube-with-Python">Load the cube with Python</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p><strong>Postprocessing</strong></p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="PostProcessing.html">Post-processing methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PostProcessing.html#ADI">ADI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PostProcessing.html#SDI">SDI</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="buildcal.html">buildcal module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extractcube.html">extractcube module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image.html">image package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="image.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="image.html#module-image.image">image.image module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="image.html#module-image.psflet">image.psflet module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="image.html#module-image.testcases">image.testcases module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="image.html#module-image">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="primitives.html">primitives package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-buildmonochrome-module">primitives.buildmonochrome module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-fit-psflets-module">primitives.fit_psflets module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-locate-psflets-module">primitives.locate_psflets module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-matutils-module">primitives.matutils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-offset-cal-module">primitives.offset_cal module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#primitives-setup-module">primitives.setup module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="primitives.html#module-contents">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">tools package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tools.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tools.html#module-tools.badpix">tools.badpix module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tools.html#module-tools.charisLogger">tools.charisLogger module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tools.html#module-tools">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utr.html">utr package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utr.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utr.html#utr-calc-metadata-module">utr.calc_metadata module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utr.html#utr-fitramp-module">utr.fitramp module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utr.html#utr-setup-module">utr.setup module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utr.html#utr-utr-module">utr.utr module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utr.html#module-contents">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">CHARIS DATA REDUCTION PIPELINE</a><ul>
+<li><a class="reference internal" href="#how-the-software-works">How the software works</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#examples">Examples</a></li>
+<li><a class="reference internal" href="#api">API</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/index.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 22 Apr 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

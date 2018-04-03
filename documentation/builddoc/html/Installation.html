@@ -1,0 +1,294 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Install the CHARIS Data reduction pipeline &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Run the wavelength calibration" href="Run_wavecal.html" />
+    <link rel="prev" title="CHARIS DATA REDUCTION PIPELINE" href="index.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="Run_wavecal.html" title="Run the wavelength calibration">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="index.html" title="CHARIS DATA REDUCTION PIPELINE">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      
+      <li>Install the CHARIS Data reduction pipeline</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="Install-the-CHARIS-Data-reduction-pipeline">
+<h1>Install the CHARIS Data reduction pipeline<a class="headerlink" href="#Install-the-CHARIS-Data-reduction-pipeline" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="Requirements">
+<h2>Requirements<a class="headerlink" href="#Requirements" title="Permalink to this headline">¶</a></h2>
+<p>Python 2.7 Cython with a C compiler and OpenMP. C compilers as gcc-5,
+gcc-mp-5, gcc-mp-6 are acceptable.</p>
+<p>Your computer should have at least ~2 GB of RAM to extract data cubes,
+and at least 2 GB/core (and at least 4 GB total) to build the
+calibration files. The calibration files can take a long time to
+generate if you do not have multiple processors.</p>
+</div>
+<div class="section" id="Dependencies">
+<h2>Dependencies<a class="headerlink" href="#Dependencies" title="Permalink to this headline">¶</a></h2>
+<p>numpy, scipy, astropy</p>
+</div>
+<div class="section" id="Installation">
+<h2>Installation<a class="headerlink" href="#Installation" title="Permalink to this headline">¶</a></h2>
+<p>The easy way to install is to use the setup.py in this directory with</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+<p>I strongly recommend that you first install the anaconda Python 2.7 from
+here if you are not already using anaconda:
+<a class="reference external" href="https://www.continuum.io/downloads">https://www.continuum.io/downloads</a> If you are running this on a Mac, you
+need gcc from Xcode, and you probably need a homebrew installation of
+gcc-5 to enable OpenMP linking. Follow the instructions here:
+<a class="reference external" href="http://mathcancer.blogspot.com/2016/01/PrepOSXForCoding-Homebrew.html">http://mathcancer.blogspot.com/2016/01/PrepOSXForCoding-Homebrew.html</a>
+You may need to specify the C compiler when running the setup script
+using something like</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CC</span><span class="o">=</span><span class="n">gcc</span><span class="o">-</span><span class="mi">5</span> <span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CC</span><span class="o">=</span><span class="n">gcc</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">5</span> <span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+<p>Type gcc [tab][tab] in a terminal to see your available gcc compilers.
+If you use tcsh instead of bash, your export command will be different,
+but something like this should work:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">set</span> <span class="n">CC</span> <span class="o">=</span> <span class="n">gcc</span><span class="o">-</span><span class="mi">5</span>
+<span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+<p>You can check that the installation was successful by typing:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">buildcal</span>
+<span class="n">Must</span> <span class="n">call</span> <span class="n">buildcal</span> <span class="k">with</span> <span class="n">at</span> <span class="n">least</span> <span class="n">three</span> <span class="n">arguments</span><span class="p">:</span>
+  <span class="mi">1</span><span class="p">:</span> <span class="n">The</span> <span class="n">path</span> <span class="n">to</span> <span class="n">the</span> <span class="n">narrow</span><span class="o">-</span><span class="n">band</span> <span class="n">flatfield</span> <span class="n">image</span>
+  <span class="mi">2</span><span class="p">:</span> <span class="n">The</span> <span class="n">wavelength</span><span class="p">,</span> <span class="ow">in</span> <span class="n">nm</span><span class="p">,</span> <span class="n">of</span> <span class="n">the</span> <span class="n">narrow</span><span class="o">-</span><span class="n">band</span> <span class="n">image</span>
+  <span class="mi">3</span><span class="p">:</span> <span class="n">The</span> <span class="n">band</span><span class="o">/</span><span class="nb">filter</span><span class="p">:</span> <span class="s1">&#39;J&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">,</span> <span class="ow">or</span> <span class="s1">&#39;lowres&#39;</span>
+<span class="n">Example</span><span class="p">:</span> <span class="n">buildcal</span> <span class="n">CRSA00000000</span><span class="o">.</span><span class="n">fits</span> <span class="mi">1550</span> <span class="n">lowres</span>
+<span class="n">Optional</span> <span class="n">additional</span> <span class="n">arguments</span><span class="p">:</span> <span class="n">filenames</span> <span class="n">of</span> <span class="n">darks</span>
+  <span class="n">taken</span> <span class="k">with</span> <span class="n">the</span> <span class="n">same</span> <span class="n">observing</span> <span class="n">setup</span><span class="o">.</span>
+<span class="n">Example</span><span class="p">:</span> <span class="n">buildcal</span> <span class="n">CRSA00000000</span><span class="o">.</span><span class="n">fits</span> <span class="mi">1550</span> <span class="n">lowres</span> <span class="n">darks</span><span class="o">/</span><span class="n">CRSA</span><span class="o">*.</span><span class="n">fits</span>
+</pre></div>
+</div>
+<div class="section" id="Windows-10-install">
+<h3>Windows 10 install<a class="headerlink" href="#Windows-10-install" title="Permalink to this headline">¶</a></h3>
+<p>These instructions were provided by Zach Long and use the bash
+functionality within Windows 10. This procedure</p>
+<ol class="arabic">
+<li><p class="first">Download Anaconda 2.7 Linux installer from their website</p>
+</li>
+<li><p class="first">Download and extract CHARIS code</p>
+</li>
+<li><p class="first">Navigate to the appropriate folder (the folder is in mnt/c/
+somewhere, c refers to the windows C: drive or whatever the main
+drive is)</p>
+</li>
+<li><p class="first">Install using &#8220;bash Anaconda2-4.3.1-Linux-x86_64.sh&#8221;</p>
+</li>
+<li><p class="first">Install pip using &#8220;sudo apt-get install python-pip&#8221;</p>
+</li>
+<li><p class="first">Do a &#8220;sudo pip install cython&#8221;</p>
+</li>
+<li><p class="first">If you get an error with gcc exiting with code 1 use this command
+&#8220;sudo apt-get install python-dev&#8221;</p>
+</li>
+<li><p class="first">Do another &#8220;sudo pip install cython&#8221;</p>
+</li>
+<li><p class="first">Do a &#8220;conda install numpy&#8221; (might have to close and reopen bash for
+this)</p>
+</li>
+<li><p class="first">Do a &#8220;conda install astropy&#8221;</p>
+</li>
+<li><p class="first">Do a &#8220;pip install -U scipy&#8221; (I&#8217;m not sure why it needs the upgraded
+version but it does)</p>
+</li>
+<li><p class="first">Navigate to the charis code folder again in /mnt/c/</p>
+</li>
+<li><p class="first">Run &#8220;sudo python setup.py install&#8221;</p>
+</li>
+<li><p class="first">Run &#8220;export KMP_AFFINITY=disabled&#8221; (this is because there is a
+known bug in scipy for windows bash. You&#8217;ll know if it&#8217;s happening
+if you get the following errors when you try to run buildcal</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">OMP</span><span class="p">:</span> <span class="n">Error</span> <span class="c1">#100: Fatal system error detected.</span>
+<span class="n">OMP</span><span class="p">:</span> <span class="n">System</span> <span class="n">error</span> <span class="c1">#22: Invalid argument</span>
+<span class="n">Aborted</span> <span class="p">(</span><span class="n">core</span> <span class="n">dumped</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As far as I can tell you have to do it after you open a new bash
+terminal)</p>
+</li>
+<li><p class="first">Done, it should work at this point, it worked for me at least. If
+something doesn&#8217;t work it&#8217;s usually something to do with scipy so
+you many need to run a sudo &#8220;pip install &#8211;upgrade pip&#8221;</p>
+</li>
+<li><p class="first">Occasionally I have had to do a &#8220;alias sudo=&#8217;sudo env PATH=$PATH&#8217;&#8221;
+if Cython decides not work because it&#8217;s using the wrong python, I&#8217;m
+assuming the one that came preinstalled</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="section" id="Troubleshooting">
+<h1>Troubleshooting<a class="headerlink" href="#Troubleshooting" title="Permalink to this headline">¶</a></h1>
+<p>Most of the installation issues on Macs that have been encountered so
+far come from slight differences in the versions and the installations
+of python and gcc. We recommend following the steps above thoroughly.
+Here are sharing some of the issues and potential solutions.</p>
+<div class="section" id="Install-gcc-through-Macports">
+<h2>Install gcc through Macports<a class="headerlink" href="#Install-gcc-through-Macports" title="Permalink to this headline">¶</a></h2>
+<p>Macports is a good alternative to download and install the correct
+version of gcc. First, make sure that the latest package definitions are
+updated with &#8220;selfupdate&#8221;, and then download and install the latest
+version of gcc5.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">port</span> <span class="n">selfupdate</span>
+<span class="n">sudo</span> <span class="n">port</span> <span class="n">install</span> <span class="n">gcc5</span>
+</pre></div>
+</div>
+<p>This should have installed the latest version of gcc5. You can check
+what versions of gcc are available by typing gcc [tab][tab]. For example
+on a 2017 MacBook Pro with xcode installed, these are the programs that
+are installed:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">gcc</span>              <span class="n">gcc</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span>         <span class="n">gcc</span><span class="o">-</span><span class="n">ranlib</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span>
+<span class="n">gcc</span><span class="o">-</span><span class="n">ar</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span>      <span class="n">gcc</span><span class="o">-</span><span class="n">nm</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span>      <span class="n">gccmakedep</span>
+</pre></div>
+</div>
+<p>One would then run</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CC</span><span class="o">=</span><span class="n">gcc</span><span class="o">-</span><span class="n">mp</span><span class="o">-</span><span class="mi">6</span> <span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Install-the-CHARIS-DRP-with-AstroConda-(or-if-you-regular-conda-installation-uses-Python-3.xx)">
+<h2>Install the CHARIS DRP with AstroConda (or if you regular conda installation uses Python 3.xx)<a class="headerlink" href="#Install-the-CHARIS-DRP-with-AstroConda-(or-if-you-regular-conda-installation-uses-Python-3.xx)" title="Permalink to this headline">¶</a></h2>
+<p>In order to not disturb your installation of Python 3.xx (with which the
+pipeline is not yet compatible), we can create a separate, isolated
+Python environment with conda. You can find some instructions on how to
+do this for example at
+<a class="reference external" href="https://uoa-eresearch.github.io/eresearch-cookbook/recipe/2014/11/20/conda/">https://uoa-eresearch.github.io/eresearch-cookbook/recipe/2014/11/20/conda/</a>.
+Below are the key elements:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">-</span><span class="n">n</span> <span class="n">py27</span> <span class="n">python</span><span class="o">=</span><span class="mf">2.7</span> <span class="n">anaconda</span>
+</pre></div>
+</div>
+<p>And once the installation is complete, you can activate your environment</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="n">activate</span> <span class="n">py27</span>
+</pre></div>
+</div>
+<p>To jump back out of the environment to your regular environment without
+having to close your terminal, you can type:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="n">deactivate</span> <span class="n">py27</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">Install the CHARIS Data reduction pipeline</a><ul>
+<li><a class="reference internal" href="#Requirements">Requirements</a></li>
+<li><a class="reference internal" href="#Dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#Installation">Installation</a><ul>
+<li><a class="reference internal" href="#Windows-10-install">Windows 10 install</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Troubleshooting">Troubleshooting</a><ul>
+<li><a class="reference internal" href="#Install-gcc-through-Macports">Install gcc through Macports</a></li>
+<li><a class="reference internal" href="#Install-the-CHARIS-DRP-with-AstroConda-(or-if-you-regular-conda-installation-uses-Python-3.xx)">Install the CHARIS DRP with AstroConda (or if you regular conda installation uses Python 3.xx)</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/Installation.ipynb.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 22 Apr 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>image package &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="primitives package" href="primitives.html" />
+    <link rel="prev" title="extractcube module" href="extractcube.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="primitives.html" title="primitives package">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="extractcube.html" title="extractcube module">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      
+      <li>image package</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="image-package">
+<h1>image package<a class="headerlink" href="#image-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-image.image">
+<span id="image-image-module"></span><h2>image.image module<a class="headerlink" href="#module-image.image" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="image.image.Image">
+<em class="property">class </em><code class="descclassname">image.image.</code><code class="descname">Image</code><span class="sig-paren">(</span><em>filename=''</em>, <em>data=None</em>, <em>ivar=None</em>, <em>chisq=None</em>, <em>header=SIMPLE  =                    T / conforms to FITS standard                       BITPIX  =                    8 / array data type                                 NAXIS   =                    0 / number of array dimensions                      EXTEND  =                    T</em>, <em>extrahead=None</em>, <em>reads=None</em>, <em>flags=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/image.html#Image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.image.Image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Image is the basic class for raw and partially reduced CHARIS data.
+It must have at least the following boolean attribute references:</p>
+<blockquote>
+<div>self.destriped  (default False)
+self.flatfielded (default False)</div></blockquote>
+<dl class="docutils">
+<dt>It must have at least the following other attribute references:</dt>
+<dd>self.data (default None)
+self.ivar (default None)
+self.header (default None)</dd>
+</dl>
+<p>self.data, self.ivar, and self.header should be numpy ndarrays, 
+which can be read from and written to a fits file with the load 
+and write methods.  If not ndarrays, they should be None.</p>
+<p>Image may be initialized with the name of the raw file to read,
+through a call to Image.load().</p>
+<p>Image initialization</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filename: string</strong></p>
+<blockquote>
+<div><p>Name of input file</p>
+</div></blockquote>
+<p><strong>data: ndarray</strong></p>
+<blockquote>
+<div><p>Numpy ndarray containing your data. Can be multi-dimensional.</p>
+</div></blockquote>
+<p><strong>ivar: ndarray</strong></p>
+<blockquote>
+<div><p>Numpy ndarray containing the inverse variance of the data. Should be same shape as data</p>
+</div></blockquote>
+<p><strong>chisq: ndarray</strong></p>
+<blockquote>
+<div><p>Numpy ndarray containing chisq value for each ramp fit to the data. Should be same shape as data</p>
+</div></blockquote>
+<p><strong>header: `PrimaryHDU` header</strong></p>
+<blockquote>
+<div><p>Empty header instance</p>
+</div></blockquote>
+<p><strong>extraheader: `PrimaryHDU` header</strong></p>
+<blockquote>
+<div><p>Placeholder for header from original ramp</p>
+</div></blockquote>
+<p><strong>reads: ndarray</strong></p>
+<p class="last"><strong>flags: ndarray</strong></p>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="image.image.Image.load">
+<code class="descname">load</code><span class="sig-paren">(</span><em>outfilename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/image.html#Image.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.image.Image.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read the first HDU with data from filename into self.data, and
+HDU[0].header into self.header.  If there is more than one HDU
+with data, attempt to read the second HDU with data into
+self.ivar.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filename: string</strong></p>
+<blockquote>
+<div><p>Name of input file</p>
+</div></blockquote>
+<p><strong>loadbadpixmap: boolean</strong></p>
+<blockquote class="last">
+<div><p>When True, loads the bad pixel map at <code class="xref py py-obj docutils literal"><span class="pre">calibrations/mask.fits</span></code></p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="image.image.Image.write">
+<code class="descname">write</code><span class="sig-paren">(</span><em>outfilename</em>, <em>clobber=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/image.html#Image.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.image.Image.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a primary HDU using self.data and self.header, and
+attempts to write to outfilename.  If self.ivar is not None,
+append self.ivar as a second HDU before writing to a file.       
+clobber is provided as a keyword to fits.HDUList.writeto.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filename: string</strong></p>
+<blockquote>
+<div><p>Name of destination file</p>
+</div></blockquote>
+<p><strong>clobber: boolean</strong></p>
+<blockquote class="last">
+<div><p>When True, overwrites if file already exists</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-image.psflet">
+<span id="image-psflet-module"></span><h2>image.psflet module<a class="headerlink" href="#module-image.psflet" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="image.psflet.PSFlet">
+<em class="property">class </em><code class="descclassname">image.psflet.</code><code class="descname">PSFlet</code><span class="sig-paren">(</span><em>size</em>, <em>mode='Gaussian'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/psflet.html#PSFlet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.psflet.PSFlet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class PSFlet</p>
+<dl class="method">
+<dt id="image.psflet.PSFlet.add_psflet">
+<code class="descname">add_psflet</code><span class="sig-paren">(</span><em>y</em>, <em>x</em>, <em>lam</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/psflet.html#PSFlet.add_psflet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.psflet.PSFlet.add_psflet" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-image.testcases">
+<span id="image-testcases-module"></span><h2>image.testcases module<a class="headerlink" href="#module-image.testcases" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="image.testcases.ImageTests">
+<em class="property">class </em><code class="descclassname">image.testcases.</code><code class="descname">ImageTests</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/testcases.html#ImageTests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.testcases.ImageTests" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">unittest.case.TestCase</span></code></p>
+<p>Create an instance of the class that will use the named test
+method when executed. Raises a ValueError if the instance does
+not have a method with the specified name.</p>
+<dl class="method">
+<dt id="image.testcases.ImageTests.setUp">
+<code class="descname">setUp</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/testcases.html#ImageTests.setUp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.testcases.ImageTests.setUp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="image.testcases.ImageTests.tearDown">
+<code class="descname">tearDown</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/testcases.html#ImageTests.tearDown"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.testcases.ImageTests.tearDown" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="image.testcases.ImageTests.test_is2048x2048">
+<code class="descname">test_is2048x2048</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/image/testcases.html#ImageTests.test_is2048x2048"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#image.testcases.ImageTests.test_is2048x2048" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-image">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-image" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">image package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-image.image">image.image module</a></li>
+<li><a class="reference internal" href="#module-image.psflet">image.psflet module</a></li>
+<li><a class="reference internal" href="#module-image.testcases">image.testcases module</a></li>
+<li><a class="reference internal" href="#module-image">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/image.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 22 Apr 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

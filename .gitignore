@@ -1,4 +1,17 @@
+*.log
 *.py[cod]
+*test*.fits
+*test*.dat
+*~
+\#*
+.*.swp
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info
 
 # C extensions
 *.so
@@ -35,3 +48,8 @@ nosetests.xml
 .project
 .pydevproject
 /.settings
+/sandbox
+
+*-checkpoint.ipynb
+
+documentation/builddoc/latex/*

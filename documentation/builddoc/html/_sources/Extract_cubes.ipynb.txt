@@ -1,0 +1,358 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Extract cubes"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now extract a cube.  First, you need to create an appropriate .ini file by modifying sample.ini in the code directory.  With the example file names given above and with your modified .ini file in the current working directory, you would run:\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "~~~\n",
+    "extractcube /path/to/CRSA00000000.fits modified.ini\n",
+    "~~~"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The arguments are simply:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "1. The raw file(s) to extract into cubes\n",
+    "2. The configuration file\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The extracted cubes will be written to the current working directory.  The first HDU is simply the header with some basic information, the second HDU is the cube, the third HDU is the inverse variance on the cube, and the fourth HDU has no data but saves the original header on HDU0 of the raw reads.\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### .ini file example"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "```\n",
+    "[Ramp]\n",
+    "# First read to use in ramp (first overall read is 1)\n",
+    "read_0 : 1\n",
+    "# Last read to use, None = use all reads from read_0 onwards\n",
+    "read_f : None\n",
+    "# Detector gain, used to compute photon noise\n",
+    "gain : 2\n",
+    "# Fraction of the count rate to add as noise: 0.05, for example,\n",
+    "# assumes that there is a systematic 5% error in the count rate at\n",
+    "# each pixel from imperfect PSF-let models.  This should give a\n",
+    "# reduced chi squared close to 1 if it is being used.  Set to zero to\n",
+    "# use simply read noise and photon noise.\n",
+    "noisefac : 0.02\n",
+    "# Save the ramp and inverse variance as its own file?\n",
+    "saveramp : True\n",
+    "\n",
+    "[Calib]\n",
+    "# Location of calibration files\n",
+    "calibdir : /path/to/calibration/files\n",
+    "# Subtract the background file in calibdir above before extracting a cube?\n",
+    "bgsub : False\n",
+    "# Mask bad pixels using a mask in calibdir?\n",
+    "mask : True\n",
+    "# Apply flatfields to correct pixel-to-pixel sensitivity variations\n",
+    "# and lenslet-to-lenslet illumination variations?\n",
+    "flatfield : True\n",
+    "# Fit for position-dependent subpixel shifts in the locations of the\n",
+    "# microspectra in individual frames?\n",
+    "fitshift : True\n",
+    "\n",
+    "[Extract]\n",
+    "# Spectral resolution for extraction. \n",
+    "# Recommended: 30 for lowres, 100 for highres.\n",
+    "# PSFlet template files for this resolution must already be in calibdir.\n",
+    "R : 30\n",
+    "# Method of extraction, lstsq strongly preferred.  Other choice is optext\n",
+    "method : lstsq\n",
+    "# Iterate one time on the least-squares data cube to remove crosstalk?\n",
+    "refine : True\n",
+    "# Supress correlated read noise?  Approximately doubles cube extraction \n",
+    "# time, but improves read noise by up to a factor of 4.\n",
+    "# For science reductions, refine and suppressrn should be True.\n",
+    "suppressrn : True\n",
+    "# Mask (set ivar = 0) poor spectral measurements, i.e., those with\n",
+    "# much worse inverse variances than their average neighbors'?  If\n",
+    "# True, the software will replace these intensity measurements with\n",
+    "# interpolated values.  As the measurements are masked anwyay (ivar=0)\n",
+    "# this is purely cosmetic.\n",
+    "smoothandmask : True\n",
+    "# Save the residuals of the 2D image as a separate FITS file?  This\n",
+    "# keyword does nothing unless method == 'lstsq'\n",
+    "saveresid : False\n",
+    "# Maximum threads for parallelization.  \n",
+    "# Negative: leave that many threads free.  None: use number of cpus.\n",
+    "maxcpus : None\n",
+    "```"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Process all my files at once"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "collapsed": true
+   },
+   "source": [
+    "We suggest a structure where all your raw data is some folder, e.g. data/HD1160_lowres/, and reduced everythng in data/HD1160_lowres/reduced. Put the .ini file with your reduction parameters into data/HD1160_lowres/reduced. To process all your files at once, cd into data/HD1160_lowres/reduced, and issue:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "~~~\n",
+    "extractcube ../*.fits HD1160_lowres.ini\n",
+    "~~~"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This will reduced all the fits files in the parent folder (make sure you only have data in there, and not calibration files!), and put the reduced cubes in the current reduced/ directory."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Headers of final cubes"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This is an example of the types of headers you can get in the reduced cubes."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "~~~\n",
+    "SIMPLE  =                    T / conforms to FITS standard                      \n",
+    "BITPIX  =                    8 / array data type                                \n",
+    "NAXIS   =                    0 / number of array dimensions                     \n",
+    "EXTEND  =                    T                                                  \n",
+    "DATE    = '20170415'           / File creation date (yyyymmdd)                  \n",
+    "COMMENT                                                                         \n",
+    "COMMENT ************************************************************            \n",
+    "COMMENT ****************** Time and Pointing Data ******************            \n",
+    "COMMENT ************************************************************            \n",
+    "COMMENT                                                                         \n",
+    "ORIGNAME= '00015170'           / Original file ID number                        \n",
+    "MJD     =    57650.45685217485 / Mean MJD of exposure                           \n",
+    "UTC-DATE= '2016-09-19'         / UTC date of exposure                           \n",
+    "UTC-TIME= '10:57:52.028'       / Mean UTC time of exposure                      \n",
+    "RA      = '00:15:56.886'       / RA of telescope pointing                       \n",
+    "DEC     = '+04:15:06.55'       / DEC of telescope pointing                      \n",
+    "PARANG  =    12.36294147157994 / Mean parallactic angle (degrees)               \n",
+    "D_IMRPAP=                -39.0 / Image rotator pupil position angle (degrees)   \n",
+    "FILTNAME= 'Broadband'          / CHARIS filter name                             \n",
+    "FILTSLOT=                  4.0 / CHARIS filter slot                             \n",
+    "PRISM   = 'unavailable'        / CHARIS prism (lo/hi/out)                       \n",
+    "SHUTTER = 'open    '           / CHARIS shutter position                        \n",
+    "COMMENT                                                                         \n",
+    "COMMENT ************************************************************            \n",
+    "COMMENT ********************* Calibration Data *********************            \n",
+    "COMMENT ************************************************************            \n",
+    "COMMENT                                                                         \n",
+    "CALFNAME= 'CRSA00014390.fits'  / Monochromatic image used for calibration       \n",
+    "CAL_DATE=     57649.6714748476 / MJD date of calibration image                  \n",
+    "CAL_LAM =                 1550 / Wavelength of calibration image (nm)           \n",
+    "CAL_BAND= 'lowres  '           / Band/mode of calibration image (J/H/K/lowres)  \n",
+    "BKGND001= 'None    '           / Dark(s) used for background subtraction        \n",
+    "CAL_DX  =  -0.2297651730525558 / x-shift from archival spot positions (pixels)  \n",
+    "CAL_DY  =   -2.389031784064741 / y-shift from archival spot positions (pixels)  \n",
+    "CAL_DPHI= -0.00123460540812825 / Rotation from archival spot positions (radians)\n",
+    "COMMENT                                                                         \n",
+    "COMMENT ************************************************************            \n",
+    "COMMENT ******************* Ramp, Masking, Noise *******************            \n",
+    "COMMENT ************************************************************            \n",
+    "COMMENT                                                                         \n",
+    "FIRSTRD =                    1 / First HDU of original file used                \n",
+    "LASTRD  =                   14 / Last HDU of original file used                 \n",
+    "PIXMASK =                    T / Mask known bad/hot pixels?                     \n",
+    "GAIN    =                  2.0 / Assumed detector gain for Poisson variance     \n",
+    "NOISEFAC=                  0.0 / Added noise (as fraction of abs(ct rate))      \n",
+    "FITDECAY=                    T / Fit exponential decay of ref. volt. in read 1? \n",
+    "NONLIN  =                    T / Fit nonlinear pixel response?                  \n",
+    "BGSUB   =                    F / Subtract background count rate from a dark?    \n",
+    "FLATFLD =                    T / Flatfield the detector and lenslet array?      \n",
+    "COMMENT                                                                         \n",
+    "COMMENT ************************************************************            \n",
+    "COMMENT ********************** Cube Extraction *********************            \n",
+    "COMMENT ************************************************************            \n",
+    "COMMENT                                                                         \n",
+    "FITSHIFT=                    T / Fit a subpixel shift in PSFlet locations?      \n",
+    "CUBEMODE= 'Chi^2 Fit to PSFlets' / Method used to extract data cube             \n",
+    "FITBKGND=                    T / Fit an undispersed background in each lenslet? \n",
+    "REDUCERN=                    T / Suppress read noise using low ct rate pixels?  \n",
+    "RNPCTPIX=    59.99999046325684 / % of pixels used to estimate read noise        \n",
+    "REFINE  =                    T / Iterate solution to remove crosstalk?          \n",
+    "LAM_MIN =    1159.561439621683 / Minimum (central) wavelength of extracted cube \n",
+    "LAM_MAX =    2369.344052089524 / Maximum (central) wavelength of extracted cube \n",
+    "DLOGLAM =  0.03402720386800707 / Log spacing of extracted wavelength bins       \n",
+    "NLAM    =                   22 / Number of extracted wavelengths                \n",
+    "MASKIVAR=                    T / Set poor ivar to 0, smoothed I for cosmetics   \n",
+    "XPIXSCAL= -4.5555555555555E-06 / Degrees/pixel                                  \n",
+    "YPIXSCAL= 4.55555555555555E-06 / Degrees/pixel                                  \n",
+    "CTYPE1  = 'RA---TAN'           / first parameter RA  ,  projection TANgential   \n",
+    "CTYPE2  = 'DEC--TAN'           / second parameter DEC,  projection TANgential   \n",
+    "CRVAL1  =             3.987025 / Reference X pixel value                        \n",
+    "CRVAL2  =    4.251819444444444 / Reference Y pixel value                        \n",
+    "CRPIX1  =                  100 / Reference X pixel                              \n",
+    "CRPIX2  =                  100 / Reference Y pixel                              \n",
+    "EQUINOX =                 2000 / Equinox of coordinates                         \n",
+    "TOT_ROT =   -125.3629414715799 / Total rotation angle (degrees)                 \n",
+    "CD1_1   = 2.63654523459264E-06 / Rotation matrix coefficient                    \n",
+    "CD1_2   = 3.71506603517351E-06 / Rotation matrix coefficient                    \n",
+    "CD2_1   = 3.71506603517351E-06 / Rotation matrix coefficient                    \n",
+    "CD2_2   = -2.6365452345926E-06 / Rotation matrix coefficient                    \n",
+    "END                                                                             \n",
+    "~~~"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Final cube example"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {
+    "collapsed": false,
+    "scrolled": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "image/jpeg": "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\n",
+      "text/html": [
+       "\n",
+       "        <iframe\n",
+       "            width=\"600\"\n",
+       "            height=\"400\"\n",
+       "            src=\"https://www.youtube.com/embed/bRlC-My14kc\"\n",
+       "            frameborder=\"0\"\n",
+       "            allowfullscreen\n",
+       "        ></iframe>\n",
+       "        "
+      ],
+      "text/plain": [
+       "<IPython.lib.display.YouTubeVideo at 0x1067652d0>"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from IPython.display import YouTubeVideo\n",
+    "YouTubeVideo('bRlC-My14kc', width=600, height=400)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This system shows a companion in the bottom left of the image. Unlike the satellite spots and the stellar PSF, which scale with wavelength, the location of any off-axis source (in this case, the companion) stays the same across the wavelengths."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Load the cube with Python"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Each cube slice corresponds to a different wavelength. One can retrieve the wavelength of each slice from the header using LAM_MIN, LAM_MAX, and DLOGLAM, with the understanding that the wavelengths are evenly sampled in log-space. In Python the header, cube, and inverse variance can be loaded as follows, and the wavelength array generated from it:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": false
+   },
+   "outputs": [],
+   "source": [
+    "from astropy.io import fits\n",
+    "import numpy as np\n",
+    "\n",
+    "### Note the order in which the extensions are laid out\n",
+    "hdulist = fits.open(\"myfile.fits\")\n",
+    "hdr = hdulist[0].header # hdu[0] contains no data\n",
+    "cube = hdulist[1].data\n",
+    "ivar = hdulist[2].data\n",
+    "rawdata_header = hdulist[3].header\n",
+    "lam = hdr['lam_min']*np.exp(np.arange(cube.shape[0])*hdr['dloglam'])\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 2",
+   "language": "python",
+   "name": "python2"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}

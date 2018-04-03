@@ -1,0 +1,478 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>extractcube &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="../_static/astropy_logo.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="../_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="../index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="../genindex.html">Index</a></li>
+    <li><a title="Module Index" href="../py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li>
+	<a href="../index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      <li><a href="index.html" accesskey="U">Module code</a> &#187;</li>
+      
+       
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for extractcube</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="c1">#########################################################################</span>
+<span class="c1"># A provisional routine for actually producing and returning data cubes.</span>
+<span class="c1">#########################################################################</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="k">import</span> <span class="n">fits</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">primitives</span>
+    <span class="kn">import</span> <span class="nn">utr</span>
+    <span class="kn">from</span> <span class="nn">image</span> <span class="k">import</span> <span class="n">Image</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">charis.primitives</span> <span class="k">as</span> <span class="nn">primitives</span>
+    <span class="kn">import</span> <span class="nn">charis.utr</span> <span class="k">as</span> <span class="nn">utr</span>
+    <span class="kn">from</span> <span class="nn">charis.image</span> <span class="k">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">ConfigParser</span>
+<span class="kn">import</span> <span class="nn">multiprocessing</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;main&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="getcube"><a class="viewcode-back" href="../extractcube.html#extractcube.getcube">[docs]</a><span class="k">def</span> <span class="nf">getcube</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">read_idx</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">calibdir</span><span class="o">=</span><span class="s1">&#39;calibrations/20160408/&#39;</span><span class="p">,</span> 
+            <span class="n">bgsub</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">noisefac</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">saveramp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">R</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="s1">&#39;lstsq&#39;</span><span class="p">,</span> <span class="n">refine</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">suppressrn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fitshift</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+            <span class="n">flatfield</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">smoothandmask</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+            <span class="n">minpct</span><span class="o">=</span><span class="mi">70</span><span class="p">,</span> <span class="n">fitbkgnd</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">saveresid</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">maxcpus</span><span class="o">=</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()):</span>
+
+    <span class="sd">&quot;&quot;&quot;Provisional routine getcube.  Construct and return a data cube</span>
+<span class="sd">    from a set of reads.</span>
+
+<span class="sd">    Inputs:</span>
+<span class="sd">    1. filename: name of the file containing the up-the-ramp reads. </span>
+<span class="sd">                 Should include the full path/to/file.</span>
+<span class="sd">    Optional inputs:</span>
+<span class="sd">    1. read_idx: list of two numbers, the first and last reads to use in</span>
+<span class="sd">                 the up-the-ramp combination.  Default [2, None], i.e., </span>
+<span class="sd">                 discard the first read and use all of the rest.</span>
+<span class="sd">    2. calibdir: name of the directory containing the calibration files.  </span>
+<span class="sd">                 Default calibrations/20160408/</span>
+<span class="sd">    3. bgsub:    Subtract the file background.fits in calibdir?  Default</span>
+<span class="sd">                 True.</span>
+<span class="sd">    4. mask:     Apply the bad pixel mask mask.fits in the directory</span>
+<span class="sd">                 calibdir?  Strongly recommended.  Default True.</span>
+<span class="sd">    5. gain:     Detector gain, used to compute shot noise.  Default 2.</span>
+<span class="sd">    6. noisefac: Extra factor of noise to account for imperfect lenslet</span>
+<span class="sd">                 models: </span>
+<span class="sd">                 variance = readnoise + shotnoise + noisefac*countrate</span>
+<span class="sd">                 Default zero, values of around 0.05 should give </span>
+<span class="sd">                 reduced chi squared values of around 1 in the fit.</span>
+<span class="sd">    7. R:        integer, approximate resolution lam/delta(lam) of the</span>
+<span class="sd">                 extracted data cube.  Resolutions higher than ~25 or 30</span>
+<span class="sd">                 are comparable to or finer than the pixel sampling and </span>
+<span class="sd">                 are not recommended--there is very strong covariance.</span>
+<span class="sd">                 Default 30.</span>
+<span class="sd">    8. method:   string, method used to extract data cube.  Should be </span>
+<span class="sd">                 either &#39;lstsq&#39; for a least-squares extraction or </span>
+<span class="sd">                 &#39;optext&#39; for a quasi-optimal extraction.  Default</span>
+<span class="sd">                 &#39;lstsq&#39;</span>
+<span class="sd">    9. refine:   Fit the data cube twice to account for nearest neighbor</span>
+<span class="sd">                 crosstalk?  Approximately doubles runtime.  This option</span>
+<span class="sd">                 also enables read noise suppression (below).  Default </span>
+<span class="sd">                 True</span>
+<span class="sd">    10. suppress_rn: Remove correlated read noise between channels using </span>
+<span class="sd">                 the residuals of the 50% least illuminated pixels?  </span>
+<span class="sd">                 Default True.</span>
+<span class="sd">    11. fitshift: Fit a subpixel shift in the psflet locations across </span>
+<span class="sd">                 the detector?  Recommended except for quicklook.  Cost </span>
+<span class="sd">                 is modest compared to cube extraction</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    1. datacube: an instance of the Image class containing the data cube.</span>
+
+<span class="sd">    Steps performed: </span>
+
+<span class="sd">    1. Up-the-ramp combination.  As of yet no special read noise</span>
+<span class="sd">    suppression (just a channel-by-channel correction of the reference</span>
+<span class="sd">    voltages).  Do a full nonlinear fit for high count pixels, and </span>
+<span class="sd">    remove an exponential decay of the reference voltage in the first</span>
+<span class="sd">    read.</span>
+<span class="sd">    2. Subtraction of thermal background from file in calibration </span>
+<span class="sd">    directory.</span>
+<span class="sd">    3. Application of hot pixel mask (as zero inverse variances).</span>
+<span class="sd">    4. Load calibration files from calibration directory for the data</span>
+<span class="sd">    cube extraction, optionally fit for subpixel shifts across the </span>
+<span class="sd">    detector.</span>
+<span class="sd">    5. Extract the data cube.</span>
+
+<span class="sd">    Notes for now: the quasi-optimal extraction isn&#39;t really an</span>
+<span class="sd">    optimal extraction.  Every lenslet&#39;s spectrum natively samples a</span>
+<span class="sd">    different set of wavelengths, so right now they are all simply</span>
+<span class="sd">    interpolated onto the same wavelength array.  This is certainly</span>
+<span class="sd">    not optimal, but I don&#39;t see any particularly good alternatives</span>
+<span class="sd">    (other than maybe convolving to a lower, but uniform, resolution).</span>
+<span class="sd">    The lstsq extraction can include all errors and covariances.</span>
+<span class="sd">    Errors are included (the diagonal of the covariance matrix), but</span>
+<span class="sd">    the full covariance matrix is currently discarded.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1">################################################################</span>
+    <span class="c1"># Initiate the header with critical data about the observation.</span>
+    <span class="c1"># Then add basic information about the calibration data used to</span>
+    <span class="c1"># extract a cube.</span>
+    <span class="c1">################################################################</span>
+    
+    <span class="n">header</span> <span class="o">=</span> <span class="n">utr</span><span class="o">.</span><span class="n">metadata</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">calhead</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/cal_params.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">60</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">21</span> <span class="o">+</span> <span class="s1">&#39; Calibration Data &#39;</span> <span class="o">+</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">21</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">60</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>    
+        <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">calhead</span><span class="p">:</span>
+            <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">key</span><span class="p">,</span> <span class="n">calhead</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">calhead</span><span class="o">.</span><span class="n">comments</span><span class="p">[</span><span class="n">key</span><span class="p">]),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Unable to append calibration parameters to FITS header.&#39;</span><span class="p">)</span>    
+
+    <span class="c1">################################################################</span>
+    <span class="c1"># Read in file and return an instance of the Image class with the</span>
+    <span class="c1"># up-the-ramp combination of reads.  Subtract the thermal</span>
+    <span class="c1"># background and apply a bad pixel mask.</span>
+    <span class="c1">################################################################</span>
+    
+    <span class="n">maskarr</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">mask</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">maskarr</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/mask.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>  
+    
+    <span class="n">inImage</span> <span class="o">=</span> <span class="n">utr</span><span class="o">.</span><span class="n">calcramp</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">maskarr</span><span class="p">,</span><span class="n">read_idx</span><span class="o">=</span><span class="n">read_idx</span><span class="p">,</span> 
+                           <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="n">gain</span><span class="p">,</span> <span class="n">noisefac</span><span class="o">=</span><span class="n">noisefac</span><span class="p">,</span> 
+                           <span class="n">maxcpus</span><span class="o">=</span><span class="n">maxcpus</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">bgsub</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">hdulist</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/background.fits&#39;</span><span class="p">)</span>
+            <span class="n">bg</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+            <span class="k">if</span> <span class="n">bg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">bg</span> <span class="o">=</span> <span class="n">hdulist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+            <span class="k">if</span> <span class="n">mask</span><span class="p">:</span>
+                <span class="n">bg</span> <span class="o">*=</span> <span class="n">maskarr</span>
+            <span class="n">inImage</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="n">bg</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">bgsub</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;No valid background image found in &#39;</span> <span class="o">+</span> <span class="n">calibdir</span><span class="p">)</span>
+
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;bgsub&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">bgsub</span><span class="p">,</span> <span class="s1">&#39;Subtract background count rate from a dark?&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">saveramp</span><span class="p">:</span>
+        <span class="n">inImage</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.*/&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;_ramp.fits&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)))</span>
+
+    <span class="c1">################################################################</span>
+    <span class="c1"># Read in necessary calibration files and extract the data cube.</span>
+    <span class="c1"># Optionally fit for a position-dependent offset </span>
+    <span class="c1">################################################################</span>
+
+    <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">60</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">22</span> <span class="o">+</span> <span class="s1">&#39; Cube Extraction &#39;</span> <span class="o">+</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">21</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;*&#39;</span><span class="o">*</span><span class="mi">60</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>    
+    <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;comment&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">flatfield</span><span class="p">:</span>
+        <span class="n">lensletflat</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/lensletflat.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lensletflat</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">header</span><span class="p">[</span><span class="s1">&#39;flatfld&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">flatfield</span><span class="p">,</span> <span class="s1">&#39;Flatfield the detector and lenslet array?&#39;</span><span class="p">)</span>
+
+    <span class="n">datacube</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;lstsq&#39;</span> <span class="ow">or</span> <span class="n">suppressrn</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">keyfile</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/polychromekeyR</span><span class="si">%d</span><span class="s1">.fits&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R</span><span class="p">))</span>
+            <span class="n">R2</span> <span class="o">=</span> <span class="n">R</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">keyfilenames</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/polychromekeyR*.fits&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">keyfilenames</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;No key file found in &quot;</span> <span class="o">+</span> <span class="n">calibdir</span><span class="p">)</span>
+            <span class="n">R2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.*keyR&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">keyfilenames</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+            <span class="n">keyfile</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/polychromekeyR</span><span class="si">%d</span><span class="s1">.fits&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R2</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: calibration files not found at requested resolution of R = </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Found files at R = </span><span class="si">%d</span><span class="s2">, using these instead.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R2</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">fitshift</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">psflets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/polychromefullR</span><span class="si">%d</span><span class="s1">.npy&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R2</span><span class="p">))</span>
+                <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+                <span class="n">psflets</span> <span class="o">=</span> <span class="n">primitives</span><span class="o">.</span><span class="n">calc_offset</span><span class="p">(</span><span class="n">psflets</span><span class="p">,</span> <span class="n">inImage</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">maxcpus</span><span class="o">=</span><span class="n">maxcpus</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">fitshift</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">fitshift</span><span class="p">:</span>
+            <span class="n">psflets</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/polychromeR</span><span class="si">%d</span><span class="s1">.fits&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R2</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;fitshift&#39;</span><span class="p">,</span> <span class="n">fitshift</span><span class="p">,</span> <span class="s1">&#39;Fit a subpixel shift in PSFlet locations?&#39;</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">lam_midpts</span> <span class="o">=</span> <span class="n">keyfile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">keyfile</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">keyfile</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="n">keyfile</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="k">if</span> <span class="n">flatfield</span><span class="p">:</span>
+            <span class="n">psflets</span> <span class="o">=</span> <span class="n">psflets</span><span class="o">*</span><span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/pixelflat.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="c1">############################################################</span>
+        <span class="c1"># Do an initial least-squares fit to remove correlated read</span>
+        <span class="c1"># noise if method = optext and suppressrn = True</span>
+        <span class="c1">############################################################</span>
+
+        <span class="k">if</span> <span class="n">method</span> <span class="o">!=</span> <span class="s1">&#39;lstsq&#39;</span><span class="p">:</span>
+            <span class="n">corrnoise</span> <span class="o">=</span> <span class="n">primitives</span><span class="o">.</span><span class="n">fit_spectra</span><span class="p">(</span><span class="n">inImage</span><span class="p">,</span> <span class="n">psflets</span><span class="p">,</span> <span class="n">lam_midpts</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">good</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">inImage</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="n">lensletflat</span><span class="p">,</span> <span class="n">refine</span><span class="o">=</span><span class="n">refine</span><span class="p">,</span> <span class="n">suppressrdnse</span><span class="o">=</span><span class="n">suppressrn</span><span class="p">,</span> <span class="n">smoothandmask</span><span class="o">=</span><span class="n">smoothandmask</span><span class="p">,</span> <span class="n">minpct</span><span class="o">=</span><span class="n">minpct</span><span class="p">,</span> <span class="n">fitbkgnd</span><span class="o">=</span><span class="n">fitbkgnd</span><span class="p">,</span> <span class="n">maxcpus</span><span class="o">=</span><span class="n">maxcpus</span><span class="p">,</span> <span class="n">return_corrnoise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">inImage</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="n">corrnoise</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">primitives</span><span class="o">.</span><span class="n">fit_spectra</span><span class="p">(</span><span class="n">inImage</span><span class="p">,</span> <span class="n">psflets</span><span class="p">,</span> <span class="n">lam_midpts</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">good</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">inImage</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="n">lensletflat</span><span class="p">,</span> <span class="n">refine</span><span class="o">=</span><span class="n">refine</span><span class="p">,</span> <span class="n">suppressrdnse</span><span class="o">=</span><span class="n">suppressrn</span><span class="p">,</span> <span class="n">smoothandmask</span><span class="o">=</span><span class="n">smoothandmask</span><span class="p">,</span> <span class="n">minpct</span><span class="o">=</span><span class="n">minpct</span><span class="p">,</span> <span class="n">fitbkgnd</span><span class="o">=</span><span class="n">fitbkgnd</span><span class="p">,</span> <span class="n">returnresid</span><span class="o">=</span><span class="n">saveresid</span><span class="p">,</span> <span class="n">maxcpus</span><span class="o">=</span><span class="n">maxcpus</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">saveresid</span><span class="p">:</span>
+                <span class="n">datacube</span><span class="p">,</span> <span class="n">resid</span> <span class="o">=</span> <span class="n">result</span>
+                <span class="n">resid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.*/&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;_resid.fits&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">datacube</span> <span class="o">=</span> <span class="n">result</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;optext&#39;</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;apphot3&#39;</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;apphot5&#39;</span><span class="p">:</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">primitives</span><span class="o">.</span><span class="n">PSFLets</span><span class="p">(</span><span class="n">load</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">infiledir</span><span class="o">=</span><span class="n">calibdir</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">lam_midpts</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/polychromekeyR</span><span class="si">%d</span><span class="s1">.fits&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">R</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">keyfilenames</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/polychromekeyR*.fits&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">keyfilenames</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;No key file found in &quot;</span> <span class="o">+</span> <span class="n">calibdir</span><span class="p">)</span>
+            <span class="n">lam</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">keyfilenames</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+            <span class="n">lam1</span><span class="p">,</span> <span class="n">lam2</span> <span class="o">=</span> <span class="p">[</span><span class="n">lam</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lam</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam2</span><span class="o">*</span><span class="mf">1.</span><span class="o">/</span><span class="n">lam1</span><span class="p">)</span><span class="o">*</span><span class="n">R</span> <span class="o">+</span> <span class="mf">1.5</span><span class="p">)</span>
+            <span class="n">lam_midpts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">lam2</span><span class="p">),</span> <span class="n">n</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">calibdir</span> <span class="o">+</span> <span class="s1">&#39;/PSFwidths.fits&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="mf">0.7</span>
+
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;apphot3&#39;</span> <span class="ow">or</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;apphot5&#39;</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="mi">1</span><span class="n">e10</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;apphot3&#39;</span><span class="p">:</span>
+                <span class="n">delt_x</span> <span class="o">=</span> <span class="mi">3</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">delt_x</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">delt_x</span> <span class="o">=</span> <span class="mi">7</span>
+            
+        <span class="n">datacube</span> <span class="o">=</span> <span class="n">primitives</span><span class="o">.</span><span class="n">optext_spectra</span><span class="p">(</span><span class="n">inImage</span><span class="p">,</span> <span class="n">loc</span><span class="p">,</span> <span class="n">lam_midpts</span><span class="p">,</span> <span class="n">delt_x</span><span class="o">=</span><span class="n">delt_x</span><span class="p">,</span> <span class="n">sig</span><span class="o">=</span><span class="n">sig</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">inImage</span><span class="o">.</span><span class="n">header</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="n">lensletflat</span><span class="p">,</span> <span class="n">maxcpus</span><span class="o">=</span><span class="n">maxcpus</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">datacube</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Datacube extraction method &quot;</span> <span class="o">+</span> <span class="n">method</span> <span class="o">+</span> <span class="s2">&quot; not implemented.&quot;</span><span class="p">)</span>
+
+
+    <span class="c1">################################################################</span>
+    <span class="c1"># Add the original header for reference as the last HDU</span>
+    <span class="c1">################################################################</span>
+
+    <span class="n">datacube</span><span class="o">.</span><span class="n">extrahead</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+
+    <span class="c1">################################################################</span>
+    <span class="c1"># Add WCS for the cube </span>
+    <span class="c1"># for now assume the image is centered on the cube</span>
+    <span class="c1"># in practice, we will have to register things with</span>
+    <span class="c1"># the satellite spots</span>
+    <span class="c1">################################################################ </span>
+    <span class="n">ydim</span><span class="p">,</span><span class="n">xdim</span> <span class="o">=</span> <span class="n">datacube</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">rot_angle</span> <span class="o">=</span> <span class="mi">113</span> <span class="c1"># empirically determined</span>
+    <span class="n">utr</span><span class="o">.</span><span class="n">addWCS</span><span class="p">(</span><span class="n">datacube</span><span class="o">.</span><span class="n">header</span><span class="p">,</span><span class="n">xpix</span><span class="o">=</span><span class="n">ydim</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span><span class="n">ypix</span><span class="o">=</span><span class="n">xdim</span><span class="o">//</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="n">xpixscale</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.0164</span><span class="o">/</span><span class="mf">3600.</span><span class="p">,</span> <span class="n">ypixscale</span> <span class="o">=</span> <span class="mf">0.0164</span><span class="o">/</span><span class="mf">3600.</span><span class="p">,</span>
+                    <span class="n">extrarot</span><span class="o">=</span><span class="n">rot_angle</span><span class="p">)</span>      
+
+    <span class="k">return</span> <span class="n">datacube</span></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">errstring</span> <span class="o">=</span> <span class="s2">&quot;Must call extractcube.py with at least two arguments:</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">errstring</span> <span class="o">+=</span> <span class="s2">&quot;1: string(s) parsed by glob matching files to be turned into data cubes</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">errstring</span> <span class="o">+=</span> <span class="s2">&quot;2: a .ini configuration file processed by ConfigParser&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">errstring</span><span class="p">)</span>
+        <span class="n">exit</span><span class="p">()</span>
+
+    <span class="n">filenames</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">filenames</span> <span class="o">+=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">filenames</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No matching CHARIS files found by extractcube.&quot;</span><span class="p">)</span>
+
+    <span class="n">Config</span> <span class="o">=</span> <span class="n">ConfigParser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">()</span>
+    <span class="n">Config</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">read_0</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s1">&#39;Ramp&#39;</span><span class="p">,</span> <span class="s1">&#39;read_0&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">read_1</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s1">&#39;Ramp&#39;</span><span class="p">,</span> <span class="s1">&#39;read_f&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">read_1</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">read_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">read_0</span><span class="p">,</span> <span class="n">read_1</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">gain</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getfloat</span><span class="p">(</span><span class="s1">&#39;Ramp&#39;</span><span class="p">,</span> <span class="s1">&#39;gain&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">gain</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">noisefac</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getfloat</span><span class="p">(</span><span class="s1">&#39;Ramp&#39;</span><span class="p">,</span> <span class="s1">&#39;noisefac&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">noisefac</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">saveramp</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Ramp&#39;</span><span class="p">,</span> <span class="s1">&#39;saveramp&#39;</span><span class="p">)</span>
+    <span class="n">bgsub</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Calib&#39;</span><span class="p">,</span> <span class="s1">&#39;bgsub&#39;</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Calib&#39;</span><span class="p">,</span> <span class="s1">&#39;mask&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">flatfield</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Calib&#39;</span><span class="p">,</span> <span class="s1">&#39;flatfield&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">flatfield</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fitshift</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Calib&#39;</span><span class="p">,</span> <span class="s1">&#39;fitshift&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">fitshift</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">calibdir</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Calib&#39;</span><span class="p">,</span> <span class="s1">&#39;calibdir&#39;</span><span class="p">)</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;R&#39;</span><span class="p">)</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;method&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">refine</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;refine&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">refine</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">suppressrn</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;suppressrn&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">suppressrn</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">minpct</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;minpct&#39;</span><span class="p">)</span>
+        <span class="n">minpct</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">minpct</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">minpct</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">minpct</span><span class="p">,</span> <span class="mi">90</span><span class="p">)</span> <span class="c1"># Don&#39;t allow more than 90% of the pixels to be used in estimating the read noise.</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">minpct</span> <span class="o">=</span> <span class="mi">60</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fitbkgnd</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;fitbkgnd&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">fitbkgnd</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">saveresid</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;saveresid&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">saveresid</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1">################################################################</span>
+    <span class="c1"># Maximum threads must be between 1 and cpu_count, inclusive</span>
+    <span class="c1">################################################################</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">maxcpus</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;maxcpus&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">maxcpus</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">maxcpus</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">+</span> <span class="n">maxcpus</span>
+        <span class="n">maxcpus</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">maxcpus</span><span class="p">,</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">())</span>
+        <span class="n">maxcpus</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">maxcpus</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">maxcpus</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">smoothandmask</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s1">&#39;Extract&#39;</span><span class="p">,</span> <span class="s1">&#39;smoothandmask&#39;</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">smoothandmask</span> <span class="o">=</span> <span class="kc">True</span>
+        
+
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+        <span class="n">cube</span> <span class="o">=</span> <span class="n">getcube</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">read_idx</span><span class="o">=</span><span class="n">read_idx</span><span class="p">,</span> <span class="n">bgsub</span><span class="o">=</span><span class="n">bgsub</span><span class="p">,</span>
+                       <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="n">gain</span><span class="p">,</span> <span class="n">noisefac</span><span class="o">=</span><span class="n">noisefac</span><span class="p">,</span> 
+                       <span class="n">saveramp</span><span class="o">=</span><span class="n">saveramp</span><span class="p">,</span> <span class="n">refine</span><span class="o">=</span><span class="n">refine</span><span class="p">,</span> <span class="n">maxcpus</span><span class="o">=</span><span class="n">maxcpus</span><span class="p">,</span> 
+                       <span class="n">calibdir</span><span class="o">=</span><span class="n">calibdir</span><span class="p">,</span> <span class="n">R</span><span class="o">=</span><span class="n">R</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> 
+                       <span class="n">smoothandmask</span><span class="o">=</span><span class="n">smoothandmask</span><span class="p">,</span> <span class="n">flatfield</span><span class="o">=</span><span class="n">flatfield</span><span class="p">,</span>
+                       <span class="n">fitshift</span><span class="o">=</span><span class="n">fitshift</span><span class="p">,</span> <span class="n">suppressrn</span><span class="o">=</span><span class="n">suppressrn</span><span class="p">,</span>
+                       <span class="n">minpct</span><span class="o">=</span><span class="n">minpct</span><span class="p">,</span> <span class="n">fitbkgnd</span><span class="o">=</span><span class="n">fitbkgnd</span><span class="p">,</span>
+                       <span class="n">saveresid</span><span class="o">=</span><span class="n">saveresid</span><span class="p">)</span>
+        <span class="n">cube</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.fits&#39;</span><span class="p">,</span> <span class="s1">&#39;_cube.fits&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;.*/&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right"> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 22 Apr 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>

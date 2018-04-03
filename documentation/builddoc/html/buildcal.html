@@ -1,0 +1,175 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>buildcal module &#8212; CHARIS DRP 0.9.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/bootstrap-astropy.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/sidebar.js"></script>
+    <link rel="shortcut icon" href="_static/astropy_logo.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="extractcube module" href="extractcube.html" />
+    <link rel="prev" title="Post-processing methods" href="PostProcessing.html" />
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,600' rel='stylesheet' type='text/css'/>
+<script type="text/javascript" src="_static/copybutton.js"></script>
+
+
+  </head>
+  <body role="document">
+<div class="topbar">
+  <a class="brand" title="Documentation Home" href="index.html"><span id="logotext1">CHARIS</span><span id="logotext2">DRP</span><span id="logotext3"></span></a>
+  <ul>
+    <li><a class="homelink" title="Astropy Homepage" href="http://www.astropy.org"></a></li>
+    <li><a title="General Index" href="genindex.html">Index</a></li>
+    <li><a title="Module Index" href="py-modindex.html">Modules</a></li>
+    <li>
+      
+      
+<form action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+      
+    </li>
+  </ul>
+</div>
+
+<div class="related">
+    <h3>Navigation</h3>
+    <ul>
+      <li class="right">
+	<a href="extractcube.html" title="extractcube module">
+	  next &raquo;
+	</a>
+      </li>
+      <li class="right">
+	<a href="PostProcessing.html" title="Post-processing methods">
+	  &laquo; previous
+	</a>
+	 |
+      </li>
+      <li>
+	<a href="index.html">CHARIS DRP 0.9.1 documentation</a>
+	 &#187;
+      </li>
+      
+      <li>buildcal module</li> 
+    </ul>
+</div>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-buildcal">
+<span id="buildcal-module"></span><h1>buildcal module<a class="headerlink" href="#module-buildcal" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="buildcal.buildcalibrations">
+<code class="descclassname">buildcal.</code><code class="descname">buildcalibrations</code><span class="sig-paren">(</span><em>inImage</em>, <em>inLam</em>, <em>mask</em>, <em>indir</em>, <em>outdir='./'</em>, <em>order=3</em>, <em>lam1=1150</em>, <em>lam2=2400</em>, <em>R=25</em>, <em>trans=None</em>, <em>upsample=True</em>, <em>header=None</em>, <em>ncpus=8</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/buildcal.html#buildcalibrations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#buildcal.buildcalibrations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build the calibration files needed to extract data cubes from
+sequences of CHARIS reads.</p>
+<p>Inputs:
+1. inImage:  Image class, should include count rate and ivar for</p>
+<blockquote>
+<div>a narrow-band flatfield calibration image.</div></blockquote>
+<ol class="arabic simple" start="2">
+<li>inLam:    wavelength in nm of inImage</li>
+<li>mask:     bad pixel mask, =0 for bad pixels</li>
+<li>indir:    directory where master calibration files live</li>
+</ol>
+<p>Optional inputs:
+1. outdir:   directory in which to place
+1. order:    int, order of polynomial fit to position(lambda).</p>
+<blockquote>
+<div>Default 3 (strongly recommended).</div></blockquote>
+<ol class="arabic simple" start="2">
+<li><dl class="first docutils">
+<dt>lam1:     minimum wavelength (in nm) of the bandpass</dt>
+<dd>Default 1150</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>lam2:     maximum wavelength (in nm) of the bandpass</dt>
+<dd>Default 2400</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>R:        spectral resolution of the PSFlets templates  </dt>
+<dd>Default 25</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>trans:    ndarray, trans[:, 0] = wavelength in nm, trans[:, 1]</dt>
+<dd>is fractional transmission through the filter and 
+atmosphere.  Default None &#8211;&gt; trans[:, 1] = 1</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>header:   FITS header, to which will be appended the shifts</dt>
+<dd>and rotation angle between the stored and the fitted
+wavelength solutions.  Default None.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>ncpus:    number of threads for multithreading.  </dt>
+<dd>Default multiprocessing.cpu_count()</dd>
+</dl>
+</li>
+</ol>
+<p>Returns None, writes calibration files to outdir.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><h3>Page Contents</h3>
+<ul>
+<li><a class="reference internal" href="#">buildcal module</a></li>
+</ul>
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<footer class="footer">
+  <p class="pull-right">
+    <a href="_sources/buildcal.rst.txt"
+       rel="nofollow">Page Source</a> &nbsp;
+    <a href="#">Back to Top</a></p>
+  <p>
+    &copy; Copyright 2017, Tim Brandt, Maxime Rizzo, Tyler Groff, Jeff Chilcote.<br/>
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.5.1. &nbsp;
+    Last built 22 Apr 2017. <br/>
+  </p>
+</footer>
+  </body>
+</html>
