@@ -22,8 +22,8 @@ try:
     import utr
     from image import Image
 except:
-    import charis.primitives as primitives
-    import charis.utr as utr
+    from charis import primitives
+    from charis import utr
     from charis.image import Image
     import charis
 
