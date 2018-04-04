@@ -37,7 +37,7 @@ class CHARIS(object):
         self.pixel_scale = 0.015 * u.arcsec / u.pixel
         self.gain = 2.
         index_range = np.arange(-100, 101, dtype='float')
-        self.nlens_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
+        self.lenslet_ix, self.lenslet_iy = np.meshgrid(index_range, index_range)
 
         longitude, latitude = [-155.4760187, 19.825504] * u.degree
         self.location = EarthLocation(longitude, latitude)
@@ -73,9 +73,9 @@ class SPHERE(object):
         self.pixel_scale = 0.00746 * u.arcsec / u.pixel
         self.gain = 1.8
         index_range = np.arange(-100, 101, dtype='float')
-        self.nlens_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
-        self.nlens_ix[::2] += 0.5
-        self.nlens_iy *= np.sqrt(3) / 2.
+        self.lenslet_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
+        self.lenslet_ix[::2] += 0.5
+        self.lenslet_iy *= np.sqrt(3) / 2.
 
         longitude, latitude = [-70.4045, -24.6268] * u.degree
         self.location = EarthLocation(longitude, latitude)
