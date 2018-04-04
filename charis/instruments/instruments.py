@@ -14,18 +14,18 @@ class CHARIS(object):
 
     """
 
-    __valid_observing_modes = ['highres_J', 'highres_H', 'highres_K',
-                               'lowres']
+    __valid_observing_modes = ['J', 'H', 'K',
+                               'Broadband']
 
-    __wavelength_range = {'highres_J': [1155., 1340.] * u.nanometer,
-                          'highres_H': [1470., 1800.] * u.nanometer,
-                          'highres_K': [2005., 2380.] * u.nanometer,
-                          'lowres': [1140., 2410.] * u.nanometer}
+    __wavelength_range = {'J': [1155., 1340.] * u.nanometer,
+                          'H': [1470., 1800.] * u.nanometer,
+                          'K': [2005., 2380.] * u.nanometer,
+                          'Broadband': [1140., 2410.] * u.nanometer}
 
-    __resolution = {'highres_J': 100,
-                    'highres_H': 100,
-                    'highres_K': 100,
-                    'lowres': 30}
+    __resolution = {'J': 100,
+                    'H': 100,
+                    'K': 100,
+                    'Broadband': 30}
 
     def __init__(self, observing_mode):
         self.instrument_name = 'CHARIS'
