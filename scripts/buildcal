@@ -283,7 +283,6 @@ if __name__ == "__main__":
     for i in range(2, len(sys.argv)):
         bgfiles += glob.glob(sys.argv[i])
 
-    # SPHERE: INSTRUME
     header = fits.open(infile)[0].header
     correct_header = True
 
@@ -309,46 +308,25 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError("The instrument is not supported.")
 
-    # if 'Y_FLTNAM' in header and 'OBJECT' in header:
-    #     band = header['Y_FLTNAM']
-    #     if band in ["J", "H", "K", "Broadband"]:
-    #         if band == 'Broadband':
-    #             band = 'lowres'
-    #         print("\n" + "*" * 60)
-    #         print("Parameters retrieved from header")
-    #         print("*" * 60)
-    #         print("     Mode detected: " + band)
-    #     else:
-    #         print("Invalid band keywork")
-    #         correct_header = False
-    #
-    #     if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
-    #         lam = int(header['OBJECT'].split('n')[0])
-    #         print("     Wavelength detected: ", lam)
-    #     else:
-    #         print("Invalid wavelength keyword")
-    #         correct_header = False
-    # else:
-    #     correct_header = False
-
     if not correct_header and 'CHARIS' in header['INSTRUME']:
         print("\n" + "*" * 60)
         print("The file you selected doesn't appear to have the correct header keywords set")
         print("This can happen for files taken before Apr 1st, 2017. Please enter them manually.")
         print("*" * 60)
         while True:
-            band = raw_input("     Band? [J/H/K/lowres]: ")
-            if band in ["J", "H", "K", "lowres"]:
+            observing_mode = raw_input("     Band? [J/H/K/Broadband]: ")
+            if observing_mode in ["J", "H", "K", "Broadband"]:
                 break
             else:
                 print("Invalid input.")
         while True:
-            lam = raw_input("     Wavelength? [1200/1550/2346]: ")
+            calibration_wavelength = raw_input("     Wavelength? [1200/1550/2346]: ")
             if lam in ["1200", "1550", "2346"]:
-                lam = int(lam)
+                calibration_wavelength = int(lam) * u.nanometer
                 break
             else:
                 print("Invalid input")
+        instrument = instruments.CHARIS(observing_mode)
 
     print("\n" + "*" * 60)
     print("Oversample PSFlet templates to enable fitting a subpixel offset in cube")
@@ -406,20 +384,6 @@ if __name__ == "__main__":
         else:
             print("Invalid input.")
 
-    ###############################################################
-    # Wavelength limits in nm
-    ###############################################################
-
-    # if band == 'J':
-    #     lam1, lam2 = [1155, 1340]
-    # elif band == 'H':
-    #     lam1, lam2 = [1470, 1800]
-    # elif band == 'K':
-    #     lam1, lam2 = [2005, 2380]
-    # elif band == 'lowres':
-    #     lam1, lam2 = [1140, 2410]
-    # else:
-    #     raise ValueError('Band must be one of: J, H, K, lowres')
     if calibration_wavelength <= instrument.wavelength_range[0] \
             or calibration_wavelength >= instrument.wavelength_range[1]:
         raise ValueError("Error: wavelength " + str(calibration_wavelength) + " outside range (" +
@@ -427,24 +391,7 @@ if __name__ == "__main__":
                          + ", " + str(instrument.wavelength_range[1])
                          + ") of mode " + band)
 
-    # if lam < lam1 or lam > lam2:
-    #     raise ValueError("Error: wavelength " + str(lam) + " outside range (" +
-    #                      str(lam1) + ", " + str(lam2) + ") of mode " + band)
-    #prefix = os.path.dirname(os.path.realpath(__file__))
-    # prefix = pkg_resources.resource_filename('charis', 'calibrations')
-
-    ###############################################################
-    # Spectral resolutions for the final calibration files
-    ###############################################################
-
     indir = instrument.calibration_path
-    # if band in ['J', 'H', 'K']:
-    #     indir = os.path.join(prefix, "highres_" + band)
-    #     R = 100
-    # else:
-    #     indir = os.path.join(prefix, "lowres")
-    #     R = 30
-
     mask = fits.open(os.path.join(indir, 'mask.fits'))[0].data
 
     hdr = fits.PrimaryHDU().header
@@ -496,14 +443,15 @@ if __name__ == "__main__":
         denom = denom + im.ivar
     inImage = Image(data=num / denom, ivar=mask * 1. / denom)
 
-    trans = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
+    transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
 
     buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
                       lam1=instrument.wavelength_range[0].value,
                       lam2=instrument.wavelength_range[1].value,
                       upsample=upsample, R=instrument.resolution,
-                      order=3, trans=trans,
-                      header=hdr, ncpus=nthreads)
+                      order=3, trans=transmission,
+                      header=hdr, ncpus=nthreads,
+                      instrument=instrument)
 
     out = fits.HDUList(fits.PrimaryHDU(None, hdr))
     out.writeto('cal_params.fits', overwrite=True)
