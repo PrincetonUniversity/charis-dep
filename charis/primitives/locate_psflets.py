@@ -550,7 +550,7 @@ def _transform(x, y, order, coef, basecoef=None):
         return [_x, _y]
 
 
-def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
+def _corrval(coef, x, y, filtered, order, trimfrac=0.1, basecoef=None):
     """
     Private function _corrval in locate_psflets
 
@@ -573,7 +573,7 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
     trimfrac: float
         fraction of outliers (high & low combined) to trim
         Default 0.1 (5% trimmed on the high end, 5% on the low end)
-    highordercoef: boolean
+    basecoef: list of floats or None
 
 
     Returns
@@ -585,9 +585,13 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
     #################################################################
     # Use np.nan for lenslet coordinates outside the CHARIS FOV,
     # discard these from the calculation before trimming.
+    #
+    # basecoef can be a list of lists, each one corresponding to a
+    # wavelength.  The cross-correlation is then the sum of the 
+    # cross-correlation at all wavelengths.
     #################################################################
 
-    _x, _y = _transform(x, y, order, coef, highordercoef)
+    _x, _y = _transform(x, y, order, coef, basecoef)
     vals = ndimage.map_coordinates(filtered, [_y, _x], mode='constant',
                                    cval=np.nan, prefilter=False)
     vals_ok = vals[np.where(np.isfinite(vals))]
