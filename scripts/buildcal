@@ -35,39 +35,33 @@ except:
 log = logging.getLogger('main')
 
 
-def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
-                      order=3, lam1=1150, lam2=2400, R=25, trans=None,
+def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
+                      order=3, trans=None,
                       upsample=True, header=None,
-                      ncpus=multiprocessing.cpu_count(),
-                      instrument=None):
+                      ncpus=multiprocessing.cpu_count()):
     """
     Build the calibration files needed to extract data cubes from
     sequences of CHARIS reads.
 
     Inputs:
-    1. inImage:  Image class, should include count rate and ivar for
+    1. inImage:  Image object, should include count rate and ivar for
                  a narrow-band flatfield calibration image.
     2. inLam:    wavelength in nm of inImage
     3. mask:     bad pixel mask, =0 for bad pixels
     4. indir:    directory where master calibration files live
+    5. instrument: instrument object
 
     Optional inputs:
-    1. outdir:   directory in which to place
-    1. order:    int, order of polynomial fit to position(lambda).
+    outdir:   directory in which to place
+    order:    int, order of polynomial fit to position(lambda).
                  Default 3 (strongly recommended).
-    2. lam1:     minimum wavelength (in nm) of the bandpass
-                 Default 1150
-    3. lam2:     maximum wavelength (in nm) of the bandpass
-                 Default 2400
-    4. R:        spectral resolution of the PSFlets templates
-                 Default 25
-    5. trans:    ndarray, trans[:, 0] = wavelength in nm, trans[:, 1]
+    trans:    ndarray, trans[:, 0] = wavelength in nm, trans[:, 1]
                  is fractional transmission through the filter and
                  atmosphere.  Default None --> trans[:, 1] = 1
-    6. header:   FITS header, to which will be appended the shifts
+    header:   FITS header, to which will be appended the shifts
                  and rotation angle between the stored and the fitted
                  wavelength solutions.  Default None.
-    7. ncpus:    number of threads for multithreading.
+    ncpus:    number of threads for multithreading.
                  Default multiprocessing.cpu_count()
 
     Returns None, writes calibration files to outdir.
@@ -75,9 +69,8 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     """
 
     tstart = time.time()
-    if instrument is not None:
-        lam1, lam2 = instrument.wavelength_range.value
-        R = instrument.resolution
+    lam1, lam2 = instrument.wavelength_range.value
+    R = instrument.resolution
 
     #################################################################
     # Fit the PSFlet positions on the input image, compute the shift
@@ -189,7 +182,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     # calculation in parallel.
     #################################################################
 
-    xindx, yindx = instrument.nlens_ix, instrument.nlens_iy
+    xindx, yindx = instrument.lenslet_ix, instrument.lenslet_iy
 
     #################################################################
     # Oversampling in x in final calibration frame.  If >1, fitting a
@@ -297,8 +290,7 @@ if __name__ == "__main__":
 
             if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
                 calibration_wavelength = int(header['OBJECT'].split('n')[0]) * u.nanometer
-                lam = int(header['OBJECT'].split('n')[0]) * u.nanometer
-                print("     Wavelength detected: ", lam)
+                print("     Wavelength detected: ", calibration_wavelength)
             else:
                 print("Invalid wavelength keyword")
                 correct_header = False
@@ -323,8 +315,8 @@ if __name__ == "__main__":
                 print("Invalid input.")
         while True:
             calibration_wavelength = raw_input("     Wavelength? [1200/1550/2346]: ")
-            if lam in ["1200", "1550", "2346"]:
-                calibration_wavelength = int(lam) * u.nanometer
+            if calibration_wavelength in ["1200", "1550", "2346"]:
+                calibration_wavelength = int(calibration_wavelength) * u.nanometer
                 break
             else:
                 print("Invalid input")
@@ -450,10 +442,7 @@ if __name__ == "__main__":
     transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
 
     buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
-                      lam1=instrument.wavelength_range[0].value,
-                      lam2=instrument.wavelength_range[1].value,
-                      upsample=upsample, R=instrument.resolution,
-                      order=3, trans=transmission,
+                      upsample=upsample, order=3, trans=transmission,
                       header=hdr, ncpus=nthreads,
                       instrument=instrument)
 
