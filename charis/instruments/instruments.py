@@ -1,15 +1,16 @@
 # from abc import ABCMeta, abstractmethod, abstractproperty
 import os
+
+import numpy as np
 import pkg_resources
 from astropy import units as u
 from astropy.coordinates import EarthLocation
-
 
 __all__ = ['CHARIS', 'SPHERE']
 
 
 class CHARIS(object):
-    """Class containing instrument properties of Charis
+    """Class containing instrument properties of CHARIS
 
     """
 
@@ -33,6 +34,9 @@ class CHARIS(object):
         self.wavelength_range = self.__wavelength_range[observing_mode]
         self.resolution = self.__resolution[observing_mode]
         self.lenslet_geometry = 'rectilinear'
+        self.pixel_scale = 0.015 * u.arcsec / u.pixel
+        index_range = np.arange(-100, 101, dtype='float')
+        self.nlens_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
 
         longitude, latitude = [-155.4760187, 19.825504] * u.degree
         self.location = EarthLocation(longitude, latitude)
@@ -46,17 +50,17 @@ class CHARIS(object):
 
 
 class SPHERE(object):
-    """Class containing instrument properties of Sphere
+    """Class containing instrument properties of SPHERE
 
     """
 
-    __valid_observing_modes = ['SPHERE_YJ', 'SPHERE_YH']
+    __valid_observing_modes = ['YJ', 'YH']
 
-    __wavelength_range = {'SPHERE_YJ': [950., 1350.] * u.nanometer,
-                          'SPHERE_YH': [950., 1650.] * u.nanometer}
+    __wavelength_range = {'YJ': [950., 1350.] * u.nanometer,
+                          'YH': [950., 1650.] * u.nanometer}
 
-    __resolution = {'SPHERE_YJ': 54,
-                    'SPHERE_YH': 33}
+    __resolution = {'YJ': 54,
+                    'YH': 33}
 
     def __init__(self, observing_mode):
         self.instrument_name = 'SPHERE'
@@ -65,6 +69,11 @@ class SPHERE(object):
         self.wavelength_range = self.__wavelength_range[observing_mode]
         self.resolution = self.__resolution[observing_mode]
         self.lenslet_geometry = 'hexagonal'
+        self.pixel_scale = 0.00746 * u.arcsec / u.pixel
+        index_range = np.arange(-100, 101, dtype='float')
+        self.nlens_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
+        self.nlens_ix[::2] += 0.5
+        self.nlens_iy *= np.sqrt(3) / 2.
 
         longitude, latitude = [-70.4045, -24.6268] * u.degree
         self.location = EarthLocation(longitude, latitude)
