@@ -450,7 +450,7 @@ def _pullorder(coef, order=1):
     return coef_short
 
 
-def _insertorder(coefshort, coef):
+def _insertorder(coefshort, coef, add=False):
     coeforder = int(np.sqrt(len(coef) + 0.25) - 1.5 + 1e-12)
     shortorder = int(np.sqrt(len(coefshort) + 0.25) - 1.5 + 1e-12)
 
@@ -459,13 +459,19 @@ def _insertorder(coefshort, coef):
     for ix in range(coeforder + 1):
         for iy in range(coeforder - ix + 1):
             if ix + iy <= shortorder:
-                coef[i] = coefshort[j]
+                if add:
+                    coef[i] += coefshort[j]
+                else:
+                    coef[i] = coefshort[j]
                 j += 1
             i += 1
     for ix in range(coeforder + 1):
         for iy in range(coeforder - ix + 1):
             if ix + iy <= shortorder:
-                coef[i] = coefshort[j]
+                if add:
+                    coef[i] += coefshort[j]
+                else:
+                    coef[i] = coefshort[j]
                 j += 1
             i += 1
 
