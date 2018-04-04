@@ -7,16 +7,16 @@ import glob
 import logging
 import multiprocessing
 import os
+import pdb
 import re
 import shutil
 import sys
 import time
-import pdb
 
 import numpy as np
 import pkg_resources
-from astropy.io import fits
 from astropy import units as u
+from astropy.io import fits
 from scipy import interpolate, ndimage
 
 try:
@@ -75,6 +75,9 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     """
 
     tstart = time.time()
+    if instrument is not None:
+        lam1, lam2 = instrument.wavelength_range.value
+        R = instrument.resolution
 
     #################################################################
     # Fit the PSFlet positions on the input image, compute the shift
@@ -119,7 +122,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     # wavelengths.
     #################################################################
 
-    hires_list = np.sort(glob.glob(indir + '/hires_psflets_lam????.fits'))
+    hires_list = np.sort(glob.glob(indir + '/hires_psflets_lam*.fits'))
     hires_arrs = [fits.open(filename)[0].data for filename in hires_list]
     lam_hires = [int(re.sub('.*lam', '', re.sub('.fits', '', filename)))
                  for filename in hires_list]
@@ -186,8 +189,7 @@ def buildcalibrations(inImage, inLam, mask, indir, outdir="./",
     # calculation in parallel.
     #################################################################
 
-    xindx = np.arange(-100, 101)
-    xindx, yindx = np.meshgrid(xindx, xindx)
+    xindx, yindx = instrument.nlens_ix, instrument.nlens_iy
 
     #################################################################
     # Oversampling in x in final calibration frame.  If >1, fitting a
@@ -426,7 +428,8 @@ if __name__ == "__main__":
                                     'Dark(s) used for background subtraction')
         ibg += 1
     if len(bgfiles) > 0:
-        background = Image(data=num / denom, ivar=1. / denom)
+        background = Image(data=num / denom, ivar=1. / denom,
+                           instrument_name=instrument.instrument_name)
         background.write('background.fits')
     else:
         hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
@@ -441,7 +444,8 @@ if __name__ == "__main__":
         im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
         num = num + im.data * im.ivar
         denom = denom + im.ivar
-    inImage = Image(data=num / denom, ivar=mask * 1. / denom)
+    inImage = Image(data=num / denom, ivar=mask * 1. / denom,
+                    instrument_name=instrument.instrument_name)
 
     transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
 

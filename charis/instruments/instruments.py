@@ -35,6 +35,7 @@ class CHARIS(object):
         self.resolution = self.__resolution[observing_mode]
         self.lenslet_geometry = 'rectilinear'
         self.pixel_scale = 0.015 * u.arcsec / u.pixel
+        self.gain = 2.
         index_range = np.arange(-100, 101, dtype='float')
         self.nlens_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
 
@@ -70,6 +71,7 @@ class SPHERE(object):
         self.resolution = self.__resolution[observing_mode]
         self.lenslet_geometry = 'hexagonal'
         self.pixel_scale = 0.00746 * u.arcsec / u.pixel
+        self.gain = 1.8
         index_range = np.arange(-100, 101, dtype='float')
         self.nlens_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
         self.nlens_ix[::2] += 0.5

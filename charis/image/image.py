@@ -30,7 +30,7 @@ class Image:
 
     def __init__(self, filename='', data=None, ivar=None, chisq=None,
                  header=fits.PrimaryHDU().header, extrahead=None,
-                 reads=None, flags=None):
+                 reads=None, flags=None, instrument_name=None):
         '''
         Image initialization
 
@@ -59,6 +59,7 @@ class Image:
         self.flags = flags
         self.filename = filename
         self.extrahead = extrahead
+        self.instrument_name = instrument_name
 
         if data is None and filename != '':
             self.load(filename)
