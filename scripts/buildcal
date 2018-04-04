@@ -72,7 +72,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     """
 
     tstart = time.time()
-    lam1, lam2 = instrument.wavelength_range.value
+    lower_wavelength_limit, upper_wavelength_limit = instrument.wavelength_range.value
     R = instrument.resolution
     npix_y, npix_x = inImage.data.shape
 
@@ -97,7 +97,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
 
     indx = np.asarray([0, 1, 4, 10, 11, 14])
     psftool.interp_arr[0][indx] += dcoef[indx]
-    psftool.genpixsol(lam, allcoef, order=3, lam1=lam1 / 1.05, lam2=lam2 * 1.05)
+    psftool.genpixsol(lam, allcoef, order=3, lam1=lower_wavelength_limit / 1.05,
+                      lam2=upper_wavelength_limit * 1.05)
     psftool.savepixsol(outdir=outdir)
 
     #################################################################
@@ -151,8 +152,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     # location, then interpolate in wavelength for each lenslet.
     #################################################################
 
-    mean_x = psftool.xindx[:, :, psftool.xindx.shape[-1] // 2]
-    mean_y = psftool.yindx[:, :, psftool.yindx.shape[-1] // 2]
+    mean_x = psftool.lenslet_ix[:, :, psftool.lenslet_ix.shape[-1] // 2]
+    mean_y = psftool.lenslet_iy[:, :, psftool.lenslet_iy.shape[-1] // 2]
 
     longsigarr = np.zeros((len(lam_hires), mean_x.shape[0], mean_x.shape[1]))
 
@@ -161,7 +162,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
 
     for i in range(sigarr.shape[0]):
         longsigarr[i] = ndimage.map_coordinates(sigarr[i], [iy, ix], order=3, mode='nearest')
-    fullsigarr = np.zeros((psftool.xindx.shape))
+    fullsigarr = np.zeros((psftool.lenslet_ix.shape))
     for i in range(mean_x.shape[0]):
         for j in range(mean_x.shape[1]):
             fit = interpolate.interp1d(np.asarray(lam_hires), longsigarr[:, i, j],
@@ -174,8 +175,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     # Wavelengths at which to return the PSFlet templates
     #################################################################
 
-    Nspec = int(np.log(lam2 * 1. / lam1) * R + 1.5)
-    loglam_endpts = np.linspace(np.log(lam1), np.log(lam2), Nspec)
+    Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
+    loglam_endpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
     loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2
     lam_endpts = np.exp(loglam_endpts)
     lam_midpts = np.exp(loglam_midpts)
@@ -186,7 +187,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     # calculation in parallel.
     #################################################################
 
-    xindx, yindx = instrument.lenslet_ix, instrument.lenslet_iy
+    lenslet_ix, lenslet_iy = instrument.lenslet_ix, instrument.lenslet_iy
 
     #################################################################
     # Oversampling in x in final calibration frame.  If >1, fitting a
@@ -212,7 +213,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
         tool.interp_arr[0, 0] -= dx
         tasks.put(Task(i, primitives.make_polychrome,
                        (lam_endpts[ilam], lam_endpts[ilam + 1], hires_arrs,
-                        lam_hires, tool, allcoef, xindx, yindx,
+                        lam_hires, tool, allcoef, lenslet_ix, lenslet_iy,
                         psflet_res, nlam, trans)))
     for i in range(ncpus):
         tasks.put(None)
@@ -240,7 +241,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     good = []
     buffer_size = 8
     for i in range(Nspec - 1):
-        _x, _y = psftool.return_locations(lam_midpts[i], allcoef, xindx, yindx)
+        _x, _y = psftool.return_locations(lam_midpts[i], allcoef, lenslet_ix, lenslet_iy)
         _good = (_x > buffer_size) * (_x < npix_x - buffer_size) * (_y > buffer_size) * (_y < npix_y - buffer_size)
         xpos += [_x]
         ypos += [_y]
