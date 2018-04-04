@@ -38,7 +38,8 @@ log = logging.getLogger('main')
 def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
                       order=3, trans=None,
                       upsample=True, header=None,
-                      ncpus=multiprocessing.cpu_count()):
+                      ncpus=multiprocessing.cpu_count(),
+                      nlam=10):
     """
     Build the calibration files needed to extract data cubes from
     sequences of CHARIS reads.
@@ -64,6 +65,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     ncpus:    number of threads for multithreading.
                  Default multiprocessing.cpu_count()
 
+    nlam: int, number of monochromatic PSFlets per integrated PSFlet
+
     Returns None, writes calibration files to outdir.
 
     """
@@ -71,6 +74,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     tstart = time.time()
     lam1, lam2 = instrument.wavelength_range.value
     R = instrument.resolution
+    npix_y, npix_x = inImage.data.shape
 
     #################################################################
     # Fit the PSFlet positions on the input image, compute the shift
@@ -152,8 +156,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
 
     longsigarr = np.zeros((len(lam_hires), mean_x.shape[0], mean_x.shape[1]))
 
-    ix = mean_x * hires_arrs[0].shape[1] / 2048. - 0.5
-    iy = mean_y * hires_arrs[0].shape[0] / 2048. - 0.5
+    ix = mean_x * hires_arrs[0].shape[1] / npix_x. - 0.5
+    iy = mean_y * hires_arrs[0].shape[0] / npix_y. - 0.5
 
     for i in range(sigarr.shape[0]):
         longsigarr[i] = ndimage.map_coordinates(sigarr[i], [iy, ix], order=3, mode='nearest')
@@ -193,7 +197,6 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
         upsamp = 5
     else:
         upsamp = 1
-    nlam = 10      # Number of monochromatic PSFlets per integrated PSFlet
 
     tasks = multiprocessing.Queue()
     results = multiprocessing.Queue()
@@ -214,7 +217,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     for i in range(ncpus):
         tasks.put(None)
 
-    polyimage = np.empty((Nspec - 1, 2048, 2048 * upsamp), np.float32)
+    polyimage = np.empty((Nspec - 1, npix_y, npix_x * upsamp), np.float32)
 
     print('Generating narrowband template images')
     for i in range(upsamp * (Nspec - 1)):
@@ -235,9 +238,10 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     xpos = []
     ypos = []
     good = []
+    buffer_size = 8
     for i in range(Nspec - 1):
         _x, _y = psftool.return_locations(lam_midpts[i], allcoef, xindx, yindx)
-        _good = (_x > 8) * (_x < 2040) * (_y > 8) * (_y < 2040)
+        _good = (_x > buffer_size) * (_x < npix_x - buffer_size) * (_y > buffer_size) * (_y < npix_y - buffer_size)
         xpos += [_x]
         ypos += [_y]
         good += [_good]
@@ -440,7 +444,7 @@ if __name__ == "__main__":
                     instrument_name=instrument.instrument_name)
 
     transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
-
+    pdb.set_trace()
     buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
                       upsample=upsample, order=3, trans=transmission,
                       header=hdr, ncpus=nthreads,
