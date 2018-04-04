@@ -40,24 +40,24 @@ def setup_charis(ext_modules):
         package_dir={'charis': 'charis', 'charis.primitives': 'charis/primitives',
                      'charis.image': 'charis/image', 'charis.utr': 'charis/utr',
                      'charis.parallel': 'charis/parallel'},
-        data_files=[('charis/calibrations', ['charis/calibrations/lowres/mask.fits',
-                                             'charis/calibrations/lowres/pixelflat.fits']),
-                    ('charis/calibrations/lowres', glob.glob('charis/calibrations/lowres/hires_psflets*') +
-                     ['charis/calibrations/lowres/lensletflat.fits',
-                        'charis/calibrations/lowres/lowres_tottrans.dat',
-                        'charis/calibrations/lowres/lamsol.dat']),
-                    ('charis/calibrations/highres_J', glob.glob('charis/calibrations/highres_J/hires_psflets*') +
-                     ['charis/calibrations/highres_J/lensletflat.fits',
-                        'charis/calibrations/highres_J/J_tottrans.dat',
-                        'charis/calibrations/highres_J/lamsol.dat']),
-                    ('charis/calibrations/highres_H', glob.glob('charis/calibrations/highres_H/hires_psflets*') +
-                     ['charis/calibrations/highres_H/lensletflat.fits',
-                        'charis/calibrations/highres_H/H_tottrans.dat',
-                        'charis/calibrations/highres_H/lamsol.dat']),
-                    ('charis/calibrations/highres_K', glob.glob('charis/calibrations/highres_K/hires_psflets*') +
-                     ['charis/calibrations/highres_K/lensletflat.fits',
-                        'charis/calibrations/highres_K/K_tottrans.dat',
-                        'charis/calibrations/highres_K/lamsol.dat'])],
+        data_files=[('charis/calibrations', ['charis/calibrations/CHARIS/lowres/mask.fits',
+                                             'charis/calibrations/CHARIS/lowres/pixelflat.fits']),
+                    ('charis/calibrations/CHARIS/lowres', glob.glob('charis/calibrations/CHARIS/lowres/hires_psflets*') +
+                     ['charis/calibrations/CHARIS/lowres/lensletflat.fits',
+                        'charis/calibrations/CHARIS/lowres/lowres_tottrans.dat',
+                        'charis/calibrations/CHARIS/lowres/lamsol.dat']),
+                    ('charis/calibrations/CHARIS/highres_J', glob.glob('charis/calibrations/CHARIS/highres_J/hires_psflets*') +
+                     ['charis/calibrations/CHARIS/highres_J/lensletflat.fits',
+                        'charis/calibrations/CHARIS/highres_J/J_tottrans.dat',
+                        'charis/calibrations/CHARIS/highres_J/lamsol.dat']),
+                    ('charis/calibrations/CHARIS/highres_H', glob.glob('charis/calibrations/CHARIS/highres_H/hires_psflets*') +
+                     ['charis/calibrations/CHARIS/highres_H/lensletflat.fits',
+                        'charis/calibrations/CHARIS/highres_H/H_tottrans.dat',
+                        'charis/calibrations/CHARIS/highres_H/lamsol.dat']),
+                    ('charis/calibrations/CHARIS/highres_K', glob.glob('charis/calibrations/CHARIS/highres_K/hires_psflets*') +
+                     ['charis/calibrations/CHARIS/highres_K/lensletflat.fits',
+                        'charis/calibrations/CHARIS/highres_K/K_tottrans.dat',
+                        'charis/calibrations/CHARIS/highres_K/lamsol.dat'])],
         install_requires=['numpy', 'scipy', 'astropy', 'cython>=0.x'],
         scripts=['scripts/buildcal', 'scripts/extractcube'],
         cmdclass={'build_ext': build_ext},
