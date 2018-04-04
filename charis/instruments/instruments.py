@@ -43,7 +43,7 @@ class CHARIS(object):
         self.calibration_path = \
             os.path.join(
                 pkg_resources.resource_filename('charis', 'calibrations'),
-                observing_mode)
+                'CHARIS', observing_mode)
 
     def __repr__(self):
         return "{} {}".format(self.instrument_name, self.observing_mode)
@@ -80,7 +80,7 @@ class SPHERE(object):
         self.calibration_path = \
             os.path.join(
                 pkg_resources.resource_filename('charis', 'calibrations'),
-                observing_mode)
+                'SPHERE', observing_mode)
 
     def __repr__(self):
         return "{} {}".format(self.instrument_name, self.observing_mode)
