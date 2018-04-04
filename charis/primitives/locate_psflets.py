@@ -478,7 +478,7 @@ def _insertorder(coefshort, coef, add=False):
     return coef
 
 
-def _transform(x, y, order, coef, highordercoef=None):
+def _transform(x, y, order, coef, basecoef=None):
     """
     Private function _transform in locate_psflets
 
@@ -496,7 +496,7 @@ def _transform(x, y, order, coef, highordercoef=None):
     coef:  list of floats
         List of the coefficients.  Must match the length required by
         order = (order+1)*(order+2)
-    highordercoef: Boolean
+    basecoef: list of floats or None
 
     Returns
     -------
@@ -513,15 +513,6 @@ def _transform(x, y, order, coef, highordercoef=None):
             pass  # raise ValueError("Number of coefficients incorrect for polynomial order.")
     except:
         raise AttributeError("order must be integer, coef should be a list.")
-
-    try:
-        if not order == int(order):
-            raise ValueError("Polynomial order must be integer")
-        else:
-            if order < 1 or order > 5:
-                raise ValueError("Polynomial order must be >0, <=5")
-    except:
-        raise ValueError("Polynomial order must be integer")
 
     # n**2 + 3*n + 2 = (n + 1.5)**2 - 0.25
     #                = (1/4)*((2*n + 3)**2 - 1) = len(coef)
@@ -541,23 +532,19 @@ def _transform(x, y, order, coef, highordercoef=None):
             _y += coef[i] * x**ix * y**iy
             i += 1
 
-    if highordercoef is None:
+    if basecoef is None:
         return [_x, _y]
     else:
-        order2 = int(np.sqrt(len(highordercoef) + 0.25) - 1.5 + 1e-12)
+        order2 = int(np.sqrt(len(basecoef) + 0.25) - 1.5 + 1e-12)
 
         i = 0
         for ix in range(order2 + 1):
             for iy in range(order2 - ix + 1):
-                if ix + iy <= order1:
-                    continue
-                _x += highordercoef[i] * x**ix * y**iy
+                _x += basecoef[i] * x**ix * y**iy
                 i += 1
         for ix in range(order2 + 1):
             for iy in range(order2 - ix + 1):
-                if ix + iy <= order1:
-                    continue
-                _y += highordercoef[i] * x**ix * y**iy
+                _y += basecoef[i] * x**ix * y**iy
                 i += 1
 
         return [_x, _y]
