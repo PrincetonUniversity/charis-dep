@@ -38,8 +38,8 @@ class PSFLets:
             If load is True, this is the directory in which the file resides
         '''
 
-        self.xindx = None
-        self.yindx = None
+        self.lenslet_ix = None
+        self.lenslet_iy = None
         self.lam_indx = None
         self.nlam = None
         self.nlam_max = None
@@ -65,8 +65,8 @@ class PSFLets:
         hdulist = fits.open(infile)
 
         try:
-            self.xindx = hdulist[0].data
-            self.yindx = hdulist[1].data
+            self.lenslet_ix = hdulist[0].data
+            self.lenslet_iy = hdulist[1].data
             self.lam_indx = hdulist[2].data
             self.nlam = hdulist[3].data.astype(int)
         except:
@@ -92,8 +92,8 @@ class PSFLets:
         if not os.path.isdir(outdir):
             raise IOError("Attempting to save pixel solution to directory " + outdir + ".  Directory does not exist.")
         outfile = re.sub('//', '/', outdir + '/PSFloc.fits')
-        out = fits.HDUList(fits.PrimaryHDU(self.xindx))
-        out.append(fits.PrimaryHDU(self.yindx))
+        out = fits.HDUList(fits.PrimaryHDU(self.lenslet_ix))
+        out.append(fits.PrimaryHDU(self.lenslet_iy))
         out.append(fits.PrimaryHDU(self.lam_indx))
         out.append(fits.PrimaryHDU(self.nlam.astype(int)))
         try:
@@ -132,7 +132,7 @@ class PSFLets:
             coef = np.linalg.lstsq(xarr, allcoef[:, i])[0]
             self.interp_arr[:, i] = coef
 
-    def return_locations_short(self, coef, xindx, yindx):
+    def return_locations_short(self, coef, lenslet_ix, lenslet_iy):
         '''
         Returns the x,y detector location of a given lenslet for a given polynomial fit
 
@@ -140,9 +140,9 @@ class PSFLets:
         ----------
         coef: lists floats
             Polynomial coefficients of fit for a single wavelength
-        xindx: int
+        lenslet_ix: int or float
             X index of lenslet in lenslet array
-        yindx: int
+        lenslet_iy: int or float
             Y index of lenslet in lenslet array
 
         Returns
@@ -152,11 +152,12 @@ class PSFLets:
         interp_y: float
             Y coordinate on the detector
         '''
+        
         coeforder = int(np.sqrt(coef.shape[0])) - 1
-        interp_x, interp_y = _transform(xindx, yindx, coeforder, coef)
+        interp_x, interp_y = _transform(lenslet_ix, lenslet_iy, coeforder, coef)
         return interp_x, interp_y
 
-    def return_res(self, lam, allcoef, xindx, yindx,
+    def return_res(self, lam, allcoef, lenslet_ix, lenslet_iy,
                    order=3, lam1=None, lam2=None):
         '''
         Returns the spectral resolution and interpolated wavelength array
@@ -167,9 +168,9 @@ class PSFLets:
             Wavelength in nm
         allcoef: list of lists floats
             Polynomial coefficients of wavelength solution
-        xindx: int
+        lenslet_ix: int or float
             X index of lenslet in lenslet array
-        yindx: int
+        lenslet_iy: int or float
             Y index of lenslet in lenslet array
         order: int
             Order of polynomial wavelength solution
@@ -207,7 +208,7 @@ class PSFLets:
             coef = np.zeros((coeforder + 1) * (coeforder + 2))
             for k in range(1, interporder + 1):
                 coef += k * self.interp_arr[k] * np.log(interp_lam[i])**(k - 1)
-            _dx, _dy = _transform(xindx, yindx, coeforder, coef)
+            _dx, _dy = _transform(lenslet_ix, lenslet_iy, coeforder, coef)
 
             dx += [_dx]
             dy += [_dy]
@@ -227,10 +228,10 @@ class PSFLets:
             coef += self.interp_arr[k] * np.log(lam)**k
         return coef
 
-    def return_locations(self, lam, allcoef, xindx, yindx, order=3):
+    def return_locations(self, lam, allcoef, lenslet_ix, lenslet_iy, order=3):
         '''
-        Calculates the detector coordinates of lenslet located at `xindx`, `yindx`
-        for desired wavelength `lam`
+        Calculates the detector coordinates of lenslet located at 
+        `lenslet_ix`, `lenslet_iy` for desired wavelength `lam`
 
         Parameters
         ----------
@@ -238,9 +239,9 @@ class PSFLets:
             Wavelength in nm
         allcoef: list of floats
             Polynomial coefficients of wavelength solution
-        xindx: int
+        lenslet_ix: int or float
             X index of lenslet in lenslet array
-        yindx: int
+        lenslet_iy: int or float
             Y index of lenslet in lenslet array
         order: int
             Order of polynomial wavelength solution
@@ -252,9 +253,10 @@ class PSFLets:
         interp_y: float
             Y coordinate on the detector
         '''
+
         if len(allcoef.shape) == 1:
             coeforder = int(np.sqrt(allcoef.shape[0])) - 1
-            interp_x, interp_y = _transform(xindx, yindx, coeforder, allcoef)
+            interp_x, interp_y = _transform(lenslet_ix, lenslet_iy, coeforder, allcoef)
             return interp_x, interp_y
 
         if self.interp_arr is None:
@@ -267,11 +269,11 @@ class PSFLets:
         coef = np.zeros((coeforder + 1) * (coeforder + 2))
         for k in range(self.order + 1):
             coef += self.interp_arr[k] * np.log(lam)**k
-        interp_x, interp_y = _transform(xindx, yindx, coeforder, coef)
+        interp_x, interp_y = _transform(lenslet_ix, lenslet_iy, coeforder, coef)
 
         return interp_x, interp_y
 
-    def genpixsol(self, lam, allcoef, order=3, lam1=None, lam2=None):
+    def genpixsol(self, lam, allcoef, instrument, order=3, lam1=None, lam2=None):
         """
         Calculates the wavelength at the center of each pixel within a microspectrum
 
@@ -282,6 +284,8 @@ class PSFLets:
         allcoef: list of floats
             List describing the polynomial coefficients that best fit the lenslets,
             for all wavelengths
+        instrument: instrument class
+            Contains the lenslet geometry
         order: int
             Order of the polynomical fit
         lam1: float
@@ -291,8 +295,9 @@ class PSFLets:
 
         Notes
         -----
-        This functions fills in most of the fields of the PSFLet class: the array
-        of xindx, yindx, nlam, lam_indx and nlam_max
+        This functions fills in most of the fields of the PSFLet class: the 
+        lenslet geometry (from the instrument class), nlam, lam_indx and 
+        nlam_max
         """
 
         ###################################################################
@@ -315,12 +320,12 @@ class PSFLets:
         if not (coeforder + 1) * (coeforder + 2) == allcoef.shape[1]:
             raise ValueError("Number of coefficients incorrect for polynomial order.")
 
-        xindx = np.arange(-100, 101)
-        xindx, yindx = np.meshgrid(xindx, xindx)
+        lenslet_ix = instrument.lenslet_ix
+        lenslet_iy = instrument.lenslet_iy
 
         n_spline = 100
 
-        interp_x = np.zeros(tuple([n_spline] + list(xindx.shape)))
+        interp_x = np.zeros(tuple([n_spline] + list(lenslet_ix.shape)))
         interp_y = np.zeros(interp_x.shape)
         interp_lam = np.linspace(lam1, lam2, n_spline)
 
@@ -328,16 +333,16 @@ class PSFLets:
             coef = np.zeros((coeforder + 1) * (coeforder + 2))
             for k in range(interporder + 1):
                 coef += self.interp_arr[k] * np.log(interp_lam[i])**k
-            interp_x[i], interp_y[i] = _transform(xindx, yindx, coeforder, coef)
+            interp_x[i], interp_y[i] = _transform(lenslet_ix, lenslet_iy, coeforder, coef)
 
-        x = np.zeros(tuple(list(xindx.shape) + [1000]))
+        x = np.zeros(tuple(list(lenslet_ix.shape) + [1000]))
         y = np.zeros(x.shape)
-        nlam = np.zeros(xindx.shape, np.int)
+        nlam = np.zeros(lenslet_ix.shape, np.int)
         lam_out = np.zeros(y.shape)
-        good = np.zeros(xindx.shape)
+        good = np.zeros(lenslet_ix.shape)
 
-        for ix in range(xindx.shape[0]):
-            for iy in range(xindx.shape[1]):
+        for ix in range(lenslet_ix.shape[0]):
+            for iy in range(lenslet_ix.shape[1]):
                 pix_x = interp_x[:, ix, iy]
                 pix_y = interp_y[:, ix, iy]
                 if np.all(pix_x < 0) or np.all(pix_x > 2048) or np.all(pix_y < 0) or np.all(pix_y > 2048):
@@ -364,8 +369,8 @@ class PSFLets:
             if np.all(y[:, :, nlam_max] == 0):
                 break
 
-        self.xindx = x[:, :, :nlam_max]
-        self.yindx = y[:, :, :nlam_max]
+        self.lenslet_ix = x[:, :, :nlam_max]
+        self.lenslet_iy = y[:, :, :nlam_max]
         self.nlam = nlam
         self.lam_indx = lam_out[:, :, :nlam_max]
         self.nlam_max = np.amax(nlam)
