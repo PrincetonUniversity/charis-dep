@@ -63,6 +63,9 @@ class SPHERE(object):
     __resolution = {'YJ': 54,
                     'YH': 33}
 
+    __calibration_wavelength = {'YJ': [987.7, 1123.7, 1309.4] * u.nanometer
+                                'YH': [987.7, 1123.7, 1309.4, 1545.1] * u.nanometer}
+
     def __init__(self, observing_mode):
         self.instrument_name = 'SPHERE'
         if observing_mode in self.__valid_observing_modes:
@@ -72,6 +75,8 @@ class SPHERE(object):
         self.lenslet_geometry = 'hexagonal'
         self.pixel_scale = 0.00746 * u.arcsec / u.pixel
         self.gain = 1.8
+        self.calibration_wavelength = __calibration_wavelength[observing_mode]
+
         index_range = np.arange(-100, 101, dtype='float')
         self.lenslet_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
         self.lenslet_ix[::2] += 0.5
@@ -127,7 +132,16 @@ def instrument_from_data(header):
             instrument = CHARIS(observing_mode)
 
     elif 'SPHERE' in header['INSTRUME']:
-        raise NotImplementedError()
+        if 'IFS' in header['HIERARCH ESO SEQ ARM']:
+            if 'YJ' in header['HIERARCH ESO INS2 COMB IFS']:
+                observing_mode = 'YJ'
+            else:
+                observing_mode = 'YH'
+        else:
+            raise ValueError("Data is not for IFS")
+        instrument = SPHERE(observing_mode)
+        calibration_wavelength = instrument.calibration_wavelength
+
     else:
         raise NotImplementedError("The instrument is not supported.")
 
