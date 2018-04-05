@@ -283,26 +283,6 @@ if __name__ == "__main__":
     header = fits.open(infile)[0].header
     instrument, calibration_wavelength, correct_header = instruments.instrument_from_data(header)
 
-    if not correct_header and 'CHARIS' in header['INSTRUME']:
-        print("\n" + "*" * 60)
-        print("The file you selected doesn't appear to have the correct header keywords set")
-        print("This can happen for files taken before Apr 1st, 2017. Please enter them manually.")
-        print("*" * 60)
-        while True:
-            observing_mode = raw_input("     Band? [J/H/K/Broadband]: ")
-            if observing_mode in ["J", "H", "K", "Broadband"]:
-                break
-            else:
-                print("Invalid input.")
-        while True:
-            calibration_wavelength = raw_input("     Wavelength? [1200/1550/2346]: ")
-            if calibration_wavelength in ["1200", "1550", "2346"]:
-                calibration_wavelength = int(calibration_wavelength) * u.nanometer
-                break
-            else:
-                print("Invalid input")
-        instrument = instruments.CHARIS(observing_mode)
-
     print("\n" + "*" * 60)
     print("Oversample PSFlet templates to enable fitting a subpixel offset in cube")
     print("extraction?  Cost is a factor of ~2-4 in the time to build calibrations.")

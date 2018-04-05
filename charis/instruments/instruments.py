@@ -106,6 +106,25 @@ def instrument_from_data(header):
                 correct_header = False
         else:
             correct_header = False
+        if not correct_header:
+            print("\n" + "*" * 60)
+            print("The file you selected doesn't appear to have the correct header keywords set")
+            print("This can happen for files taken before Apr 1st, 2017. Please enter them manually.")
+            print("*" * 60)
+            while True:
+                observing_mode = raw_input("     Band? [J/H/K/Broadband]: ")
+                if observing_mode in ["J", "H", "K", "Broadband"]:
+                    break
+                else:
+                    print("Invalid input.")
+            while True:
+                calibration_wavelength = raw_input("     Wavelength? [1200/1550/2346]: ")
+                if calibration_wavelength in ["1200", "1550", "2346"]:
+                    calibration_wavelength = int(calibration_wavelength) * u.nanometer
+                    break
+                else:
+                    print("Invalid input")
+            instrument = CHARIS(observing_mode)
 
     elif 'SPHERE' in header['INSTRUME']:
         raise NotImplementedError()
