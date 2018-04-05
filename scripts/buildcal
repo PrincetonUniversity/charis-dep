@@ -280,7 +280,8 @@ if __name__ == "__main__":
     for i in range(2, len(sys.argv)):
         bgfiles += glob.glob(sys.argv[i])
 
-    instrument, calibration_wavelength, correct_header = instruments.instrument_from_data(infile)
+    header = fits.open(infile)[0].header
+    instrument, calibration_wavelength, correct_header = instruments.instrument_from_data(header)
 
     if not correct_header and 'CHARIS' in header['INSTRUME']:
         print("\n" + "*" * 60)

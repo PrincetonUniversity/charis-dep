@@ -88,8 +88,7 @@ class SPHERE(object):
         return "{} {}".format(self.instrument_name, self.observing_mode)
 
 
-def instrument_from_data(path):
-    header = fits.open(path)[0].header
+def instrument_from_data(header):
     correct_header = True
 
     if 'CHARIS' in header['INSTRUME']:

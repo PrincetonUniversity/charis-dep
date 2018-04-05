@@ -1,1 +1,1 @@
-from instruments import CHARIS, SPHERE
+from instruments import CHARIS, SPHERE, instrument_from_data
