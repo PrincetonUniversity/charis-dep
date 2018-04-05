@@ -18,10 +18,12 @@ import numpy as np
 from astropy.io import fits
 
 try:
+    import instruments
     import primitives
     import utr
     from image import Image
 except:
+    from charis import instruments
     from charis import primitives
     from charis import utr
     from charis.image import Image
@@ -35,7 +37,8 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             method='lstsq', refine=True, suppressrn=True, fitshift=True,
             flatfield=True, smoothandmask=True,
             minpct=70, fitbkgnd=True, saveresid=False,
-            maxcpus=multiprocessing.cpu_count()):
+            maxcpus=multiprocessing.cpu_count(),
+            instrument=None):
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
 
