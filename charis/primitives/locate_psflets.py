@@ -591,14 +591,23 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1, basecoef=None):
     # cross-correlation at all wavelengths.
     #################################################################
 
-    _x, _y = _transform(x, y, order, coef, basecoef)
-    vals = ndimage.map_coordinates(filtered, [_y, _x], mode='constant',
-                                   cval=np.nan, prefilter=False)
-    vals_ok = vals[np.where(np.isfinite(vals))]
+    if basecoef is not None:
+        N = len(basecoef)
+    else:
+        N = 1
+        basecoef = [None]
 
-    iclip = int(vals_ok.shape[0] * trimfrac / 2)
-    vals_sorted = np.sort(vals_ok)
-    score = -1 * np.sum(vals_sorted[iclip:-iclip])
+    score = 0
+    for i in range(N):
+        _x, _y = _transform(x, y, order, coef, basecoef[i])
+        vals = ndimage.map_coordinates(filtered, [_y, _x], mode='constant', 
+                                       cval=np.nan, prefilter=False)
+        vals_ok = vals[np.where(np.isfinite(vals))]
+
+        iclip = int(vals_ok.shape[0]*trimfrac/2)
+        vals_sorted = np.sort(vals_ok)
+        score -= np.sum(vals_sorted[iclip:-iclip])
+
     return score
 
 

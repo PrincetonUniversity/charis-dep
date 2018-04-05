@@ -90,14 +90,14 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     psftool = primitives.PSFLets()
     oldcoef = psftool.monochrome_coef(inLam, lam, allcoef, order=order)
     print('Generating new wavelength solution')
-    x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=order, coef=oldcoef)
+    x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=order, coef=oldcoef, fitorder=1)
+    newcoef = newcoef[0]
 
     psftool.geninterparray(lam, allcoef, order=order)
     dcoef = newcoef - oldcoef
 
-    indx = np.asarray([0, 1, 4, 10, 11, 14])
-    psftool.interp_arr[0][indx] += dcoef[indx]
-    psftool.genpixsol(lam, allcoef, order=3, lam1=lower_wavelength_limit / 1.05,
+    psftool.interp_arr[0] += dcoef
+    psftool.genpixsol(lam, allcoef, instrument, order=3, lam1=lower_wavelength_limit / 1.05,
                       lam2=upper_wavelength_limit * 1.05)
     psftool.savepixsol(outdir=outdir)
 
