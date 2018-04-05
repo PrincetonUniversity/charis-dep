@@ -430,7 +430,7 @@ def _initcoef(order, scale=15.02, phi=np.arctan2(1.926, -1), x0=0, y0=0):
     return list(coef)
 
 
-def _pullorder(coef, order=1):
+def pullorder(coef, order=1):
 
     coeforder = int(np.sqrt(len(coef) + 0.25) - 1.5 + 1e-12)
     coef_short = []
