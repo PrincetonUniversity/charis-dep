@@ -208,7 +208,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             if len(keyfilenames) == 0:
                 raise IOError("No key file found in " + calibdir)
             R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
-            keyfile = fits.open(os.path.join(alibdir, 'polychromekeyR%d.fits' % (R2)))
+            keyfile = fits.open(os.path.join(calibdir, 'polychromekeyR%d.fits' % (R2)))
             print("Warning: calibration files not found at requested resolution of R = %d" % (R))
             print("Found files at R = %d, using these instead." % (R2))
 
@@ -305,11 +305,13 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     # in practice, we will have to register things with
     # the satellite spots
     ################################################################
-    ydim, xdim = datacube.data[0].shape
-    rot_angle = 113  # empirically determined
-    utr.addWCS(datacube.header, xpix=ydim // 2, ypix=xdim // 2,
-               xpixscale=-0.0164 / 3600., ypixscale=0.0164 / 3600.,
-               extrarot=rot_angle)
+
+    if instrument.instrument_name == 'CHARIS':
+        ydim, xdim = datacube.data[0].shape
+        rot_angle = 113  # empirically determined
+        utr.addWCS(datacube.header, xpix=ydim // 2, ypix=xdim // 2,
+                   xpixscale=-0.0164 / 3600., ypixscale=0.0164 / 3600.,
+                   extrarot=rot_angle)
 
     return datacube
 
