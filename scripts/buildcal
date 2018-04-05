@@ -90,7 +90,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     psftool = primitives.PSFLets()
     oldcoef = psftool.monochrome_coef(inLam, lam, allcoef, order=order)
     print('Generating new wavelength solution')
-    x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=order, coef=oldcoef)
+    x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=order, coef=oldcoef, fitorder=1)
     newcoef = newcoef[0]
 
     psftool.geninterparray(lam, allcoef, order=order)
