@@ -84,13 +84,15 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     lam = np.loadtxt(os.path.join(indir, "lamsol.dat"))[:, 0]
     allcoef = np.loadtxt(os.path.join(indir, "lamsol.dat"))[:, 1:]
     psftool = primitives.PSFLets()
-    oldcoef = psftool.monochrome_coef(inLam, lam, allcoef, order=order)
+    oldcoef = []
+    for cal_lam in inLam:
+        oldcoef += [psftool.monochrome_coef(cal_lam, lam, allcoef, order=order).tolist()]
     print('Generating new wavelength solution')
     x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=order, coef=oldcoef, fitorder=1)
     newcoef = newcoef[0]
-
+    
     psftool.geninterparray(lam, allcoef, order=order)
-    dcoef = newcoef - oldcoef
+    dcoef = np.asarray(newcoef) - oldcoef[0]
 
     psftool.interp_arr[0] += dcoef
     psftool.genpixsol(lam, allcoef, instrument, order=3, lam1=lower_wavelength_limit / 1.05,
@@ -101,8 +103,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     # Record the shift in the spot locations.
     #################################################################
 
-    phi1 = np.mean([np.arctan2(oldcoef[4], oldcoef[1]),
-                    np.arctan2(-oldcoef[11], oldcoef[14])])
+    phi1 = np.mean([np.arctan2(oldcoef[0][4], oldcoef[0][1]),
+                    np.arctan2(-oldcoef[0][11], oldcoef[0][14])])
     phi2 = np.mean([np.arctan2(newcoef[4], newcoef[1]),
                     np.arctan2(-newcoef[11], newcoef[14])])
     dx, dy, dphi = [dcoef[0], dcoef[10], phi2 - phi1]
@@ -362,7 +364,7 @@ if __name__ == "__main__":
 
     hdr['cal_band'] = (instrument.observing_mode, 'Band/mode of calibration image (J/H/K/Broadband)')
     if instrument.instrument_name == 'CHARIS':
-        hdr['cal_lam'] = (calibration_wavelength.value, 'Wavelength of calibration image (nm)')
+        hdr['cal_lam'] = (calibration_wavelength.value[0], 'Wavelength of calibration image (nm)')
 
     ###############################################################
     # Mean background count rate, weighted by inverse variance
@@ -401,8 +403,10 @@ if __name__ == "__main__":
                             instrument_name=instrument.instrument_name)
     elif instrument.instrument_name == 'SPHERE':
         for filename in infilelist:
-            data = np.mean(fits.getdata(filename), axis=0)
-            inImage = Image(data=data, ivar=mask * 1. / denom,
+            data = fits.getdata(filename)
+            if len(data.shape) == 3:
+                data = np.mean(data, axis=0)
+            inImage = Image(data=data, ivar=mask,
                             instrument_name=instrument.instrument_name)
 
     # transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
