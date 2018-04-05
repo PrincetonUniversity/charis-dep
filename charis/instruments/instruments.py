@@ -108,7 +108,7 @@ def instrument_from_data(header):
             print("Mode: {}".format(instrument.observing_mode))
 
             if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
-                calibration_wavelength = int(header['OBJECT'].split('n')[0]) * u.nanometer
+                calibration_wavelength = [int(header['OBJECT'].split('n')[0])] * u.nanometer
                 print("     Wavelength detected: ", calibration_wavelength)
             else:
                 print("Invalid wavelength keyword")
@@ -129,7 +129,7 @@ def instrument_from_data(header):
             while True:
                 calibration_wavelength = raw_input("     Wavelength? [1200/1550/2346]: ")
                 if calibration_wavelength in ["1200", "1550", "2346"]:
-                    calibration_wavelength = int(calibration_wavelength) * u.nanometer
+                    calibration_wavelength = [int(calibration_wavelength)] * u.nanometer
                     break
                 else:
                     print("Invalid input")
