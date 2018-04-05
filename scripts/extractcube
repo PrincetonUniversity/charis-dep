@@ -6,6 +6,7 @@
 
 from __future__ import print_function
 
+import os
 import ConfigParser
 import glob
 import logging
@@ -122,9 +123,11 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     except:
         version = None
 
-    instrument, _, _ = instrument_from_data(header, interactive=False)
+    header = fits.open(filename)[0].header
+    instrument, _, _ = instruments.instrument_from_data(header, interactive=False)
 
-    header = utr.metadata(filename, version=version)
+    if instrument.instrument_name == 'CHARIS':
+        header = utr.metadata(filename, version=version)
 
     try:
         calhead = fits.open(os.path.join(calibdir, 'cal_params.fits'))[0].header
@@ -148,9 +151,17 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     if mask is True:
         maskarr = fits.open(os.path.join(calibdir, 'mask.fits'))[0].data
 
-    inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
-                           header=header, gain=gain, noisefac=noisefac,
-                           maxcpus=maxcpus)
+    if instrument.instrument_name == 'CHARIS':
+        inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
+                               header=header, gain=gain, noisefac=noisefac,
+                               maxcpus=maxcpus)
+
+    elif instrument.instrument_name == 'SPHERE':
+        data = fits.getdata(filename)
+        if len(data.shape) == 3:
+            data = np.mean(data.astype('float64'), axis=0) * maskarr
+        inImage = Image(data=data, ivar=maskarr,
+                        instrument_name=instrument.instrument_name)
 
     if bgsub:
         try:
