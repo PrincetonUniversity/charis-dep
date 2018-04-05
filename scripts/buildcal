@@ -94,7 +94,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     dcoef = np.asarray(newcoef[0]) - oldcoef[0]
 
     psftool.interp_arr[0] += dcoef
-    psftool.genpixsol(lam, allcoef, instrument, order=3, lam1=lower_wavelength_limit / 1.05,
+    psftool.genpixsol(lam, allcoef, instrument, order=order, lam1=lower_wavelength_limit / 1.05,
                       lam2=upper_wavelength_limit * 1.05)
     psftool.savepixsol(outdir=outdir)
 
@@ -397,6 +397,7 @@ if __name__ == "__main__":
     num = 0
     denom = 1e-100
     if instrument.instrument_name == 'CHARIS':
+        wavelengthpolyorder = 3
         for filename in infilelist:
             im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
             num = num + im.data * im.ivar
@@ -404,16 +405,17 @@ if __name__ == "__main__":
             inImage = Image(data=num, ivar=mask * 1. / denom,
                             instrument_name=instrument.instrument_name)
     elif instrument.instrument_name == 'SPHERE':
+        wavelengthpolyorder = 2
         for filename in infilelist:
             data = fits.getdata(filename)
             if len(data.shape) == 3:
-                data = np.mean(data, axis=0)
+                data = np.mean(data, axis=0)*mask
             inImage = Image(data=data, ivar=mask,
                             instrument_name=instrument.instrument_name)
 
     # transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
     buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
-                      instrument, upsample=upsample, order=3,
+                      instrument, upsample=upsample, order=wavelengthpolyorder,
                       header=hdr, ncpus=nthreads)
 
     out = fits.HDUList(fits.PrimaryHDU(None, hdr))
