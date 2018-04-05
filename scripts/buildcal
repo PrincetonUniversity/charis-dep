@@ -96,8 +96,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     psftool.geninterparray(lam, allcoef, order=order)
     dcoef = newcoef - oldcoef
 
-    indx = np.asarray([0, 1, 4, 10, 11, 14])
-    psftool.interp_arr[0][indx] += dcoef[indx]
+    psftool.interp_arr[0] += dcoef
     psftool.genpixsol(lam, allcoef, instrument, order=3, lam1=lower_wavelength_limit / 1.05,
                       lam2=upper_wavelength_limit * 1.05)
     psftool.savepixsol(outdir=outdir)
