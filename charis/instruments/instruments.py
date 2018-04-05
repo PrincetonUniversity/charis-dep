@@ -59,11 +59,11 @@ class SPHERE(object):
 
     __valid_observing_modes = ['YJ', 'YH']
 
-    __wavelength_range = {'YJ': [910., 1350.] * u.nanometer,
-                          'YH': [910., 1610.] * u.nanometer}
+    __wavelength_range = {'YJ': [900., 1350.] * u.nanometer,
+                          'YH': [900., 1650.] * u.nanometer}
 
-    __resolution = {'YJ': 54,
-                    'YH': 33}
+    __resolution = {'YJ': 55,
+                    'YH': 35}
 
     __calibration_wavelength = {'YJ': [987.7, 1123.7, 1309.4] * u.nanometer,
                                 'YH': [987.7, 1123.7, 1309.4, 1545.1] * u.nanometer}
