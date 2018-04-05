@@ -110,7 +110,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     phi2 = np.mean([np.arctan2(newlin[2], newlin[1]),
                     np.arctan2(-newlin[4], newlin[5])])
     dx, dy, dphi = [newlin[0] - oldlin[0], newlin[3] - oldlin[3], phi2 - phi1]
-
+    print(dx, dy, dphi)
     if header is not None:
         header['cal_dx'] = (dx, 'x-shift from archival spot positions (pixels)')
         header['cal_dy'] = (dy, 'y-shift from archival spot positions (pixels)')
