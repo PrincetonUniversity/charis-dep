@@ -414,10 +414,10 @@ def _tag_psflets(shape, x, y, good, dx=10, dy=10):
     return psflet_indx
 
 
-def _interp_sig(sigarr, imshape, xindx, yindx):
+def _interp_sig(sigarr, imshape, lenslet_ix, lenslet_iy):
 
-    x = xindx * sigarr.shape[2] * 1. / imshape[1] - 0.5
-    y = yindx * sigarr.shape[1] * 1. / imshape[0] - 0.5
+    x = lenslet_ix * sigarr.shape[2] * 1. / imshape[1] - 0.5
+    y = lenslet_iy * sigarr.shape[1] * 1. / imshape[0] - 0.5
 
     return ndimage.map_coordinates(sigarr, [y, x], order=3, mode='nearest')
 
@@ -770,7 +770,7 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
     flat:        2D ndarray
         2D floating point ndarray, lenslet flat. Default None (don't flat-field).
     sig:         float or 3D ndarray
-        1D root variance of lenslet PSF. Default 0.7.  Setting sig >> delt_x is equivalent to aperture photometry.  If sig is an array to account for the wavelength- and lenslet-dependence, its dimensions should match PSFlet_tool.xindx.
+        1D root variance of lenslet PSF. Default 0.7.  Setting sig >> delt_x is equivalent to aperture photometry.  If sig is an array to account for the wavelength- and lenslet-dependence, its dimensions should match PSFlet_tool.lenslet_ix.
     smoothandmask: boolean
         Set inverse variance of particularly noisy lenslets to zero and replace their values
         with interpolations for cosmetics (ivar will still be zero)?  Default True.
@@ -802,10 +802,10 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
     # in native byte order as required by Cython.
     ########################################################################
 
-    xindx = np.zeros(PSFlet_tool.xindx.shape)
-    xindx[:] = PSFlet_tool.xindx
-    yindx = np.zeros(PSFlet_tool.yindx.shape)
-    yindx[:] = PSFlet_tool.yindx
+    lenslet_ix = np.zeros(PSFlet_tool.lenslet_ix.shape)
+    lenslet_ix[:] = PSFlet_tool.lenslet_ix
+    lenslet_iy = np.zeros(PSFlet_tool.lenslet_iy.shape)
+    lenslet_iy[:] = PSFlet_tool.lenslet_iy
     loglam_indx = np.log(PSFlet_tool.lam_indx + 1e-100)
     nlam = np.zeros(PSFlet_tool.nlam.shape, np.int32)
     nlam[:] = PSFlet_tool.nlam
@@ -816,17 +816,17 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
     ivar = np.zeros(im.ivar.shape)
     ivar[:] = im.ivar
 
-    if np.shape(sig) == xindx.shape:
+    if np.shape(sig) == lenslet_ix.shape:
         sig2 = np.empty(sig.shape)
         sig2[:] = sig
         sig = sig2
     elif len(np.shape(sig)) == 0:
-        sig = np.ones(xindx.shape) * sig
+        sig = np.ones(lenslet_ix.shape) * sig
     else:
         raise ValueError(
             "Spot size must be either a floating point number or a 3D array of the same shape as the lenslet positions.")
 
-    coefs, tot_ivar = matutils.optext(data, ivar, xindx, yindx, sig,
+    coefs, tot_ivar = matutils.optext(data, ivar, lenslet_ix, lenslet_iy, sig,
                                       loglam_indx, nlam, loglam, Nmax,
                                       delt_x=delt_x, maxproc=maxcpus)
 
