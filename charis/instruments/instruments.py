@@ -6,7 +6,7 @@ import pkg_resources
 from astropy import units as u
 from astropy.coordinates import EarthLocation
 
-__all__ = ['CHARIS', 'SPHERE']
+__all__ = ['CHARIS', 'SPHERE', 'instrument_from_data']
 
 
 class CHARIS(object):
@@ -86,3 +86,31 @@ class SPHERE(object):
 
     def __repr__(self):
         return "{} {}".format(self.instrument_name, self.observing_mode)
+
+
+def instrument_from_data(path):
+    header = fits.open(path)[0].header
+    correct_header = True
+
+    if 'CHARIS' in header['INSTRUME']:
+        if 'Y_FLTNAM' in header and 'OBJECT' in header:
+            observing_mode = header['Y_FLTNAM']
+            instrument = instruments.CHARIS(observing_mode)
+            print("Instrument: {}".format(instrument.instrument_name))
+            print("Mode: {}".format(instrument.observing_mode))
+
+            if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
+                calibration_wavelength = int(header['OBJECT'].split('n')[0]) * u.nanometer
+                print("     Wavelength detected: ", calibration_wavelength)
+            else:
+                print("Invalid wavelength keyword")
+                correct_header = False
+        else:
+            correct_header = False
+
+    elif 'SPHERE' in header['INSTRUME']:
+        raise NotImplementedError()
+    else:
+        raise NotImplementedError("The instrument is not supported.")
+
+    return instrument, calibration_wavelength, correct_header

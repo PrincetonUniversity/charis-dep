@@ -157,8 +157,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
 
     longsigarr = np.zeros((len(lam_hires), mean_x.shape[0], mean_x.shape[1]))
 
-    ix = mean_x * hires_arrs[0].shape[1] / npix_x. - 0.5
-    iy = mean_y * hires_arrs[0].shape[0] / npix_y. - 0.5
+    ix = mean_x * hires_arrs[0].shape[1] / npix_x - 0.5
+    iy = mean_y * hires_arrs[0].shape[0] / npix_y - 0.5
 
     for i in range(sigarr.shape[0]):
         longsigarr[i] = ndimage.map_coordinates(sigarr[i], [iy, ix], order=3, mode='nearest')
@@ -268,9 +268,6 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Must call buildcal with at least one argument:")
         print("  The path to the narrow-band flatfield image")
-        # print("  2: The wavelength, in nm, of the narrow-band image")
-        # print("  3: The band/filter: 'J', 'H', 'K', or 'lowres'")
-        # print("Example: buildcal CRSA00000000.fits 1550 lowres")
         print("Example: buildcal CRSA00000000.fits")
         print("Optional additional arguments: filenames of darks")
         print("  taken with the same observing setup.")
@@ -283,29 +280,7 @@ if __name__ == "__main__":
     for i in range(2, len(sys.argv)):
         bgfiles += glob.glob(sys.argv[i])
 
-    header = fits.open(infile)[0].header
-    correct_header = True
-
-    if 'CHARIS' in header['INSTRUME']:
-        if 'Y_FLTNAM' in header and 'OBJECT' in header:
-            observing_mode = header['Y_FLTNAM']
-            instrument = instruments.CHARIS(observing_mode)
-            print("Instrument: {}".format(instrument.instrument_name))
-            print("Mode: {}".format(instrument.observing_mode))
-
-            if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
-                calibration_wavelength = int(header['OBJECT'].split('n')[0]) * u.nanometer
-                print("     Wavelength detected: ", calibration_wavelength)
-            else:
-                print("Invalid wavelength keyword")
-                correct_header = False
-        else:
-            correct_header = False
-
-    elif 'SPHERE' in header['INSTRUME']:
-        raise NotImplementedError()
-    else:
-        raise NotImplementedError("The instrument is not supported.")
+    instrument, calibration_wavelength, correct_header = instruments.instrument_from_data(infile)
 
     if not correct_header and 'CHARIS' in header['INSTRUME']:
         print("\n" + "*" * 60)
