@@ -97,7 +97,7 @@ class SPHERE(object):
         return "{} {}".format(self.instrument_name, self.observing_mode)
 
 
-def instrument_from_data(header):
+def instrument_from_data(header, interactive=False):
     correct_header = True
 
     if 'CHARIS' in header['INSTRUME']:
@@ -115,7 +115,8 @@ def instrument_from_data(header):
                 correct_header = False
         else:
             correct_header = False
-        if not correct_header:
+
+        if not correct_header and interactive:
             print("\n" + "*" * 60)
             print("The file you selected doesn't appear to have the correct header keywords set")
             print("This can happen for files taken before Apr 1st, 2017. Please enter them manually.")

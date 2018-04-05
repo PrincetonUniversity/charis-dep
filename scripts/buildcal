@@ -282,7 +282,8 @@ if __name__ == "__main__":
         bgfiles += glob.glob(sys.argv[i])
 
     header = fits.open(infile)[0].header
-    instrument, calibration_wavelength, correct_header = instruments.instrument_from_data(header)
+    instrument, calibration_wavelength, correct_header = \
+        instruments.instrument_from_data(header, interactive=True)
 
     print("\n" + "*" * 60)
     print("Oversample PSFlet templates to enable fitting a subpixel offset in cube")
@@ -414,7 +415,6 @@ if __name__ == "__main__":
             inImage = Image(data=data, ivar=mask,
                             instrument_name=instrument.instrument_name)
 
-    # transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
     buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
                       instrument, upsample=upsample, order=wavelengthpolyorder,
                       header=hdr, ncpus=nthreads)

@@ -121,6 +121,9 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         version = charis.__version__
     except:
         version = None
+
+    instrument, _, _ = instrument_from_data(header, interactive=False)
+
     header = utr.metadata(filename, version=version)
 
     try:
