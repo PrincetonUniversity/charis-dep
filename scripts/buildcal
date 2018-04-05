@@ -88,8 +88,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     for cal_lam in inLam:
         oldcoef += [psftool.monochrome_coef(cal_lam, lam, allcoef, order=order).tolist()]
     print('Generating new wavelength solution')
-    x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=order, coef=oldcoef, fitorder=1)
-    
+    x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=3, coef=oldcoef, fitorder=1)
+
     psftool.geninterparray(lam, allcoef, order=order)
     dcoef = np.asarray(newcoef[0]) - oldcoef[0]
 
@@ -110,6 +110,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     phi2 = np.mean([np.arctan2(newlin[2], newlin[1]),
                     np.arctan2(-newlin[4], newlin[5])])
     dx, dy, dphi = [newlin[0] - oldlin[0], newlin[3] - oldlin[3], phi2 - phi1]
+
     if header is not None:
         header['cal_dx'] = (dx, 'x-shift from archival spot positions (pixels)')
         header['cal_dy'] = (dy, 'y-shift from archival spot positions (pixels)')
@@ -122,7 +123,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
 
     hires_list = np.sort(glob.glob(indir + '/hires_psflets_lam*.fits'))
     hires_arrs = [fits.open(filename)[0].data for filename in hires_list]
-    lam_hires = [int(re.sub('.*lam', '', re.sub('.fits', '', filename)))
+    lam_hires = [float(re.sub('.*lam', '', re.sub('.fits', '', filename)))
                  for filename in hires_list]
     psflet_res = 9  # Oversampling of high-resolution PSFlet images
 
