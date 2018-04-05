@@ -121,7 +121,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     # wavelengths.
     #################################################################
 
-    hires_list = np.sort(glob.glob(indir + '/hires_psflets_lam*.fits'))
+    hires_list = np.sort(glob.glob(os.path.join(indir, 'hires_psflets_lam*.fits')))
     hires_arrs = [fits.open(filename)[0].data for filename in hires_list]
     lam_hires = [float(re.sub('.*lam', '', re.sub('.fits', '', filename)))
                  for filename in hires_list]
