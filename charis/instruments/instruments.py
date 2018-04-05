@@ -63,7 +63,7 @@ class SPHERE(object):
     __resolution = {'YJ': 54,
                     'YH': 33}
 
-    __calibration_wavelength = {'YJ': [987.7, 1123.7, 1309.4] * u.nanometer
+    __calibration_wavelength = {'YJ': [987.7, 1123.7, 1309.4] * u.nanometer,
                                 'YH': [987.7, 1123.7, 1309.4, 1545.1] * u.nanometer}
 
     def __init__(self, observing_mode):
@@ -75,10 +75,10 @@ class SPHERE(object):
         self.lenslet_geometry = 'hexagonal'
         self.pixel_scale = 0.00746 * u.arcsec / u.pixel
         self.gain = 1.8
-        self.calibration_wavelength = __calibration_wavelength[observing_mode]
+        self.calibration_wavelength = self.__calibration_wavelength[observing_mode]
 
         index_range = np.arange(-100, 101, dtype='float')
-        self.lenslet_ix, self.nlens_iy = np.meshgrid(index_range, index_range)
+        self.lenslet_ix, self.lenslet_iy = np.meshgrid(index_range, index_range)
         self.lenslet_ix[::2] += 0.5
         self.lenslet_iy *= np.sqrt(3) / 2.
 

@@ -339,12 +339,14 @@ if __name__ == "__main__":
         else:
             print("Invalid input.")
 
-    if calibration_wavelength <= instrument.wavelength_range[0] \
-            or calibration_wavelength >= instrument.wavelength_range[1]:
-        raise ValueError("Error: wavelength " + str(calibration_wavelength) + " outside range (" +
-                         str(instrument.wavelength_range[0])
-                         + ", " + str(instrument.wavelength_range[1])
-                         + ") of mode " + band)
+    if instrument.instrument_name == 'CHARIS':
+        if calibration_wavelength <= instrument.wavelength_range[0] \
+                or calibration_wavelength >= instrument.wavelength_range[1]:
+            raise ValueError("Error: wavelength " + str(calibration_wavelength) + " outside range (" +
+                             str(instrument.wavelength_range[0])
+                             + ", " + str(instrument.wavelength_range[1])
+                             + ") of mode " + band)
+        hdr['cal_lam'] = (calibration_wavelength.value, 'Wavelength of calibration image (nm)')
 
     indir = instrument.calibration_path
     mask = fits.open(os.path.join(indir, 'mask.fits'))[0].data
@@ -362,7 +364,7 @@ if __name__ == "__main__":
                            'MJD date of calibration image')
     except:
         hdr['cal_date'] = ('unavailable', 'MJD date of calibration image')
-    hdr['cal_lam'] = (calibration_wavelength.value, 'Wavelength of calibration image (nm)')
+
     hdr['cal_band'] = (instrument.observing_mode, 'Band/mode of calibration image (J/H/K/Broadband)')
 
     ###############################################################
@@ -393,12 +395,16 @@ if __name__ == "__main__":
 
     num = 0
     denom = 1e-100
-    for filename in infilelist:
-        im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
-        num = num + im.data * im.ivar
-        denom = denom + im.ivar
-    inImage = Image(data=num / denom, ivar=mask * 1. / denom,
-                    instrument_name=instrument.instrument_name)
+    if instrument.instrument_name == 'CHARIS':
+        for filename in infilelist:
+            im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
+            num = num + im.data * im.ivar
+            denom = denom + im.ivar
+    elif instrument.instrument_name == 'SPHERE':
+        for filename in infilelist:
+            data = np.mean(fits.getdata(filename), axis=0)
+            inImage = Image(data=data, ivar=mask * 1. / denom,
+                            instrument_name=instrument.instrument_name)
 
     transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
     buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
