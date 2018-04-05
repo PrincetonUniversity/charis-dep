@@ -720,7 +720,7 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
     subfiltered = ndimage.interpolation.spline_filter(unfiltered[subshape:-subshape, subshape:-subshape])
     for ix in ix_arr:
         for iy in iy_arr:
-           if coef is None:
+            if coef is None:
                 coef = [_initcoef(polyorder, x0=0, y0=0, scale=scale, phi=phi)]
 
             cen = [-xdim/2. + ix + subfiltered.shape[0]//2,
