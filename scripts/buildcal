@@ -89,10 +89,9 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
         oldcoef += [psftool.monochrome_coef(cal_lam, lam, allcoef, order=order).tolist()]
     print('Generating new wavelength solution')
     x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=order, coef=oldcoef, fitorder=1)
-    newcoef = newcoef[0]
     
     psftool.geninterparray(lam, allcoef, order=order)
-    dcoef = np.asarray(newcoef) - oldcoef[0]
+    dcoef = np.asarray(newcoef[0]) - oldcoef[0]
 
     psftool.interp_arr[0] += dcoef
     psftool.genpixsol(lam, allcoef, instrument, order=3, lam1=lower_wavelength_limit / 1.05,
@@ -100,14 +99,17 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     psftool.savepixsol(outdir=outdir)
 
     #################################################################
-    # Record the shift in the spot locations.
+    # Record the shift in the spot locations.  Pull the linear orders
+    # first to ensure consistency in the indices.
     #################################################################
 
-    phi1 = np.mean([np.arctan2(oldcoef[0][4], oldcoef[0][1]),
-                    np.arctan2(-oldcoef[0][11], oldcoef[0][14])])
-    phi2 = np.mean([np.arctan2(newcoef[4], newcoef[1]),
-                    np.arctan2(-newcoef[11], newcoef[14])])
-    dx, dy, dphi = [dcoef[0], dcoef[10], phi2 - phi1]
+    oldlin = primitives.pullorder(oldcoef[0])
+    newlin = primitives.pullorder(newcoef[0])
+    phi1 = np.mean([np.arctan2(oldlin[2], oldlin[1]),
+                    np.arctan2(-oldlin[4], oldlin[5])])
+    phi2 = np.mean([np.arctan2(newlin[2], newlin[1]),
+                    np.arctan2(-newlin[4], newlin[5])])
+    dx, dy, dphi = [newlin[0] - oldlin[0], newlin[3] - oldlin[3], phi2 - phi1]
     if header is not None:
         header['cal_dx'] = (dx, 'x-shift from archival spot positions (pixels)')
         header['cal_dy'] = (dy, 'y-shift from archival spot positions (pixels)')
