@@ -124,7 +124,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     header = utr.metadata(filename, version=version)
 
     try:
-        calhead = fits.open(calibdir + '/cal_params.fits')[0].header
+        calhead = fits.open(os.path.join(calibdir, 'cal_params.fits'))[0].header
         header.append(('comment', ''), end=True)
         header.append(('comment', '*' * 60), end=True)
         header.append(('comment', '*' * 21 + ' Calibration Data ' + '*' * 21), end=True)
@@ -143,7 +143,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     maskarr = None
     if mask is True:
-        maskarr = fits.open(calibdir + '/mask.fits')[0].data
+        maskarr = fits.open(os.path.join(calibdir, 'mask.fits'))[0].data
 
     inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
                            header=header, gain=gain, noisefac=noisefac,
@@ -151,7 +151,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     if bgsub:
         try:
-            hdulist = fits.open(calibdir + '/background.fits')
+            hdulist = fits.open(os.path.join(calibdir, 'background.fits'))
             bg = hdulist[0].data
             if bg is None:
                 bg = hdulist[1].data
@@ -178,7 +178,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     header.append(('comment', ''), end=True)
 
     if flatfield:
-        lensletflat = fits.open(calibdir + '/lensletflat.fits')[0].data
+        lensletflat = fits.open(os.path.join(calibdir, 'lensletflat.fits'))[0].data
     else:
         lensletflat = None
     header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
@@ -187,26 +187,26 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     if method == 'lstsq' or suppressrn:
         try:
-            keyfile = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))
+            keyfile = fits.open(os.path.join(calibdir, 'polychromekeyR%d.fits' % (R)))
             R2 = R
         except:
-            keyfilenames = glob.glob(calibdir + '/polychromekeyR*.fits')
+            keyfilenames = glob.glob(calibdir + '*polychromekeyR*.fits')
             if len(keyfilenames) == 0:
                 raise IOError("No key file found in " + calibdir)
             R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
-            keyfile = fits.open(calibdir + '/polychromekeyR%d.fits' % (R2))
+            keyfile = fits.open(os.path.join(alibdir, 'polychromekeyR%d.fits' % (R2)))
             print("Warning: calibration files not found at requested resolution of R = %d" % (R))
             print("Found files at R = %d, using these instead." % (R2))
 
         if fitshift:
             try:
-                psflets = np.load(calibdir + '/polychromefullR%d.npy' % (R2))
+                psflets = np.load(os.path.join(calibdir, 'polychromefullR%d.npy' % (R2)))
                 offsets = np.arange(-5, 6)
                 psflets = primitives.calc_offset(psflets, inImage, offsets, maxcpus=maxcpus)
             except:
                 fitshift = False
         if not fitshift:
-            psflets = fits.open(calibdir + '/polychromeR%d.fits' % (R2))[0].data
+            psflets = fits.open(os.path.join(calibdir, 'polychromeR%d.fits' % (R2)))[0].data
 
         header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
         lam_midpts = keyfile[0].data
@@ -215,7 +215,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         good = keyfile[3].data
 
         if flatfield:
-            psflets = psflets * fits.open(calibdir + '/pixelflat.fits')[0].data
+            psflets = psflets * fits.open(os.path.join(calibdir, 'pixelflat.fits'))[0].data
 
         ############################################################
         # Do an initial least-squares fit to remove correlated read
@@ -245,9 +245,9 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     if method == 'optext' or method == 'apphot3' or method == 'apphot5':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
         try:
-            lam_midpts = fits.open(calibdir + '/polychromekeyR%d.fits' % (R))[0].data
+            lam_midpts = fits.open(os.path.join(calibdir, '/polychromekeyR%d.fits' % (R)))[0].data
         except:
-            keyfilenames = glob.glob(calibdir + '/polychromekeyR*.fits')
+            keyfilenames = glob.glob(calibdir + '*polychromekeyR*.fits')
             if len(keyfilenames) == 0:
                 raise IOError("No key file found in " + calibdir)
             lam = fits.open(keyfilenames[0])[0].data
@@ -255,7 +255,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             n = int(np.log(lam2 * 1. / lam1) * R + 1.5)
             lam_midpts = np.exp(np.linspace(np.log(lam1), np.log(lam2), n))
         try:
-            sig = fits.open(calibdir + '/PSFwidths.fits')[0].data
+            sig = fits.open(os.path.join(calibdir, 'PSFwidths.fits'))[0].data
         except:
             sig = 0.7
 
@@ -269,7 +269,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             delt_x = 7
 
         if flatfield:
-            pixelflat = fits.open(calibdir + '/pixelflat.fits')[0].data
+            pixelflat = fits.open(os.path.join(calibdir, 'pixelflat.fits'))[0].data
             inImage.data /= pixelflat + 1e-20
             inImage.ivar *= pixelflat**2
 
