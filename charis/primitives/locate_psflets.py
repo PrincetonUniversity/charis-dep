@@ -152,7 +152,7 @@ class PSFLets:
         interp_y: float
             Y coordinate on the detector
         '''
-        
+
         coeforder = int(np.sqrt(coef.shape[0])) - 1
         interp_x, interp_y = _transform(lenslet_ix, lenslet_iy, coeforder, coef)
         return interp_x, interp_y
@@ -230,7 +230,7 @@ class PSFLets:
 
     def return_locations(self, lam, allcoef, lenslet_ix, lenslet_iy, order=3):
         '''
-        Calculates the detector coordinates of lenslet located at 
+        Calculates the detector coordinates of lenslet located at
         `lenslet_ix`, `lenslet_iy` for desired wavelength `lam`
 
         Parameters
@@ -295,8 +295,8 @@ class PSFLets:
 
         Notes
         -----
-        This functions fills in most of the fields of the PSFLet class: the 
-        lenslet geometry (from the instrument class), nlam, lam_indx and 
+        This functions fills in most of the fields of the PSFLet class: the
+        lenslet geometry (from the instrument class), nlam, lam_indx and
         nlam_max
         """
 
@@ -587,7 +587,7 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1, basecoef=None):
     # discard these from the calculation before trimming.
     #
     # basecoef can be a list of lists, each one corresponding to a
-    # wavelength.  The cross-correlation is then the sum of the 
+    # wavelength.  The cross-correlation is then the sum of the
     # cross-correlation at all wavelengths.
     #################################################################
 
@@ -602,8 +602,8 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1, basecoef=None):
     return score
 
 
-def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None, 
-                  trimfrac=0.1, phi=np.arctan2(1.926, -1), scale=15.02, 
+def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
+                  trimfrac=0.1, phi=np.arctan2(1.926, -1), scale=15.02,
                   fitorder=None):
     """
     function locatePSFlets takes an Image class, assumed to be a
@@ -723,16 +723,16 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
             if coef is None:
                 coef = [_initcoef(polyorder, x0=0, y0=0, scale=scale, phi=phi)]
 
-            cen = [-xdim/2. + ix + subfiltered.shape[0]//2,
-                   -ydim/2. + iy + subfiltered.shape[1]//2]
-            
-            newval = _corrval(cen, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], 
+            cen = [-xdim / 2. + ix + subfiltered.shape[0] // 2,
+                   -ydim / 2. + iy + subfiltered.shape[1] // 2]
+
+            newval = _corrval(cen, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s],
                               subfiltered, 0, trimfrac, basecoef=coef)
 
             if newval < bestval:
                 bestval = newval
                 bestcen = copy.deepcopy(cen)
-    
+
     coef_opt = copy.deepcopy(coef)
     for i in range(len(coef)):
         coef_opt[i] = _insertorder(bestcen, coef_opt[i], add=True)
@@ -746,14 +746,15 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
         log.info("Performing initial optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
         coef_lin = [0 for i in range(6)]
 
-        res = optimize.minimize(_corrval, coef_lin, args=(x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol':1e-6, 'ftol':1e-6})
+        res = optimize.minimize(_corrval, coef_lin, args=(
+            x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol': 1e-6, 'ftol': 1e-6})
         coef_lin = res.x
         for i in range(len(coef)):
             coef_opt[i] = _insertorder(coef_lin, coef_opt[i], add=True)
 
     for i in range(len(coef)):
         coef_opt[i][0] += subshape
-        coef_opt[i][(polyorder + 1)*(polyorder + 2)/2] += subshape
+        coef_opt[i][(polyorder + 1) * (polyorder + 2) / 2] += subshape
 
     #############################################################
     # If we have coefficients from last time, we assume that we
@@ -764,17 +765,19 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
     log.info("Performing final optimization of PSFlet location transformation coefficients for frame " + inImage.filename)
 
     if not init and fitorder is not None:
-        N = (fitorder + 1)*(fitorder + 2)
+        N = (fitorder + 1) * (fitorder + 2)
         coef_lin = [0 for i in range(N)]
 
-        res = optimize.minimize(_corrval, coef_lin, args=(x, y, filtered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol':1e-5, 'ftol':1e-5})
+        res = optimize.minimize(_corrval, coef_lin, args=(x, y, filtered, polyorder, trimfrac,
+                                                          coef_opt), method='Powell', options={'xtol': 1e-5, 'ftol': 1e-5})
 
         coef_lin = res.x
         for i in range(len(coef)):
             coef_opt[i] = _insertorder(coef_lin, coef_opt[i], add=True)
     else:
         for i in range(len(coef)):
-            res = optimize.minimize(_corrval, coef_opt[i], args=(x, y, filtered, polyorder, trimfrac), method='Powell', options={'xtol':1e-5, 'ftol':1e-5})
+            res = optimize.minimize(_corrval, coef_opt[i], args=(
+                x, y, filtered, polyorder, trimfrac), method='Powell', options={'xtol': 1e-5, 'ftol': 1e-5})
             coef_opt[i] = res.x
 
     if not res.success:

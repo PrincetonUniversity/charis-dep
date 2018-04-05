@@ -94,7 +94,7 @@ def instrument_from_data(header):
     if 'CHARIS' in header['INSTRUME']:
         if 'Y_FLTNAM' in header and 'OBJECT' in header:
             observing_mode = header['Y_FLTNAM']
-            instrument = instruments.CHARIS(observing_mode)
+            instrument = CHARIS(observing_mode)
             print("Instrument: {}".format(instrument.instrument_name))
             print("Mode: {}".format(instrument.observing_mode))
 

@@ -90,7 +90,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     psftool = primitives.PSFLets()
     oldcoef = psftool.monochrome_coef(inLam, lam, allcoef, order=order)
     print('Generating new wavelength solution')
-    x, y, good, newcoef = primitives.locatePSFlets(inImage, polyorder=order, coef=oldcoef)
+    x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=order, coef=oldcoef)
 
     psftool.geninterparray(lam, allcoef, order=order)
     dcoef = newcoef - oldcoef
@@ -421,11 +421,9 @@ if __name__ == "__main__":
                     instrument_name=instrument.instrument_name)
 
     transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
-    pdb.set_trace()
     buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
-                      upsample=upsample, order=3, trans=transmission,
-                      header=hdr, ncpus=nthreads,
-                      instrument=instrument)
+                      instrument, upsample=upsample, order=3,
+                      trans=transmission, header=hdr, ncpus=nthreads)
 
     out = fits.HDUList(fits.PrimaryHDU(None, hdr))
     out.writeto('cal_params.fits', overwrite=True)
