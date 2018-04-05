@@ -36,8 +36,7 @@ log = logging.getLogger('main')
 
 
 def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
-                      order=3, trans=None,
-                      upsample=True, header=None,
+                      order=3, upsample=True, header=None,
                       ncpus=multiprocessing.cpu_count(),
                       nlam=10):
     """
@@ -56,9 +55,6 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     outdir:   directory in which to place
     order:    int, order of polynomial fit to position(lambda).
                  Default 3 (strongly recommended).
-    trans:    ndarray, trans[:, 0] = wavelength in nm, trans[:, 1]
-                 is fractional transmission through the filter and
-                 atmosphere.  Default None --> trans[:, 1] = 1
     header:   FITS header, to which will be appended the shifts
                  and rotation angle between the stored and the fitted
                  wavelength solutions.  Default None.
@@ -214,7 +210,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
         tasks.put(Task(i, primitives.make_polychrome,
                        (lam_endpts[ilam], lam_endpts[ilam + 1], hires_arrs,
                         lam_hires, tool, allcoef, lenslet_ix, lenslet_iy,
-                        psflet_res, nlam, trans)))
+                        psflet_res, nlam, instrument.transmission)))
     for i in range(ncpus):
         tasks.put(None)
 
@@ -346,7 +342,6 @@ if __name__ == "__main__":
                              str(instrument.wavelength_range[0])
                              + ", " + str(instrument.wavelength_range[1])
                              + ") of mode " + band)
-        hdr['cal_lam'] = (calibration_wavelength.value, 'Wavelength of calibration image (nm)')
 
     indir = instrument.calibration_path
     mask = fits.open(os.path.join(indir, 'mask.fits'))[0].data
@@ -366,6 +361,8 @@ if __name__ == "__main__":
         hdr['cal_date'] = ('unavailable', 'MJD date of calibration image')
 
     hdr['cal_band'] = (instrument.observing_mode, 'Band/mode of calibration image (J/H/K/Broadband)')
+    if instrument.instrument_name == 'CHARIS':
+        hdr['cal_lam'] = (calibration_wavelength.value, 'Wavelength of calibration image (nm)')
 
     ###############################################################
     # Mean background count rate, weighted by inverse variance
@@ -400,16 +397,18 @@ if __name__ == "__main__":
             im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
             num = num + im.data * im.ivar
             denom = denom + im.ivar
+            inImage = Image(data=num, ivar=mask * 1. / denom,
+                            instrument_name=instrument.instrument_name)
     elif instrument.instrument_name == 'SPHERE':
         for filename in infilelist:
             data = np.mean(fits.getdata(filename), axis=0)
             inImage = Image(data=data, ivar=mask * 1. / denom,
                             instrument_name=instrument.instrument_name)
 
-    transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
+    # transmission = np.loadtxt(os.path.join(indir, instrument.observing_mode + '_tottrans.dat'))
     buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
                       instrument, upsample=upsample, order=3,
-                      trans=transmission, header=hdr, ncpus=nthreads)
+                      header=hdr, ncpus=nthreads)
 
     out = fits.HDUList(fits.PrimaryHDU(None, hdr))
     out.writeto('cal_params.fits', overwrite=True)

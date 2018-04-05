@@ -45,6 +45,8 @@ class CHARIS(object):
             os.path.join(
                 pkg_resources.resource_filename('charis', 'calibrations'),
                 'CHARIS', observing_mode)
+        self.transmission = np.loadtxt(os.path.join(
+            self.calibration_path, self.observing_mode + '_tottrans.dat'))
 
     def __repr__(self):
         return "{} {}".format(self.instrument_name, self.observing_mode)
@@ -88,6 +90,8 @@ class SPHERE(object):
             os.path.join(
                 pkg_resources.resource_filename('charis', 'calibrations'),
                 'SPHERE', observing_mode)
+        self.transmission = np.loadtxt(os.path.join(
+            self.calibration_path, self.observing_mode + '_tottrans.dat'))
 
     def __repr__(self):
         return "{} {}".format(self.instrument_name, self.observing_mode)
