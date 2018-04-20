@@ -84,6 +84,14 @@ class SPHERE(object):
         self.lenslet_ix[::2] += 0.5
         self.lenslet_iy *= np.sqrt(3) / 2.
 
+        ################################################################
+        # Flip the horizontal axis in the resulting cubes to match the
+        # orientation of the SPHERE pipeline
+        ################################################################
+
+        self.lenslet_ix = self.lenslet_ix[:, ::-1]
+        self.lenslet_iy = self.lenslet_iy[:, ::-1]
+
         longitude, latitude = [-70.4045, -24.6268] * u.degree
         self.location = EarthLocation(longitude, latitude)
         self.calibration_path = \
