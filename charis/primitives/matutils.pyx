@@ -755,9 +755,14 @@ def optext(double [:, :] im, double [:, :] ivar,
                             num = num + w1*im[iy, ix]
                             denom = denom + w1*w1
 
-                    coefs_num[i, j, n - k - 1] = num/wtot
-                    coefs_denom[i, j, n - k - 1] = denom/(wtot*wtot)
-                    lamref[i, n - k - 1] = loglamindx[i, j, k]
+                    if loglamindx[i, j, 1] > loglamindx[i, j, 0]:
+                        coefs_num[i, j, k] = num/wtot
+                        coefs_denom[i, j, k] = denom/(wtot*wtot)
+                        lamref[i, k] = loglamindx[i, j, k]
+                    else:
+                        coefs_num[i, j, n - k - 1] = num/wtot
+                        coefs_denom[i, j, n - k - 1] = denom/(wtot*wtot)
+                        lamref[i, n - k - 1] = loglamindx[i, j, k]
 
                 i2 = 1
                 for k in range(nref):
