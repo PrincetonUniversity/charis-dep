@@ -540,16 +540,16 @@ def _transform(x, y, order, coef, highordercoef=None):
             for iy in range(order2 - ix + 1):
                 if ix + iy <= order1:
                     continue
-                _x += coef[i] * x**ix * y**iy
+                _x += highordercoef[i] * x**ix * y**iy
                 i += 1
         for ix in range(order2 + 1):
             for iy in range(order2 - ix + 1):
                 if ix + iy <= order1:
                     continue
-                _y += coef[i] * x**ix * y**iy
+                _y += highordercoef[i] * x**ix * y**iy
                 i += 1
 
-        return [_x, _y]
+    return [_x, _y]
 
 
 def _corrval(coef, x, y, filtered, order, trimfrac=0.1, highordercoef=None):
