@@ -537,16 +537,16 @@ def _transform(x, y, order, coef, highordercoef=None):
 
         i = 0
         for ix in range(order2 + 1):
-            for iy in range(order2 - ix + 1):
+            for iy in range(order1 - ix + 1):
                 if ix + iy <= order1:
                     continue
-                _x += highordercoef[i] * x**ix * y**iy
+                _x += coef[i] * x**ix * y**iy
                 i += 1
         for ix in range(order2 + 1):
-            for iy in range(order2 - ix + 1):
+            for iy in range(order1 - ix + 1):
                 if ix + iy <= order1:
                     continue
-                _y += highordercoef[i] * x**ix * y**iy
+                _y += coef[i] * x**ix * y**iy
                 i += 1
 
     return [_x, _y]
