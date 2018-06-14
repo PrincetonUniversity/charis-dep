@@ -1,3 +1,4 @@
+from builtins import object
 import numpy as np
 
 import tools
@@ -5,7 +6,7 @@ import tools
 log = tools.getLogger('main')
 
 
-class PSFlet:
+class PSFlet(object):
 
     """
     Class PSFlet

@@ -1,4 +1,6 @@
 
+from builtins import str
+from builtins import object
 import logging
 from datetime import date
 
@@ -8,7 +10,7 @@ from astropy.io import fits
 log = logging.getLogger('main')
 
 
-class Image:
+class Image(object):
 
     """
     Image is the basic class for raw and partially reduced CHARIS data.

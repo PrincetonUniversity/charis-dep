@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+from __future__ import division
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import copy
 import glob
 import logging
@@ -18,7 +23,7 @@ except:
 log = logging.getLogger('main')
 
 
-class PSFLets:
+class PSFLets(object):
     """
     Helper class to deal with the PSFLets on the detector. Does most of the heavy lifting
     during the wavelength calibration step.
@@ -188,7 +193,7 @@ class PSFLets:
         '''
 
         if lam1 is None:
-            lam1 = np.amin(lam) / 1.04
+            lam1 = old_div(np.amin(lam), 1.04)
         if lam2 is None:
             lam2 = np.amax(lam) * 1.03
 
@@ -308,7 +313,7 @@ class PSFLets:
         ###################################################################
 
         if lam1 is None:
-            lam1 = np.amin(lam) / 1.04
+            lam1 = old_div(np.amin(lam), 1.04)
         if lam2 is None:
             lam2 = np.amax(lam) * 1.03
         interporder = order
@@ -352,7 +357,7 @@ class PSFLets:
                     try:
                         tck_y = interpolate.splrep(pix_y[::-1], interp_lam[::-1], k=1, s=0)
                     except:
-                        print(pix_x, pix_y)
+                        print((pix_x, pix_y))
                         raise
                 else:
                     tck_y = interpolate.splrep(pix_y, interp_lam, k=1, s=0)
@@ -423,9 +428,9 @@ def _initcoef(order, scale=15.02, phi=np.arctan2(1.926, -1), x0=0, y0=0):
     coef[0] = x0
     coef[1] = scale * np.cos(phi)
     coef[order + 1] = -scale * np.sin(phi)
-    coef[n / 2] = y0
-    coef[n / 2 + 1] = scale * np.sin(phi)
-    coef[n / 2 + order + 1] = scale * np.cos(phi)
+    coef[old_div(n, 2)] = y0
+    coef[old_div(n, 2) + 1] = scale * np.sin(phi)
+    coef[old_div(n, 2) + order + 1] = scale * np.cos(phi)
 
     return list(coef)
 
@@ -600,11 +605,11 @@ def _corrval(coef, x, y, filtered, order, trimfrac=0.1, basecoef=None):
     score = 0
     for i in range(N):
         _x, _y = _transform(x, y, order, coef, basecoef[i])
-        vals = ndimage.map_coordinates(filtered, [_y, _x], mode='constant', 
+        vals = ndimage.map_coordinates(filtered, [_y, _x], mode='constant',
                                        cval=np.nan, prefilter=False)
         vals_ok = vals[np.where(np.isfinite(vals))]
 
-        iclip = int(vals_ok.shape[0]*trimfrac/2)
+        iclip = int(vals_ok.shape[0] * trimfrac / 2)
         vals_sorted = np.sort(vals_ok)
         score -= np.sum(vals_sorted[iclip:-iclip])
 
@@ -673,7 +678,7 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
 
     x = np.arange(-1 * int(3 * sig + 1), int(3 * sig + 1) + 1)
     x, y = np.meshgrid(x, x)
-    gaussian = np.exp(-(x**2 + y**2) / (2 * sig**2))
+    gaussian = np.exp(old_div(-(x**2 + y**2), (2 * sig**2)))
 
     if inImage.ivar is None:
         unfiltered = signal.convolve2d(inImage.data, gaussian, mode='same')
@@ -732,8 +737,8 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
             if coef is None:
                 coef = [_initcoef(polyorder, x0=0, y0=0, scale=scale, phi=phi)]
 
-            cen = [-xdim / 2. + ix + subfiltered.shape[0] // 2,
-                   -ydim / 2. + iy + subfiltered.shape[1] // 2]
+            cen = [old_div(-xdim, 2.) + ix + subfiltered.shape[0] // 2,
+                   old_div(-ydim, 2.) + iy + subfiltered.shape[1] // 2]
 
             newval = _corrval(cen, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s],
                               subfiltered, 0, trimfrac, basecoef=coef)
@@ -763,7 +768,7 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
 
     for i in range(len(coef)):
         coef_opt[i][0] += subshape
-        coef_opt[i][(polyorder + 1) * (polyorder + 2) / 2] += subshape
+        coef_opt[i][old_div((polyorder + 1) * (polyorder + 2), 2)] += subshape
 
     #############################################################
     # If we have coefficients from last time, we assume that we
@@ -807,5 +812,5 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
     #############################################################
 
     good = (_x > 5) * (_x < xdim - 5) * (_y > 5) * (_y < ydim - 5)
-
+    # good = np.all(np.greater(_x, 5) * np.greater(_y, 5) * np.less(_x, xdim - 5) * np.less(_y, ydim - 5))
     return [_x, _y, good, coef_opt]

@@ -6,8 +6,11 @@
 
 from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 import os
-import ConfigParser
+import configparser
 import glob
 import logging
 import multiprocessing
@@ -23,7 +26,7 @@ try:
     import primitives
     import utr
     from image import Image
-except:
+except ImportError:
     from charis import instruments
     from charis import primitives
     from charis import utr
@@ -332,7 +335,7 @@ if __name__ == "__main__":
     if len(filenames) == 0:
         raise ValueError("No matching CHARIS files found by extractcube.")
 
-    Config = ConfigParser.ConfigParser()
+    Config = configparser.ConfigParser()
     Config.read(sys.argv[len(sys.argv) - 1])
 
     read_0 = Config.getint('Ramp', 'read_0')

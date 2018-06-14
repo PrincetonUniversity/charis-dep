@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 
+from builtins import input
+from builtins import str
+from builtins import range
 import copy
 import glob
 import logging
@@ -25,7 +28,7 @@ try:
     import utr
     from image import Image
     from parallel import Task, Consumer
-except:
+except ImportError:
     from charis import instruments
     from charis import primitives
     from charis import utr
@@ -178,7 +181,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
 
     Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
     loglam_endpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
-    loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2
+    loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2.
     lam_endpts = np.exp(loglam_endpts)
     lam_midpts = np.exp(loglam_midpts)
 
@@ -290,7 +293,7 @@ if __name__ == "__main__":
     print("extraction?  Cost is a factor of ~2-4 in the time to build calibrations.")
     print("*" * 60)
     while True:
-        upsample = raw_input("     Oversample? [Y/n]: ")
+        upsample = input("     Oversample? [Y/n]: ")
         if upsample in ['', 'y', 'Y']:
             upsample = True
             break
@@ -305,7 +308,7 @@ if __name__ == "__main__":
     print("How many threads would you like to use?  %d threads detected." % (ncpus))
     print("*" * 60)
     while True:
-        nthreads = raw_input("     Number of threads to use [%d]: " % (ncpus))
+        nthreads = input("     Number of threads to use [%d]: " % (ncpus))
         try:
             nthreads = int(nthreads)
             if nthreads < 0 or nthreads > ncpus:
@@ -333,7 +336,7 @@ if __name__ == "__main__":
         print("No background will be computed.")
     print("*" * 60)
     while True:
-        do_calib = raw_input("     Continue with these settings? [Y/n]: ")
+        do_calib = input("     Continue with these settings? [Y/n]: ")
         if do_calib in ['', 'y', 'Y']:
             break
         elif do_calib in ['n', 'N']:
@@ -375,7 +378,7 @@ if __name__ == "__main__":
     ###############################################################
 
     print('Computing ramps from sequences of raw reads')
-    num = 0
+    num = 0.
     denom = 1e-100
     ibg = 1
     for filename in bgfiles:

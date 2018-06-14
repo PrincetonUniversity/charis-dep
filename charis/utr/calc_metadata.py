@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 import re
 import time
 
@@ -176,7 +179,7 @@ def metadata(filename, header=None, clear=True, version=None):
 
             c = coord.SkyCoord(ra=ra, dec=dec, unit=(u.hourangle, u.deg), frame='fk5')
 
-            equinox = 'J%.5f' % (2000 + (mean_mjd - 51544.5) / 365.25)
+            equinox = 'J%.5f' % (2000 + old_div((mean_mjd - 51544.5), 365.25))
             c = c.transform_to(coord.FK5(equinox=equinox))
 
             ############################################################
@@ -266,7 +269,7 @@ def metadata(filename, header=None, clear=True, version=None):
     return header
 
 
-def addWCS(header, xpix, ypix, xpixscale=-0.015 / 3600., ypixscale=0.015 / 3600., extrarot=113.):
+def addWCS(header, xpix, ypix, xpixscale=old_div(-0.015, 3600.), ypixscale=old_div(0.015, 3600.), extrarot=113.):
     '''
     Add the proper keywords to align the cube into the World Coordinate System.
     This modifies the variable `header` in place

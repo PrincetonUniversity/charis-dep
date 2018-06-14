@@ -1,6 +1,7 @@
+from __future__ import absolute_import
 import unittest
 
-from image import Image
+from .image import Image
 
 
 class ImageTests(unittest.TestCase):

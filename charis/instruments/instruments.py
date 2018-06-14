@@ -1,4 +1,7 @@
+from __future__ import print_function
 # from abc import ABCMeta, abstractmethod, abstractproperty
+from builtins import input
+from builtins import object
 import os
 
 import numpy as np
@@ -59,8 +62,8 @@ class SPHERE(object):
 
     __valid_observing_modes = ['YJ', 'YH']
 
-    __wavelength_range = {'YJ': [900., 1350.] * u.nanometer,
-                          'YH': [900., 1650.] * u.nanometer}
+    __wavelength_range = {'YJ': [960., 1350.] * u.nanometer,
+                          'YH': [960., 1650.] * u.nanometer}
 
     __resolution = {'YJ': 55,
                     'YH': 35}
@@ -117,7 +120,7 @@ def instrument_from_data(header, interactive=False):
 
             if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
                 calibration_wavelength = [int(header['OBJECT'].split('n')[0])] * u.nanometer
-                print("     Wavelength detected: ", calibration_wavelength)
+                print(("     Wavelength detected: ", calibration_wavelength))
             else:
                 print("Invalid wavelength keyword")
                 correct_header = False
@@ -130,13 +133,13 @@ def instrument_from_data(header, interactive=False):
             print("This can happen for files taken before Apr 1st, 2017. Please enter them manually.")
             print("*" * 60)
             while True:
-                observing_mode = raw_input("     Band? [J/H/K/Broadband]: ")
+                observing_mode = input("     Band? [J/H/K/Broadband]: ")
                 if observing_mode in ["J", "H", "K", "Broadband"]:
                     break
                 else:
                     print("Invalid input.")
             while True:
-                calibration_wavelength = raw_input("     Wavelength? [1200/1550/2346]: ")
+                calibration_wavelength = input("     Wavelength? [1200/1550/2346]: ")
                 if calibration_wavelength in ["1200", "1550", "2346"]:
                     calibration_wavelength = [int(calibration_wavelength)] * u.nanometer
                     break

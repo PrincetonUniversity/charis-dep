@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 from astropy.io import fits
 import numpy as np
 from scipy import signal, ndimage
@@ -23,10 +26,10 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
     ###################################################################
 
     hires_arr = np.zeros((nsubarr, nsubarr, upsample * (npix + 1), upsample * (npix + 1)))
-    _x = np.arange(3 * upsample) - (3 * upsample - 1) / 2.
+    _x = np.arange(3 * upsample) - old_div((3 * upsample - 1), 2.)
     _x, _y = np.meshgrid(_x, _x)
     r2 = _x**2 + _y**2
-    window = np.exp(-r2 / (2 * 0.3**2 * (upsample / 5.)**2))
+    window = np.exp(old_div(-r2, (2 * 0.3**2 * (old_div(upsample, 5.))**2)))
 
     ###################################################################
     # yreg and xreg denote the regions of the image.  Each region will
@@ -54,7 +57,7 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
             ############################################################
 
             k = 0
-            subim = np.zeros((20000 / nsubarr**2, upsample * (npix + 1), upsample * (npix + 1)))
+            subim = np.zeros((old_div(20000, nsubarr**2), upsample * (npix + 1), upsample * (npix + 1)))
 
             ############################################################
             # Now put the PSFlets in.  The pixel of index
@@ -65,8 +68,8 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
 
             for i in range(x.shape[0]):
                 if x[i] > j1 and x[i] < j2 and y[i] > i1 and y[i] < i2:
-                    xval = x[i] - 0.5 / upsample
-                    yval = y[i] - 0.5 / upsample
+                    xval = x[i] - old_div(0.5, upsample)
+                    yval = y[i] - old_div(0.5, upsample)
 
                     ix = (1 + int(xval) - xval) * upsample
                     iy = (1 + int(yval) - yval) * upsample
@@ -93,8 +96,8 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
 
             for ii in range(3):
 
-                window1 = np.exp(-r2 / (2 * 1**2 * (upsample / 5.)**2))
-                window2 = np.exp(-r2 / (2 * 1**2 * (upsample / 5.)**2))
+                window1 = np.exp(old_div(-r2, (2 * 1**2 * (old_div(upsample, 5.))**2)))
+                window2 = np.exp(old_div(-r2, (2 * 1**2 * (old_div(upsample, 5.))**2)))
                 if ii < 2:
                     window = window2
                 else:
@@ -135,13 +138,13 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
                             std = np.std(data) + 1e-10
                             mean = np.mean(data)
 
-                            subim[:k, i, j] *= np.abs(subim[:k, i, j] - mean) / std < 3.5
+                            subim[:k, i, j] *= old_div(np.abs(subim[:k, i, j] - mean), std) < 3.5
                         elif data.shape[0] > 5:
                             data = np.sort(data)[1:-1]
                             std = np.std(data) + 1e-10
                             mean = np.mean(data)
 
-                            subim[:k, i, j] *= np.abs(subim[:k, i, j] - mean) / std < 3.5
+                            subim[:k, i, j] *= old_div(np.abs(subim[:k, i, j] - mean), std) < 3.5
 
                         data = subim[:k, i, j][np.where(subim[:k, i, j] != 0)]
                         #data = np.sort(data)
@@ -155,7 +158,7 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
 
                 val = meanpsf.copy()
                 for jj in range(10):
-                    tmp = val / signal.convolve2d(meanpsf, window, mode='same')
+                    tmp = old_div(val, signal.convolve2d(meanpsf, window, mode='same'))
                     meanpsf *= signal.convolve2d(tmp, window[::-1, ::-1], mode='same')
 
             ############################################################
@@ -164,7 +167,7 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
             ############################################################
 
             if renorm:
-                meanpsf *= upsample**2 / np.sum(meanpsf)
+                meanpsf *= old_div(upsample**2, np.sum(meanpsf))
             hires_arr[yreg, xreg] = meanpsf
 
     return hires_arr
@@ -181,13 +184,13 @@ def make_polychrome(lam1, lam2, hires_arrs, lam_arr, psftool, allcoef,
     x, y = np.meshgrid(x, x)
     npix = hires_arrs[0].shape[2] // upsample
 
-    dloglam = (np.log(lam2) - np.log(lam1)) / nlam
-    loglam = np.log(lam1) + dloglam / 2. + np.arange(nlam) * dloglam
+    dloglam = old_div((np.log(lam2) - np.log(lam1)), nlam)
+    loglam = np.log(lam1) + old_div(dloglam, 2.) + np.arange(nlam) * dloglam
 
     for lam in np.exp(loglam):
 
         if trans is not None:
-            indx = np.where(np.abs(np.log(trans[:, 0] / lam)) < dloglam / 2.)
+            indx = np.where(np.abs(np.log(old_div(trans[:, 0], lam))) < old_div(dloglam, 2.))
             meantrans = np.mean(trans[:, 1][indx])
 
         ################################################################

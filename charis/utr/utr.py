@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
+from __future__ import division
+from past.utils import old_div
 import logging
 import multiprocessing
 import re
@@ -8,7 +11,7 @@ import time
 import numpy as np
 from astropy.io import fits
 
-import fitramp
+from . import fitramp
 
 try:
     from image import Image
@@ -148,7 +151,7 @@ def calcramp(filename, mask=None, gain=2., noisefac=0,
                                   returnivar=True)
 
     if noisefac > 0:
-        ivar[:] = 1. / (1. / (ivar + 1e-100) + (noisefac * data)**2)
+        ivar[:] = old_div(1., (old_div(1., (ivar + 1e-100)) + (noisefac * data)**2))
 
     header.append(('gain', gain, 'Assumed detector gain for Poisson variance'), end=True)
     header['noisefac'] = (noisefac, 'Added noise (as fraction of abs(ct rate))')

@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import logging
 import multiprocessing
 import time
@@ -8,7 +12,7 @@ import numpy as np
 from astropy.io import fits
 from scipy import interpolate, ndimage, signal, stats
 
-import matutils
+from . import matutils
 
 try:
     from charis.image import Image
@@ -57,7 +61,7 @@ def _smoothandmask(datacube, good):
 
     for i in range(cube.shape[0]):
         ivar_smooth = signal.convolve2d(ivar[i], widewindow, mode='same')
-        ivar[i] *= ivar[i] > ivar_smooth / 10.
+        ivar[i] *= ivar[i] > old_div(ivar_smooth, 10.)
 
         mask = signal.convolve2d(cube[i] * ivar[i], narrowwindow, mode='same')
         mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same') + 1e-100
@@ -129,7 +133,7 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
     if maskval is not None:
         norm = np.sum(np.isfinite(arr_sorted), axis=axis)
         arr_sorted[np.where(np.isinf(arr_sorted))] = 0
-        return np.sum(arr_sorted, axis=axis) / (norm + 1e-100)
+        return old_div(np.sum(arr_sorted, axis=axis), (norm + 1e-100))
     else:
         return np.mean(arr_sorted, axis=axis)
 
@@ -158,7 +162,7 @@ def _get_corrnoise(resid, ivar, minpct=70):
     var_ratios = np.zeros((resid.shape[0], resid.shape[1]))
     for i in range(0, resid.shape[1] // dx):
         ivar_ref = np.median(ivar[:4, i * dx:(i + 1) * dx])
-        var_ratios[:, i * dx:(i + 1) * dx] = ivar[:, i * dx:(i + 1) * dx] / ivar_ref
+        var_ratios[:, i * dx:(i + 1) * dx] = old_div(ivar[:, i * dx:(i + 1) * dx], ivar_ref)
 
     ##################################################################
     # Default threshold: the variance is equal parts read noise and
@@ -166,7 +170,7 @@ def _get_corrnoise(resid, ivar, minpct=70):
     # to ensure a reasonable average.
     ##################################################################
 
-    thresh = min(1 / np.sqrt(2), stats.scoreatpercentile(var_ratios, 100 - minpct))
+    thresh = min(old_div(1, np.sqrt(2)), stats.scoreatpercentile(var_ratios, 100 - minpct))
 
     for i in range(resid.shape[1] // dx):
         ivar_ref = np.median(ivar[:4, i * dx:(i + 1) * dx])
@@ -210,12 +214,12 @@ def _recalc_ivar(data, ivar):
     """
 
     dx = 64
-    var = 1 / (ivar + 1e-100)
+    var = old_div(1, (ivar + 1e-100))
     for i in range(32):
         rdnoise_old = np.sqrt(np.median(var[:4, i * dx:(i + 1) * dx]))
         rdnoise_new = np.std(np.sort(data[:4, i * dx:(i + 1) * dx])[1:-1])
         var[:, i * dx:(i + 1) * dx] += 0.5 * (rdnoise_new**2 - rdnoise_old**2)
-    return (1 / var) * (ivar > 0)
+    return (old_div(1, var)) * (ivar > 0)
 
 
 def _add_row(arr, n=1, dtype=None):
@@ -232,7 +236,7 @@ def _add_row(arr, n=1, dtype=None):
     else:
         outarr = np.zeros(tuple(newshape), dtype)
     outarr[:-n] = arr
-    meanval = (arr[0] + arr[-1]) / 2
+    meanval = old_div((arr[0] + arr[-1]), 2)
     for i in range(1, n + 1):
         outarr[-i] = meanval
     return outarr
@@ -280,7 +284,7 @@ def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     elif mode == 'ext':
         coef = np.zeros(psflets.shape[0])
         for i in range(psflets.shape[0]):
-            coef[i] = np.sum(psflets[i] * subim) / np.sum(psflets[i])
+            coef[i] = old_div(np.sum(psflets[i] * subim), np.sum(psflets[i]))
     elif mode == 'apphot':
         coef = np.zeros((subim.shape[0]))
         for i in range(subim.shape[0]):
@@ -541,7 +545,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
         psflets[-n_add:] = 0
         psflets[-1, 4:-4, 4:-4] = 1
         if n_add == 2:
-            psflets[-2, 4:-4, 4:-4] += (_x[4:-4, 4:-4] / 64).astype(int) % 2 == 0
+            psflets[-2, 4:-4, 4:-4] += (old_div(_x[4:-4, 4:-4], 64)).astype(int) % 2 == 0
 
         xint = _add_row(xint, n=n_add)
         yint = _add_row(yint, n=n_add)
@@ -714,16 +718,16 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
     if len(lam) > 1:
-        header['dloglam'] = (np.log(lam[1] / lam[0]), 'Log spacing of extracted wavelength bins')
+        header['dloglam'] = (np.log(old_div(lam[1], lam[0])), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (len(lam), 'Number of extracted wavelengths')
 
     header['CTYPE3'] = 'AWAV-LOG'
     header['CUNIT3'] = 'nm'
     header['CRVAL3'] = lam[0]
-    header['CDELT3'] = np.log(lam[1] / lam[0]) * lam[0]
+    header['CDELT3'] = np.log(old_div(lam[1], lam[0])) * lam[0]
     header['CRPIX3'] = 1
 
-    datacube = Image(data=coefs, ivar=1. / cov, header=header)
+    datacube = Image(data=coefs, ivar=old_div(1., cov), header=header)
 
     if flat is not None:
         datacube.data /= flat + 1e-10
@@ -838,7 +842,7 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
     header['cubemode'] = (cubemode, 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
-    header['dloglam'] = (np.log(lam[1] / lam[0]), 'Log spacing of extracted wavelength bins')
+    header['dloglam'] = (np.log(old_div(lam[1], lam[0])), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
 
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)

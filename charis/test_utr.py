@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 import numpy as np
 from astropy.io import fits
 
-from utr import getreads, utr
+from .utr import getreads, utr
 
 #datadir = '/Users/protostar/Dropbox/data/charis/lab/'
 datadir = '../../../../data/charis/lab/'
