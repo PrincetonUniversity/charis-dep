@@ -91,7 +91,7 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     for cal_lam in inLam:
         oldcoef += [psftool.monochrome_coef(cal_lam, lam, allcoef, order=order).tolist()]
     print('Generating new wavelength solution')
-    x, y, good, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=3, coef=oldcoef, fitorder=1)
+    _, _, _, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=3, coef=oldcoef, fitorder=1)
 
     psftool.geninterparray(lam, allcoef, order=order)
     dcoef = np.asarray(newcoef[0]) - oldcoef[0]
@@ -250,7 +250,6 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
         xpos += [_x]
         ypos += [_y]
         good += [_good]
-
     if upsamp > 1:
         np.save(outdir + 'polychromefullR%d.npy' % (R), polyimage)
 

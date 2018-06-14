@@ -806,11 +806,12 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
             dx, dy = _transform(x, y, polyorder, [0, 0], coef_opt[i])
             _x += [dx]
             _y += [dy]
+        _x = np.array(_x)
+        _y = np.array(_y)
 
     #############################################################
     # Boolean: do the lenslet PSFlets lie within the detector?
     #############################################################
 
     good = (_x > 5) * (_x < xdim - 5) * (_y > 5) * (_y < ydim - 5)
-    # good = np.all(np.greater(_x, 5) * np.greater(_y, 5) * np.less(_x, xdim - 5) * np.less(_y, ydim - 5))
     return [_x, _y, good, coef_opt]
