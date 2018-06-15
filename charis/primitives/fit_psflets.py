@@ -12,12 +12,8 @@ import numpy as np
 from astropy.io import fits
 from scipy import interpolate, ndimage, signal, stats
 
-from . import matutils
-
-try:
-    from charis.image import Image
-except:
-    from image import Image
+from charis.primitives import matutils
+from charis.image import Image
 
 
 log = logging.getLogger('main')
