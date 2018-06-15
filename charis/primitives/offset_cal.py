@@ -62,7 +62,6 @@ def calc_offset(psflets, image, offsets, dx=64,
     outarr = np.zeros((psflets.shape[0], ny, nx))
 
     for i in range(0, nx, dx):
-
         corrvals_all = matutils.crosscorr(psflets, image.data, image.ivar,
                                           offsets, maxproc=maxcpus,
                                           m1=i, m2=i + dx)

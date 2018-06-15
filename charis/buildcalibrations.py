@@ -41,7 +41,7 @@ log = logging.getLogger('main')
 def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
                       order=3, upsample=True, header=None,
                       ncpus=multiprocessing.cpu_count(),
-                      nlam=10):
+                      nlam=10, verbose=True):
     """
     Build the calibration files needed to extract data cubes from
     sequences of CHARIS reads.
@@ -90,7 +90,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     oldcoef = []
     for cal_lam in inLam:
         oldcoef += [psftool.monochrome_coef(cal_lam, lam, allcoef, order=order).tolist()]
-    print('Generating new wavelength solution')
+    if verbose:
+        print('Generating new wavelength solution')
     _, _, _, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=3, coef=oldcoef, fitorder=1)
 
     psftool.geninterparray(lam, allcoef, order=order)
@@ -113,7 +114,8 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     phi2 = np.mean([np.arctan2(newlin[2], newlin[1]),
                     np.arctan2(-newlin[4], newlin[5])])
     dx, dy, dphi = [newlin[0] - oldlin[0], newlin[3] - oldlin[3], phi2 - phi1]
-    print(dx, dy, dphi)
+    if verbose:
+        print('x, y, phi shift: %.3f, %.3f, %.3f' % dx, dy, dphi)
     if header is not None:
         header['cal_dx'] = (dx, 'x-shift from archival spot positions (pixels)')
         header['cal_dy'] = (dy, 'y-shift from archival spot positions (pixels)')
@@ -224,16 +226,19 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
 
     polyimage = np.empty((Nspec - 1, npix_y, npix_x * upsamp), np.float32)
 
-    print('Generating narrowband template images')
+    if verbose:
+        print('Generating narrowband template images')
     for i in range(upsamp * (Nspec - 1)):
-        frac_complete = (i + 1) * 1. / (upsamp * (Nspec - 1))
-        N = int(frac_complete * 40)
-        print('-' * N + '>' + ' ' * (40 - N) + ' %3d%% complete\r' % (int(100 * frac_complete)), end='')
+        if verbose:
+            frac_complete = (i + 1) * 1. / (upsamp * (Nspec - 1))
+            N = int(frac_complete * 40)
+            print('-' * N + '>' + ' ' * (40 - N) + ' %3d%% complete\r' % (int(100 * frac_complete)), end='')
         index, result = results.get()
         ilam = index // upsamp
         dx = (index % upsamp)
         polyimage[ilam, :, dx::upsamp] = result
-    print('')
+    if verbose:
+        print('')
 
     #################################################################
     # Save the positions of the PSFlet centers to cut out the
@@ -262,5 +267,6 @@ def buildcalibrations(inImage, inLam, mask, indir, instrument, outdir="./",
     outkey.append(fits.PrimaryHDU(np.asarray(good).astype(np.uint8)))
     outkey.writeto(outdir + 'polychromekeyR%d.fits' % (R), overwrite=True)
 
-    print("Total time elapsed: %.0f seconds" % (time.time() - tstart))
+    if verbose:
+        print("Total time elapsed: %.0f seconds" % (time.time() - tstart))
     return None

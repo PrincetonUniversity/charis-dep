@@ -42,7 +42,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             flatfield=True, smoothandmask=True,
             minpct=70, fitbkgnd=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count(),
-            instrument=None):
+            instrument=None, verbose=True):
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
 
@@ -163,7 +163,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         data = fits.getdata(filename)
         if len(data.shape) == 3:
             data = np.mean(data.astype('float64'), axis=0) * maskarr
-        inImage = Image(data=data, ivar=maskarr,
+        inImage = Image(data=data, ivar=maskarr.astype('float64'),
                         instrument_name=instrument.instrument_name)
 
     if bgsub:
@@ -206,14 +206,15 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         try:
             keyfile = fits.open(os.path.join(calibdir, 'polychromekeyR%d.fits' % (R)))
             R2 = R
-        except:
+        except IOError:
             keyfilenames = glob.glob(calibdir + '*polychromekeyR*.fits')
             if len(keyfilenames) == 0:
                 raise IOError("No key file found in " + calibdir)
             R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
             keyfile = fits.open(os.path.join(calibdir, 'polychromekeyR%d.fits' % (R2)))
-            print("Warning: calibration files not found at requested resolution of R = %d" % (R))
-            print("Found files at R = %d, using these instead." % (R2))
+            if verbose:
+                print("Warning: calibration files not found at requested resolution of R = %d" % (R))
+                print("Found files at R = %d, using these instead." % (R2))
 
         if fitshift:
             try:
@@ -221,6 +222,8 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 offsets = np.arange(-5, 6)
                 psflets = primitives.calc_offset(psflets, inImage, offsets, maxcpus=maxcpus)
             except:
+                if verbose:
+                    print('Fit shift failed. Continuing without fitting shift.')
                 fitshift = False
         if not fitshift:
             psflets = fits.open(os.path.join(calibdir, 'polychromeR%d.fits' % (R2)))[0].data
@@ -263,7 +266,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
         try:
             lam_midpts = fits.open(os.path.join(calibdir, '/polychromekeyR%d.fits' % (R)))[0].data
-        except:
+        except IOError:
             keyfilenames = glob.glob(calibdir + '*polychromekeyR*.fits')
             if len(keyfilenames) == 0:
                 raise IOError("No key file found in " + calibdir)
@@ -273,7 +276,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             lam_midpts = np.exp(np.linspace(np.log(lam1), np.log(lam2), n))
         try:
             sig = fits.open(os.path.join(calibdir, 'PSFwidths.fits'))[0].data
-        except:
+        except IOError:
             sig = 0.7
 
         if method == 'apphot3' or method == 'apphot5':
