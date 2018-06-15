@@ -134,7 +134,7 @@ class PSFLets(object):
             xarr[:, i] = np.log(lam)**i
 
         for i in range(self.interp_arr.shape[1]):
-            coef = np.linalg.lstsq(xarr, allcoef[:, i])[0]
+            coef = np.linalg.lstsq(xarr, allcoef[:, i], rcond=None)[0]
             self.interp_arr[:, i] = coef
 
     def return_locations_short(self, coef, lenslet_ix, lenslet_iy):
