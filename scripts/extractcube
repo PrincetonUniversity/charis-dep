@@ -20,7 +20,7 @@ import time
 
 import numpy as np
 
-from charis import getcube
+from charis import extractcube
 
 
 if __name__ == "__main__":
@@ -114,12 +114,12 @@ if __name__ == "__main__":
         smoothandmask = True
 
     for filename in filenames:
-        cube = getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
-                       mask=mask, gain=gain, noisefac=noisefac,
-                       saveramp=saveramp, refine=refine, maxcpus=maxcpus,
-                       calibdir=calibdir, R=R, method=method,
-                       smoothandmask=smoothandmask, flatfield=flatfield,
-                       fitshift=fitshift, suppressrn=suppressrn,
-                       minpct=minpct, fitbkgnd=fitbkgnd,
-                       saveresid=saveresid)
+        cube = extractcube.getcube(filename=filename, read_idx=read_idx, bgsub=bgsub,
+                                   mask=mask, gain=gain, noisefac=noisefac,
+                                   saveramp=saveramp, refine=refine, maxcpus=maxcpus,
+                                   calibdir=calibdir, R=R, method=method,
+                                   smoothandmask=smoothandmask, flatfield=flatfield,
+                                   fitshift=fitshift, suppressrn=suppressrn,
+                                   minpct=minpct, fitbkgnd=fitbkgnd,
+                                   saveresid=saveresid)
         cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))

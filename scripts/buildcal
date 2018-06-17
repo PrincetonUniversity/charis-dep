@@ -105,81 +105,11 @@ if __name__ == "__main__":
                              + ", " + str(instrument.wavelength_range[1])
                              + ") of mode " + band)
 
-    indir = instrument.calibration_path
-    mask = fits.open(os.path.join(indir, 'mask.fits'))[0].data
+    inImage, hdr = buildcalibrations.read_in_file(infile, instrument, calibdir=None, bgfiles=bgfiles)
 
-    hdr = fits.PrimaryHDU().header
-    hdr.clear()
-    infilelist = glob.glob(infile)
-    if len(infilelist) == 0:
-        raise ValueError("No CHARIS file found for calibration.")
-
-    hdr['calfname'] = (re.sub('.*/', '', infilelist[0]),
-                       'Monochromatic image used for calibration')
-    try:
-        hdr['cal_date'] = (fits.open(infilelist[0])[0].header['mjd'],
-                           'MJD date of calibration image')
-    except:
-        hdr['cal_date'] = ('unavailable', 'MJD date of calibration image')
-
-    hdr['cal_band'] = (instrument.observing_mode, 'Band/mode of calibration image (J/H/K/Broadband)')
-    if instrument.instrument_name == 'CHARIS':
-        hdr['cal_lam'] = (calibration_wavelength.value[0], 'Wavelength of calibration image (nm)')
-
-    ###############################################################
-    # Mean background count rate, weighted by inverse variance
-    ###############################################################
-
-    print('Computing ramps from sequences of raw reads')
-    num = 0.
-    denom = 1e-100
-    ibg = 1
-    for filename in bgfiles:
-        bg = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
-        num = num + bg.data * bg.ivar
-        denom = denom + bg.ivar
-        hdr['bkgnd%03d' % (ibg)] = (re.sub('.*/', '', filename),
-                                    'Dark(s) used for background subtraction')
-        ibg += 1
-    if len(bgfiles) > 0:
-        background = Image(data=num / denom, ivar=1. / denom,
-                           instrument_name=instrument.instrument_name)
-        background.write('background.fits')
-    else:
-        hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
-
-    ###############################################################
-    # Monochromatic flatfield image
-    ###############################################################
-
-    num = 0
-    denom = 1e-100
-    if instrument.instrument_name == 'CHARIS':
-        wavelengthpolyorder = 3
-        for filename in infilelist:
-            im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
-            num = num + im.data * im.ivar
-            denom = denom + im.ivar
-            inImage = Image(data=num, ivar=mask * 1. / denom,
-                            instrument_name=instrument.instrument_name)
-    elif instrument.instrument_name == 'SPHERE':
-        wavelengthpolyorder = 2
-        for filename in infilelist:
-            data = fits.getdata(filename)
-            if len(data.shape) == 3:
-                data = np.sort(data.astype('float64'), axis=0)
-                data = np.mean(data[1:-1], axis=0) * mask
-            inImage = Image(data=data, ivar=mask.astype('float64'),
-                            instrument_name=instrument.instrument_name)
-
-    buildcalibrations(inImage, calibration_wavelength.value, mask, indir,
-                      instrument, upsample=upsample, order=wavelengthpolyorder,
-                      header=hdr, ncpus=nthreads, verbose=True)
-
-    out = fits.HDUList(fits.PrimaryHDU(None, hdr))
-    out.writeto('cal_params.fits', overwrite=True)
-
-    shutil.copy(os.path.join(indir, 'lensletflat.fits'), './lensletflat.fits')
-
-    for filename in ['mask.fits', 'pixelflat.fits']:
-        shutil.copy(os.path.join(indir, filename), './' + filename)
+    buildcalibrations.buildcalibrations(
+        inImage, instrument,
+        calibration_wavelength.value, mask=None,
+        calibdir=None, upsample=upsample,
+        order=None, header=hdr,
+        ncpus=nthreads, verbose=True)

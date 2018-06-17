@@ -39,6 +39,7 @@ class CHARIS(object):
         self.lenslet_geometry = 'rectilinear'
         self.pixel_scale = 0.015 * u.arcsec / u.pixel
         self.gain = 2.
+        self.wavelengthpolyorder = 3
         index_range = np.arange(-100, 101, dtype='float')
         self.lenslet_ix, self.lenslet_iy = np.meshgrid(index_range, index_range)
 
@@ -82,7 +83,7 @@ class SPHERE(object):
         self.pixel_scale = 0.00746 * u.arcsec / u.pixel
         self.gain = 1.8
         self.calibration_wavelength = self.__calibration_wavelength[observing_mode]
-
+        self.wavelengthpolyorder = 2
         index_range = np.arange(-100, 101, dtype='float')
         self.lenslet_ix, self.lenslet_iy = np.meshgrid(index_range, index_range)
         self.lenslet_ix[::2] += 0.5
