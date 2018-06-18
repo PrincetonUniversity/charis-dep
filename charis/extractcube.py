@@ -195,7 +195,8 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     header.append(('comment', ''), end=True)
 
     if flatfield:
-        lensletflat = fits.open(os.path.join(calibdir, 'lensletflat.fits'))[0].data
+        lensletflat = fits.open(
+            os.path.join(calibdir, 'lensletflat.fits'))[0].data.astype('float64')
     else:
         lensletflat = None
     header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
