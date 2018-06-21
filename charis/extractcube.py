@@ -11,9 +11,11 @@ standard_library.install_aliases()
 from builtins import range
 import os
 import configparser
+import copy
 import glob
 import logging
 import multiprocessing
+import pickle
 import re
 import sys
 import time
@@ -21,28 +23,32 @@ import time
 import numpy as np
 from astropy.io import fits
 
+from pdb import set_trace
+
 try:
     import instruments
     import primitives
     import utr
     from image import Image
+    from image.map_hexagon_to_rectilinear import resample_image_cube
 except ImportError:
     from charis import instruments
     from charis import primitives
     from charis import utr
     from charis.image import Image
+    from charis.image.map_hexagon_to_rectilinear import resample_image_cube
     import charis
 
 log = logging.getLogger('main')
 
 
 def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
-            bgsub=True, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
+            bgsub=True, bgpath=None, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, suppressrn=True, fitshift=True,
             flatfield=True, smoothandmask=True,
             minpct=70, fitbkgnd=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count(),
-            instrument=None, verbose=True):
+            instrument=None, resample=True, verbose=True):
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
 
@@ -168,7 +174,11 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     if bgsub:
         try:
-            hdulist = fits.open(os.path.join(calibdir, 'background.fits'))
+            if bgpath is None:
+                hdulist = fits.open(os.path.join(calibdir, 'background.fits'))
+            else:
+                hdulist = fits.open(bgpath)
+
             bg = hdulist[0].data
             if bg is None:
                 bg = hdulist[1].data
@@ -326,4 +336,17 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                    xpixscale=-0.0164 / 3600., ypixscale=0.0164 / 3600.,
                    extrarot=rot_angle)
 
-    return datacube
+    if instrument.instrument_name == 'SPHERE' and resample == True:
+        clip_info_file = os.path.join(os.path.split(instrument.calibration_path)
+                                      [0], 'hexagon_mapping_calibration.pickle')
+        clip_infos = pickle.load(open(clip_info_file, "rb"))
+        datacube_resampled = copy.copy(datacube)
+        datacube_resampled.data = resample_image_cube(datacube.data, clip_infos, hexagon_size=1 / np.sqrt(3))
+
+        datacube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
+        datacube_resampled.write(re.sub('.fits', '_cube_resampled.fits', re.sub('.*/', '', filename)))
+        return datacube, datacube_resampled
+
+    else:
+        datacube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
+        return datacube

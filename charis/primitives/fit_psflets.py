@@ -838,8 +838,14 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
     header['cubemode'] = (cubemode, 'Method used to extract data cube')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
-    header['dloglam'] = (np.log(old_div(lam[1], lam[0])), 'Log spacing of extracted wavelength bins')
-    header['nlam'] = (lam.shape[0], 'Number of extracted wavelengths')
+    if len(lam) > 1:
+        header['dloglam'] = (np.log(old_div(lam[1], lam[0])), 'Log spacing of extracted wavelength bins')
+    header['nlam'] = (len(lam), 'Number of extracted wavelengths')
+    header['CTYPE3'] = 'AWAV-LOG'
+    header['CUNIT3'] = 'nm'
+    header['CRVAL3'] = lam[0]
+    header['CDELT3'] = np.log(old_div(lam[1], lam[0])) * lam[0]
+    header['CRPIX3'] = 1
 
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)
 
