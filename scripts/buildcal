@@ -105,7 +105,9 @@ if __name__ == "__main__":
                              + ", " + str(instrument.wavelength_range[1])
                              + ") of mode " + band)
 
-    inImage, hdr = buildcalibrations.read_in_file(infile, instrument, calibdir=None, bgfiles=bgfiles)
+    inImage, hdr = buildcalibrations.read_in_file(
+        infile, instrument, calibration_wavelength,
+        ncpus=nthreads, calibdir=None, bgfiles=bgfiles)
 
     buildcalibrations.buildcalibrations(
         inImage, instrument,

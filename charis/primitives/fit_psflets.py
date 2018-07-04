@@ -15,6 +15,7 @@ from scipy import interpolate, ndimage, signal, stats
 from charis.primitives import matutils
 from charis.image import Image
 
+from pdb import set_trace
 
 log = logging.getLogger('main')
 
@@ -103,8 +104,9 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
     if maskval is not None:
         arr_sorted[np.where(arr == maskval)] = np.inf
     arr_sorted = np.sort(arr_sorted, axis=axis)
-    if axis > 0:
-        arr_sorted = np.take(arr_sorted, np.arange(n, shape[axis]), axis=axis)
+    if axis is not None:
+        if axis > 0:
+            arr_sorted = np.take(arr_sorted, np.arange(n, shape[axis]), axis=axis)
     else:
         arr_sorted = arr_sorted[n:]
 
@@ -114,8 +116,9 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
     ########################################################
 
     arr_sorted[np.where(np.isinf(arr_sorted))] *= -1
-    if axis > 0:
-        arr_sorted = np.take(arr_sorted, np.arange(0, shape[axis] - n), axis=axis)
+    if axis is not None:
+        if axis > 0:
+            arr_sorted = np.take(arr_sorted, np.arange(0, shape[axis] - n), axis=axis)
     elif n > 0:
         arr_sorted = np.sort(arr_sorted, axis=axis)[:-n]
     else:
@@ -714,7 +717,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
     if len(lam) > 1:
-        header['dloglam'] = (np.log(old_div(lam[1], lam[0])), 'Log spacing of extracted wavelength bins')
+        header['dloglam'] = (np.log(lam[1] / lam[0]), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (len(lam), 'Number of extracted wavelengths')
 
     header['CTYPE3'] = 'AWAV-LOG'
@@ -839,12 +842,12 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
     header['lam_max'] = (np.amax(lam), 'Maximum (central) wavelength of extracted cube')
     if len(lam) > 1:
-        header['dloglam'] = (np.log(old_div(lam[1], lam[0])), 'Log spacing of extracted wavelength bins')
+        header['dloglam'] = (np.log(lam[1] / lam[0]), 'Log spacing of extracted wavelength bins')
     header['nlam'] = (len(lam), 'Number of extracted wavelengths')
     header['CTYPE3'] = 'AWAV-LOG'
     header['CUNIT3'] = 'nm'
     header['CRVAL3'] = lam[0]
-    header['CDELT3'] = np.log(old_div(lam[1], lam[0])) * lam[0]
+    header['CDELT3'] = np.log(lam[1] / lam[0]) * lam[0]
     header['CRPIX3'] = 1
 
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)

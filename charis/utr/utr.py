@@ -19,6 +19,7 @@ except:
     from charis.image import Image
 
 log = logging.getLogger('main')
+from pdb import set_trace
 
 
 def getreads(filename, header=fits.PrimaryHDU().header, read_idx=[1, None]):
@@ -54,10 +55,13 @@ def getreads(filename, header=fits.PrimaryHDU().header, read_idx=[1, None]):
 
     hdulist = fits.open(filename)
     shape = hdulist[1].data.shape
-    if read_idx[1] > read_idx[0]:
-        idx1 = read_idx[1] + 1
+
+    if read_idx[1] is not None:
+        if read_idx[1] > read_idx[0]:
+            idx1 = read_idx[1] + 1
     else:
         idx1 = read_idx[1]
+
     reads = np.zeros((len(hdulist[read_idx[0]:idx1]), shape[0], shape[1]),
                      np.float32)
 

@@ -38,7 +38,8 @@ except ImportError:
 log = logging.getLogger('main')
 
 
-def read_in_file(infile, instrument, mask=None, calibdir=None, bgfiles=[]):
+def read_in_file(infile, instrument, calibration_wavelength=None,
+                 ncpus=1, mask=None, calibdir=None, bgfiles=[]):
     if calibdir is None:
         calibdir = instrument.calibration_path
     if mask is None:
@@ -71,7 +72,7 @@ def read_in_file(infile, instrument, mask=None, calibdir=None, bgfiles=[]):
     denom = 1e-100
     ibg = 1
     for filename in bgfiles:
-        bg = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
+        bg = utr.calcramp(filename=filename, mask=mask, maxcpus=ncpus)
         num = num + bg.data * bg.ivar
         denom = denom + bg.ivar
         hdr['bkgnd%03d' % (ibg)] = (re.sub('.*/', '', filename),
@@ -92,7 +93,7 @@ def read_in_file(infile, instrument, mask=None, calibdir=None, bgfiles=[]):
     denom = 1e-100
     if instrument.instrument_name == 'CHARIS':
         for filename in infilelist:
-            im = utr.calcramp(filename=filename, mask=mask, maxcpus=nthreads)
+            im = utr.calcramp(filename=filename, mask=mask, maxcpus=ncpus)
             num = num + im.data * im.ivar
             denom = denom + im.ivar
             inImage = Image(data=num, ivar=mask * 1. / denom,
@@ -121,9 +122,9 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     Inputs:
     1. inImage:  Image object, should include count rate and ivar for
                  a narrow-band flatfield calibration image.
-    2. inLam:    wavelength in nm of inImage
-    3. mask:     bad pixel mask, =0 for bad pixels
-    4. instrument: instrument object
+    2. instrument: instrument object
+    3. inLam:    wavelength in nm of inImage
+    4. mask:     bad pixel mask, =0 for bad pixels
     5. calibdir:    directory where master calibration files live
                  default: None, use instrument class info
 

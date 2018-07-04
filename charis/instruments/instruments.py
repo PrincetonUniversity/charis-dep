@@ -110,7 +110,7 @@ class SPHERE(object):
         return "{} {}".format(self.instrument_name, self.observing_mode)
 
 
-def instrument_from_data(header, interactive=False):
+def instrument_from_data(header, calibration=True, interactive=False):
     correct_header = True
 
     if 'CHARIS' in header['INSTRUME']:
@@ -120,12 +120,15 @@ def instrument_from_data(header, interactive=False):
             print("Instrument: {}".format(instrument.instrument_name))
             print("Mode: {}".format(instrument.observing_mode))
 
-            if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
-                calibration_wavelength = [int(header['OBJECT'].split('n')[0])] * u.nanometer
-                print(("     Wavelength detected: ", calibration_wavelength))
+            if calibration:
+                if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
+                    calibration_wavelength = [int(header['OBJECT'].split('n')[0])] * u.nanometer
+                    print(("     Wavelength detected: ", calibration_wavelength))
+                else:
+                    print("Invalid wavelength keyword")
+                    correct_header = False
             else:
-                print("Invalid wavelength keyword")
-                correct_header = False
+                return instrument, None, correct_header
         else:
             correct_header = False
 

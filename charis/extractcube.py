@@ -133,7 +133,8 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         version = None
 
     header = fits.open(filename)[0].header
-    instrument, _, _ = instruments.instrument_from_data(header, interactive=False)
+    instrument, _, _ = instruments.instrument_from_data(
+        header, calibration=False, interactive=False)
 
     if instrument.instrument_name == 'CHARIS':
         header = utr.metadata(filename, version=version)
@@ -241,6 +242,10 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
         header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
         lam_midpts = keyfile[0].data
+        # lam_midpts = fits.getdata(
+        #     '/home/samland/science/sphere_daten/51eri/IFS/new_DC_data_cubes/Sep26_YJ_nolsct_psfbin/ifs_convert_waffle_dc-IFS_SCIENCE_LAMBDA_INFO-lam.fits')
+        # lam_midpts = 1000. * lam_midpts.astype('float64')
+
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
