@@ -14,13 +14,13 @@ Experimental version
 
 
 import os
+import json
 import numpy as np
 from astropy.io import fits
 from matplotlib import pyplot as plt
 
 import collections
 import math
-import pickle
 
 from tqdm import tqdm
 
@@ -84,6 +84,14 @@ def flatten_cube(image_cube):
     number_of_pixels = image_cube.shape[-1]**2
     return image_cube.reshape(number_of_frames, number_of_pixels)
 
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
 # corners_hex = np.array(polygon_corners(pointy, Point(10, 10)))
 # corners_square = np.array(square_corners(square, Point(10, 10)))
 # # corners_hex = polygon_corners(pointy, Point(10, 10))
@@ -141,11 +149,11 @@ def contribution_by_hexagons(square_center, square_corners, hexagon_centers, hex
             empty_overlap.append(idx)
     if len(empty_overlap) > 0:
         clip_polygons = np.delete(np.array(clip_polygons), empty_overlap, axis=0).tolist()
-        hexagon_indices = np.delete(hexagon_indices, empty_overlap)
+        hexagon_indices = np.delete(hexagon_indices, empty_overlap).tolist()
     areas = [area(polygon) for polygon in clip_polygons]
     polygon_clipped = {  # 'polygon': clip_polygons,
-        'hex_indices': hexagon_indices,
-        'areas': areas}
+        'hex_indices': list(hexagon_indices),
+        'areas': list(areas)}
     return polygon_clipped
 
 
@@ -193,15 +201,17 @@ def make_mapping(image_size=201, oversampling=2,
             hexagon_arr=hexagon_arr,
             dmax=dmax))
     if outputname is not None:
-        with open('mapping_calib.pickle', "wb") as f:
-            pickle.dump(clip_infos, f)
+        with open(outputname, 'w') as fout:
+            json.dump(clip_infos, fout, cls=NumpyEncoder)
 
     return clip_infos
 
 
+# clip_infos = make_mapping(image_size=201, oversampling=2,
+#                           outputname=None)
 # clip_infos = make_mapping(square_center, square_corners, hexagon_centers,
-#                             hexagon_arr, dmax,
-#                             'mapping_calib.pickle')
+#                           hexagon_arr, dmax,
+#                           'mapping_calib.pickle')
 
 
 def resample_image_cube(image_cube, clip_infos, hexagon_size=1 / np.sqrt(3)):

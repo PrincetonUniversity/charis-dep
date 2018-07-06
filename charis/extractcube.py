@@ -15,7 +15,7 @@ import copy
 import glob
 import logging
 import multiprocessing
-import pickle
+import json
 import re
 import sys
 import time
@@ -343,8 +343,9 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     if instrument.instrument_name == 'SPHERE' and resample == True:
         clip_info_file = os.path.join(os.path.split(instrument.calibration_path)
-                                      [0], 'hexagon_mapping_calibration.pickle')
-        clip_infos = pickle.load(open(clip_info_file, "rb"))
+                                      [0], 'hexagon_mapping_calibration.json')
+        with open(clip_info_file) as json_data:
+            clip_infos = json.load(json_data)
         datacube_resampled = copy.copy(datacube)
         datacube_resampled.data = resample_image_cube(datacube.data, clip_infos, hexagon_size=1 / np.sqrt(3))
 
