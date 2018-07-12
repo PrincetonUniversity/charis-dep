@@ -275,6 +275,12 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             if saveresid:
                 datacube, resid = result
                 resid.write(re.sub('.*/', '', re.sub('.fits', '_resid.fits', filename)))
+                mask_resid = inImage.data > 0.
+                relative_resid = resid.data.copy()
+                relative_resid[mask_resid] /= inImage.data[mask_resid]
+                relative_resid[~mask_resid] = np.nan
+                fits.writeto(re.sub('.*/', '', re.sub('.fits', '_resid_relative.fits', filename)),
+                             relative_resid, overwrite=True)
             else:
                 datacube = result
 
