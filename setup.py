@@ -44,7 +44,7 @@ def setup_charis(ext_modules):
                                              'charis/calibrations/CHARIS/Broadband/pixelflat.fits']),
                     ('charis/calibrations/CHARIS/Broadband', glob.glob('charis/calibrations/CHARIS/Broadband/hires_psflets*') +
                      ['charis/calibrations/CHARIS/Broadband/lensletflat.fits',
-                        'charis/calibrations/CHARIS/Broadband/lowres_tottrans.dat',
+                        'charis/calibrations/CHARIS/Broadband/Broadband_tottrans.dat',
                         'charis/calibrations/CHARIS/Broadband/lamsol.dat']),
                     ('charis/calibrations/CHARIS/J', glob.glob('charis/calibrations/CHARIS/J/hires_psflets*') +
                      ['charis/calibrations/CHARIS/J/lensletflat.fits',
