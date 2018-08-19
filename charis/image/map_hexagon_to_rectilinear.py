@@ -23,7 +23,6 @@ import collections
 import math
 
 from tqdm import tqdm
-
 from itertools import product
 try:
     from sutherland_hodgman import clip, area
@@ -94,9 +93,9 @@ class NumpyEncoder(json.JSONEncoder):
 
 # corners_hex = np.array(polygon_corners(pointy, Point(10, 10)))
 # corners_square = np.array(square_corners(square, Point(10, 10)))
-# # corners_hex = polygon_corners(pointy, Point(10, 10))
-# # corners_square = square_corners(square, Point(10, 10))
-#
+# corners_hex = polygon_corners(pointy, Point(10, 10))
+# corners_square = square_corners(square, Point(10, 10))
+
 # clipped = clip(corners_hex, corners_square)
 # poly_area = area(clipped)
 
@@ -107,7 +106,7 @@ class NumpyEncoder(json.JSONEncoder):
 # plt.scatter(corners[:, 0], corners[:, 1])
 # plt.show()
 
-# Fake hexagon plot
+# # Fake hexagon plot
 # norm_counts = ImageNormalize(flat_cube[12], interval=ZScaleInterval())
 # plt.scatter(hexagon_centers[:,0], hexagon_centers[:,1], c=flat_cube[12], norm=norm_counts)
 # plt.gca().set_aspect('equal')
@@ -118,20 +117,19 @@ class NumpyEncoder(json.JSONEncoder):
 #     plt.plot(hexagon_arr[i, :, 0], hexagon_arr[i, :, 1])  # , label=str(i))
 # for i in tqdm(range(len(square_arr) // 16)):
 #     plt.plot(square_arr[i, :, 0], square_arr[i, :, 1])
-#
+
 # # plt.scatter(squares[:, 0], squares[:, 1])
 # # plt.legend()
 # plt.gca().set_aspect('equal')
 # plt.xlim(0, 10)
 # plt.ylim(0, 10)
 # plt.show()
-
+#
 # a_list = clip(hexagon_arr[0].tolist(), square_arr[0].tolist())
 # a = np.array(a_list)
 # plt.plot(a[:, 0] + 0.02, a[:, 1] + 0.02)
-# plt.plot(hexagon_arr[0, :, 0], hexagon_arr[0, :, 1])  # , label=str(i))
-# plt.plot(square_arr[0, :, 0], square_arr[0, :, 1])
-# plt.show()
+
+
 # area_clip = area(a_list)
 # area_hex = area(hexagon_arr[0].tolist())
 
@@ -161,7 +159,7 @@ def make_mapping(image_size=201, oversampling=2,
                  outputname=None):
 
     hexagon_size = 1. / np.sqrt(3)
-    square_size = hexagon_size / oversampling * 3**(0.75)
+    square_size = 1. / np.sqrt(3)  # hexagon_size / oversampling * 3**(0.75)
     dmax = max(hexagon_size, square_size)
 
     square = Layout_square(size=Point(square_size, square_size), origin=Point(0., 0.))
@@ -175,9 +173,10 @@ def make_mapping(image_size=201, oversampling=2,
     hexagon_centers = np.vstack([X.ravel(), Y.ravel()]).T
 
     x_square = np.arange(np.min((X, Y)), np.max((X, Y)), square_size)
-    y_square = np.arange(np.min((X, Y)), np.max((X, Y)), square_size)
+    y_square = np.arange(np.min((X, Y)), np.max((X, Y)), square_size) + 0.5
 
     square_centers = np.array(list(product(x_square, y_square)))
+    # square_centers[::2, 0] -= quare_size / 2.
 
     hexagons = []
     for hexagon_center in hexagon_centers:  # product(x_hexagon, y_hexagon):
@@ -191,6 +190,11 @@ def make_mapping(image_size=201, oversampling=2,
     square_arr = squares.reshape(len(x_square)**2, 4, 2)
     hexagons = np.array(hexagons)
     hexagon_arr = hexagons.reshape(image_size**2, 6, 2)
+    # ipsh()
+    # for i in range(5000):
+    #     plt.plot(hexagon_arr[i, :, 0], hexagon_arr[i, :, 1])  # , label=str(i))
+    #     plt.plot(square_arr[i, :, 0], square_arr[i, :, 1])
+    # plt.show()
 
     clip_infos = []
     for i in tqdm(range(len(square_arr))):
@@ -200,34 +204,45 @@ def make_mapping(image_size=201, oversampling=2,
             hexagon_centers=hexagon_centers,
             hexagon_arr=hexagon_arr,
             dmax=dmax))
+
+    # used_pixels = []
+    # for pixel, clip_info in enumerate(clip_infos):
+    #     if len(clip_info['areas']) > 0:
+    #         used_pixels.append(pixel)
+
     if outputname is not None:
         with open(outputname, 'w') as fout:
             json.dump(clip_infos, fout, cls=NumpyEncoder)
+        # fits.writeto('mapped_pixel_indices.fits', used_pixels)
 
-    return clip_infos
+    return clip_infos, used_pixels
 
 
 # clip_infos = make_mapping(image_size=201, oversampling=2,
-#                           outputname=None)
-# clip_infos = make_mapping(square_center, square_corners, hexagon_centers,
-#                           hexagon_arr, dmax,
-#                           'mapping_calib.pickle')
+#                           outputname='hexagon_mapping_calibration.json')
+# image_cube = fits.getdata(
+#     '/home/samland/science/sphere_calibration/test_data/ifs_test_data/YJ/science_cubes/waffle_cubes/SPHER.2015-05-14T06_40_52.356IFS_STAR_CENTER_WAFFLE_RAW_cube.fits')
 
-
-def resample_image_cube(image_cube, clip_infos, hexagon_size=1 / np.sqrt(3)):
+def resample_image_cube(
+        image_cube, clip_infos, hexagon_size=1 / np.sqrt(3)):
     flat_cube = flatten_cube(image_cube)
+    # mask = np.zeros(len(clip_infos), dtype='bool')
+    # mask[mapped_pixel_indices] = True
     hexagon_area = hexagon_size**2 * 3 / 2 * np.sqrt(3)
     image_cube = np.zeros([len(flat_cube), len(clip_infos)])
     number_of_pixels = int(np.sqrt(len(clip_infos)))
     for wave in tqdm(range(len(image_cube))):
-        for pixel, clip_info in enumerate(clip_infos):
+        for index, clip_info in enumerate(clip_infos):
             if len(clip_info['areas']) > 0:
-                image_cube[wave, pixel] = np.sum(
+                image_cube[wave, index] = np.sum(
                     flat_cube[wave][clip_info['hex_indices']] *
                     np.array(clip_info['areas']) / hexagon_area)
+
     image_cube = image_cube.reshape(
         len(image_cube), number_of_pixels, number_of_pixels)
     image_cube = np.swapaxes(image_cube, 1, 2)
+    # mask = np.median(image_cube, axis=0) > 0
+    image_cube = image_cube[:, 18:-68, 46:-40]
     return image_cube
 
 
