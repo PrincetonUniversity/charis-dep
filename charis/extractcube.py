@@ -30,13 +30,13 @@ try:
     import primitives
     import utr
     from image import Image
-    from image.map_hexagon_to_rectilinear import resample_image_cube
+    from image.image_geometry import resample_image_cube
 except ImportError:
     from charis import instruments
     from charis import primitives
     from charis import utr
     from charis.image import Image
-    from charis.image.map_hexagon_to_rectilinear import resample_image_cube
+    from charis.image.image_geometry import resample_image_cube
     import charis
 
 log = logging.getLogger('main')
@@ -168,9 +168,22 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     elif instrument.instrument_name == 'SPHERE':
         data = fits.getdata(filename)
+        if maskarr is None:
+            maskarr = np.ones((data.shape[-2], data.shape[-2]))
+            ivar = maskarr.astype('float64')
         if len(data.shape) == 3:
+            # var = np.std(data.astype('float64'), axis=0)**2
+            # const_term = np.ones_like(var) * 20.**2
+            # var += const_term
+            # var_mask = var > 0
+            ivar = np.ones_like(data[0])
+            # ivar[var_mask] /= var[var_mask]
+            # ivar[~var_mask] = 0
+            ivar *= maskarr
             data = np.mean(data.astype('float64'), axis=0) * maskarr
-        inImage = Image(data=data, ivar=maskarr.astype('float64'),
+        else:
+            data = data * maskarr
+        inImage = Image(data=data, ivar=ivar,
                         instrument_name=instrument.instrument_name)
 
     if bgsub:
@@ -262,14 +275,14 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             corrnoise = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
                 header=inImage.header, flat=lensletflat, refine=refine,
-                suppressrdnse=suppressrn, smoothandmask=smoothandmask,
+                suppressreadnoise=suppressrn, smoothandmask=smoothandmask,
                 minpct=minpct, fitbkgnd=fitbkgnd, maxcpus=maxcpus, return_corrnoise=True)
             inImage.data -= corrnoise
         else:
             result = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
                 header=inImage.header, flat=lensletflat, refine=refine,
-                suppressrdnse=suppressrn, smoothandmask=smoothandmask,
+                suppressreadnoise=suppressrn, smoothandmask=smoothandmask,
                 minpct=minpct, fitbkgnd=fitbkgnd, returnresid=saveresid,
                 maxcpus=maxcpus)
             if saveresid:
@@ -354,6 +367,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             clip_infos = json.load(json_data)
         datacube_resampled = copy.copy(datacube)
         datacube_resampled.data = resample_image_cube(datacube.data, clip_infos, hexagon_size=1 / np.sqrt(3))
+        datacube_resampled.ivar = resample_image_cube(datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
 
         datacube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
         datacube_resampled.write(re.sub('.fits', '_cube_resampled.fits', re.sub('.*/', '', filename)))

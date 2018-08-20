@@ -18,9 +18,9 @@ import numpy as np
 from astropy.io import fits
 from matplotlib import pyplot as plt
 
+from tqdm import tqdm
 import collections
 import math
-from embed_shell import ipsh
 from itertools import product
 try:
     from sutherland_hodgman import clip, area
