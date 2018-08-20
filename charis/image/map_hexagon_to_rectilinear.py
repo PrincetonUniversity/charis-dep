@@ -9,7 +9,6 @@ grid. Partially based on http://www.redblobgames.com/grids/hexagons/
 Based on Sutherland-Hodgman algorithm for computing the cross section
 between arbitrary polygons.
 
-Experimental version
 """
 
 
@@ -21,8 +20,7 @@ from matplotlib import pyplot as plt
 
 import collections
 import math
-
-from tqdm import tqdm
+from embed_shell import ipsh
 from itertools import product
 try:
     from sutherland_hodgman import clip, area
@@ -84,6 +82,12 @@ def flatten_cube(image_cube):
     return image_cube.reshape(number_of_frames, number_of_pixels)
 
 
+def deflatten_cube(flat_cube):
+    number_of_frames = flat_cube.shape[0]
+    image_size = int(np.sqrt(flat_cube.shape[-1]))
+    return flat_cube.reshape(number_of_frames, image_size, image_size)
+
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -91,50 +95,191 @@ class NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-# corners_hex = np.array(polygon_corners(pointy, Point(10, 10)))
-# corners_square = np.array(square_corners(square, Point(10, 10)))
-# corners_hex = polygon_corners(pointy, Point(10, 10))
-# corners_square = square_corners(square, Point(10, 10))
+def make_hex_coordinates(image_size, hexagon_size=1. / np.sqrt(3), layout='pointy'):
+    """Creates array containing the center of each hexagon
 
-# clipped = clip(corners_hex, corners_square)
-# poly_area = area(clipped)
+    Parameters
+    ----------
+    image_size : int
+        Number of lenslets in one dimension.
+    hexagon_size : float
+        Side length of hexagon.
+    layout : str
+        'pointy' or 'square' hexagon layout.
 
-# plt.plot(corners_hex[:, 0], corners_hex[:, 1])
-# plt.plot(corners_square[:, 0], corners_square[:, 1])
-# plt.show()
-# plt.gca().set_aspect('equal')
-# plt.scatter(corners[:, 0], corners[:, 1])
-# plt.show()
+    Returns
+    -------
+    type
+        Array containing the center of each hexagone.
 
-# # Fake hexagon plot
-# norm_counts = ImageNormalize(flat_cube[12], interval=ZScaleInterval())
-# plt.scatter(hexagon_centers[:,0], hexagon_centers[:,1], c=flat_cube[12], norm=norm_counts)
-# plt.gca().set_aspect('equal')
-# plt.show()
+    """
 
-# plt.close()
-# for i in tqdm(range(len(hexagon_arr) // 16)):
-#     plt.plot(hexagon_arr[i, :, 0], hexagon_arr[i, :, 1])  # , label=str(i))
-# for i in tqdm(range(len(square_arr) // 16)):
-#     plt.plot(square_arr[i, :, 0], square_arr[i, :, 1])
+    x = np.arange(0, image_size) * hexagon_size * np.sqrt(3)
+    if layout == 'pointy':
+        X, Y = np.meshgrid(x, x)
+        X[::2] -= hexagon_size * np.sqrt(3) / 2.
+        Y *= np.sqrt(3) / 2.
+    elif layout == 'flat':
+        Y, X = np.meshgrid(x, x)
+        X *= np.sqrt(3) / 2.
+        Y[::2] -= hexagon_size * np.sqrt(3) / 2.
+    else:
+        raise ValueError('Only pointy and flat geometry available.')
 
-# # plt.scatter(squares[:, 0], squares[:, 1])
-# # plt.legend()
-# plt.gca().set_aspect('equal')
-# plt.xlim(0, 10)
-# plt.ylim(0, 10)
-# plt.show()
-#
-# a_list = clip(hexagon_arr[0].tolist(), square_arr[0].tolist())
-# a = np.array(a_list)
-# plt.plot(a[:, 0] + 0.02, a[:, 1] + 0.02)
+    hexagon_centers = np.vstack([X.ravel(), Y.ravel()]).T
+
+    return hexagon_centers
 
 
-# area_clip = area(a_list)
-# area_hex = area(hexagon_arr[0].tolist())
+def make_hexagon_array(image_size, hexagon_size=1. / np.sqrt(3),
+                       layout='pointy'):
+    """Create hexagon array
+
+    Parameters
+    ----------
+    image_size : int
+        Number of lenslets in one dimension.
+    hexagon_size : float
+        Side length of hexagon.
+    layout : str
+        'pointy' or 'square' hexagon layout.
+
+    Returns
+    -------
+    type
+        Array containing coordinates of corners for each lenslet.
+
+    """
+
+    if layout == 'pointy':
+        geometry = Layout(
+            layout_pointy, size=Point(hexagon_size, hexagon_size),
+            origin=Point(0., 0.))
+    elif layout == 'flat':
+        geometry = Layout(
+            layout_flat, size=Point(hexagon_size, hexagon_size),
+            origin=Point(0., 0.))
+    else:
+        raise ValueError('Only pointy and flat geometry available.')
+
+    hexagon_centers = make_hex_coordinates(
+        image_size, hexagon_size, layout)
+    hexagons = []
+    for hexagon_center in hexagon_centers:
+        hexagons += polygon_corners(geometry, Point(hexagon_center[0], hexagon_center[1]))
+    hexagons = np.array(hexagons)
+    hexagon_array = hexagons.reshape(image_size**2, 6, 2)
+
+    return hexagon_array
 
 
-def contribution_by_hexagons(square_center, square_corners, hexagon_centers, hexagon_arr, dmax):
+def make_pixel_overlay_grid(image_size, hexagon_size=1. / np.sqrt(3),
+                            square_size=1. / np.sqrt(3), layout='pointy'):
+    """Create rectilinear grid covering the lenslet grid.
+       Used as input for mapping routine.
+
+    Parameters
+    ----------
+    image_size : int
+        Number of lenslets in one dimension.
+    hexagon_size : float
+        Side length of hexagon.
+    square_size : float
+        Side length of pixel.
+    layout : str
+        'pointy' or 'square' hexagon layout.
+
+
+    Returns
+    -------
+    tuple
+        Array containing coordinates of centers
+        and array containing coordinates of corners for each pixel.
+
+    """
+
+    hexagon_centers = make_hex_coordinates(
+        image_size, hexagon_size, layout)
+    square = Layout_square(size=Point(square_size, square_size), origin=Point(0., 0.))
+    x_square = np.arange(
+        np.min(hexagon_centers), np.max(hexagon_centers), square_size)
+    y_square = np.arange(
+        np.min(hexagon_centers),
+        np.max(hexagon_centers), square_size) + hexagon_size * np.sqrt(3) / 2.
+
+    square_centers = np.array(list(product(x_square, y_square)))
+    squares = []
+    for square_center in square_centers:
+        squares += square_corners(square, Point(square_center[0], square_center[1]))
+    squares = np.array(squares)
+    square_array = squares.reshape(len(x_square)**2, 4, 2)
+
+    return square_centers, square_array
+
+
+def plot_fake_hex_image(hexagon_centers, flat_image):
+    """Make scatter plot of intensity using hexagon centers.
+
+    Parameters
+    ----------
+    hexagon_centers : array
+        2D array containing center coordinates for each hexagon.
+    flat_image : array
+        Flattened image corresponding to positions.
+
+    """
+    from astropy.visualization import ImageNormalize, ZScaleInterval
+    # mask = np.median(flat_cube, axis=0) == 0.
+    norm_counts = ImageNormalize(flat_image, interval=ZScaleInterval())
+    plt.scatter(
+        hexagon_centers[:, 0], hexagon_centers[:, 1], c=flat_image, norm=norm_counts)
+    plt.colorbar()
+    plt.gca().set_aspect('equal')
+    plt.show()
+
+
+def plot_hex_grid(hexagon_arr, square_arr=None, color=None):
+    """Visualize hexgrid.
+
+    Parameters
+    ----------
+    hexagon_arr : arr
+        Array containing coordinates of corners for each hexagon.
+    color : str
+        Line color.
+
+    """
+    if hexagon_arr is not None:
+        for hexagon in hexagon_arr:
+            plt.plot(hexagon[:, 0], hexagon[:, 1], color=color)
+    if square_arr is not None:
+        for square in square_arr:
+            plt.plot(square[:, 0], square[:, 1], color=color)
+
+
+def contribution_by_hexagons(
+        square_center, square_corners, hexagon_centers, hexagon_arr, dmax):
+    """For a pixel, identifies nearby hexagons and computes overlap area.
+
+    Parameters
+    ----------
+    square_center : tuple
+        Center coordinates of pixel.
+    square_corners : tuple
+        Corner coordinates of pixel.
+    hexagon_centers : array
+        2D array containing center coordinates for each hexagon.
+    hexagon_arr : array
+        Array containing coordinates of corners for each hexagon.
+    dmax : float
+        max(hexagon_size, square_size).
+
+    Returns
+    -------
+    dictionary
+        Contains indices of hexagons with overlap and respective area.
+
+    """
     distances = np.linalg.norm(square_center - hexagon_centers, axis=1)
     mask = distances < 4 * dmax
     hexagon_indices = np.where(mask)
@@ -155,47 +300,41 @@ def contribution_by_hexagons(square_center, square_corners, hexagon_centers, hex
     return polygon_clipped
 
 
-def make_mapping(image_size=201, oversampling=2,
+def make_mapping(image_size=201, hexagon_size=1. / np.sqrt(3),
+                 square_size=1. / np.sqrt(3), layout='pointy',
                  outputname=None):
+    """Make calibration input for resampling routine. Compute
+       overlap of relevant hexagons with all pixels.
 
-    hexagon_size = 1. / np.sqrt(3)
-    square_size = 1. / np.sqrt(3)  # hexagon_size / oversampling * 3**(0.75)
+    Parameters
+    ----------
+    image_size : int
+        Number of lenslets in one dimension.
+    hexagon_size : float
+        Side length of hexagon.
+    square_size : float
+        Side length of pixel.
+    layout : str
+        'pointy' or 'square' hexagon layout.
+    outputname : str
+        Name of output calibration file.
+
+    Returns
+    -------
+    list
+        List of dictionaries containing hexagon index and overlap
+        area for each pixel.
+
+    """
+
+    hexagon_centers = make_hex_coordinates(image_size, hexagon_size=hexagon_size)
+    hexagon_arr = make_hexagon_array(image_size, hexagon_size, layout)
+
+    square_centers, square_arr = make_pixel_overlay_grid(
+        image_size, hexagon_size=hexagon_size,
+        square_size=square_size, layout=layout)
+
     dmax = max(hexagon_size, square_size)
-
-    square = Layout_square(size=Point(square_size, square_size), origin=Point(0., 0.))
-    pointy = Layout(layout_pointy, size=Point(hexagon_size, hexagon_size), origin=Point(0., 0.))
-    flat = Layout(layout_flat, size=Point(1, 1), origin=Point(0., 0.))
-
-    x = np.arange(0, image_size) * 1.
-    X, Y = np.meshgrid(x, x)
-    X[::2] -= 0.5
-    Y *= np.sqrt(3) / 2
-    hexagon_centers = np.vstack([X.ravel(), Y.ravel()]).T
-
-    x_square = np.arange(np.min((X, Y)), np.max((X, Y)), square_size)
-    y_square = np.arange(np.min((X, Y)), np.max((X, Y)), square_size) + 0.5
-
-    square_centers = np.array(list(product(x_square, y_square)))
-    # square_centers[::2, 0] -= quare_size / 2.
-
-    hexagons = []
-    for hexagon_center in hexagon_centers:  # product(x_hexagon, y_hexagon):
-        # print(hexagon_center)
-        hexagons += polygon_corners(pointy, Point(hexagon_center[0], hexagon_center[1]))
-    squares = []
-    for square_center in square_centers:
-        squares += square_corners(square, Point(square_center[0], square_center[1]))
-
-    squares = np.array(squares)
-    square_arr = squares.reshape(len(x_square)**2, 4, 2)
-    hexagons = np.array(hexagons)
-    hexagon_arr = hexagons.reshape(image_size**2, 6, 2)
-    # ipsh()
-    # for i in range(5000):
-    #     plt.plot(hexagon_arr[i, :, 0], hexagon_arr[i, :, 1])  # , label=str(i))
-    #     plt.plot(square_arr[i, :, 0], square_arr[i, :, 1])
-    # plt.show()
-
     clip_infos = []
     for i in tqdm(range(len(square_arr))):
         clip_infos.append(contribution_by_hexagons(
@@ -205,43 +344,29 @@ def make_mapping(image_size=201, oversampling=2,
             hexagon_arr=hexagon_arr,
             dmax=dmax))
 
-    # used_pixels = []
-    # for pixel, clip_info in enumerate(clip_infos):
-    #     if len(clip_info['areas']) > 0:
-    #         used_pixels.append(pixel)
-
     if outputname is not None:
         with open(outputname, 'w') as fout:
             json.dump(clip_infos, fout, cls=NumpyEncoder)
-        # fits.writeto('mapped_pixel_indices.fits', used_pixels)
 
-    return clip_infos, used_pixels
+    return clip_infos
 
-
-# clip_infos = make_mapping(image_size=201, oversampling=2,
-#                           outputname='hexagon_mapping_calibration.json')
-# image_cube = fits.getdata(
-#     '/home/samland/science/sphere_calibration/test_data/ifs_test_data/YJ/science_cubes/waffle_cubes/SPHER.2015-05-14T06_40_52.356IFS_STAR_CENTER_WAFFLE_RAW_cube.fits')
 
 def resample_image_cube(
         image_cube, clip_infos, hexagon_size=1 / np.sqrt(3)):
     flat_cube = flatten_cube(image_cube)
-    # mask = np.zeros(len(clip_infos), dtype='bool')
-    # mask[mapped_pixel_indices] = True
     hexagon_area = hexagon_size**2 * 3 / 2 * np.sqrt(3)
     image_cube = np.zeros([len(flat_cube), len(clip_infos)])
     number_of_pixels = int(np.sqrt(len(clip_infos)))
-    for wave in tqdm(range(len(image_cube))):
-        for index, clip_info in enumerate(clip_infos):
-            if len(clip_info['areas']) > 0:
-                image_cube[wave, index] = np.sum(
-                    flat_cube[wave][clip_info['hex_indices']] *
-                    np.array(clip_info['areas']) / hexagon_area)
+
+    for index, clip_info in enumerate(tqdm(clip_infos)):
+        if len(clip_info['areas']) > 0:
+            image_cube[:, index] = np.sum(
+                flat_cube[:, clip_info['hex_indices']] *
+                np.array(clip_info['areas']) / hexagon_area, axis=1)
 
     image_cube = image_cube.reshape(
         len(image_cube), number_of_pixels, number_of_pixels)
     image_cube = np.swapaxes(image_cube, 1, 2)
-    # mask = np.median(image_cube, axis=0) > 0
     image_cube = image_cube[:, 18:-68, 46:-40]
     return image_cube
 
@@ -258,15 +383,60 @@ def resample_image_cube_file(filename, clip_info_file, hexagon_size=1 / np.sqrt(
     outputfilename = os.path.splitext(filename)[0] + '_resampled.fits'
     fits.writeto(outputfilename, image_cube, header, overwrite=True)
 
-# for polygon in clip_polygons:
-#     polygon = np.array(polygon)
-#     plt.plot(polygon[:, 0]+0.1, polygon[:, 1]+0.1)
 
-# plt.show()
-# plt.scatter(hexagons[:, 0], hexagons[:, 1])
-# plt.scatter(squares[:, 0], squares[:, 1])
-# # plt.scatter(corners_hex[:,0], corners_hex[:,1])
-# plt.gca().set_aspect('equal')
-# # plt.xlim(0, 51)
-# # plt.ylim(0, 51)
-# plt.show()
+def distance_from_points(point, points):
+    distance = np.sqrt((point[0] - points[:, 0])**2 + (point[1] - points[:, 1])**2)
+    return distance
+
+
+def find_neighbours(point, points, hexagon_size=1 / np.sqrt(3), include_center=False):
+    distance_to_neighbour = hexagon_size * np.sqrt(3) + 1e-8
+    distance = distance_from_points(point, points)
+    if include_center:
+        neighbour_mask = distance < distance_to_neighbour
+    else:
+        neighbour_mask = np.logical_and(distance > 0, distance < distance_to_neighbour)
+    return neighbour_mask
+
+
+def find_neighbour_indices(hexagon_centers, hexagon_size=1. / np.sqrt(3), include_center=False):
+    neighbours = []
+    for hexagon in tqdm(hexagon_centers):
+        neighbours.append(np.where(find_neighbours(
+            hexagon, hexagon_centers, hexagon_size, include_center))[0])
+    return neighbours
+
+
+def make_calibration_neighbour_indices(
+        image_size, hexagon_size=1. / np.sqrt(3),
+        include_center=False, layout='pointy',
+        outputname=None):
+
+    hexagon_centers = make_hex_coordinates(
+        image_size, hexagon_size, layout)
+
+    neighbour_indices = find_neighbour_indices(
+        hexagon_centers, hexagon_size, include_center)
+
+    if outputname is not None:
+        with open(outputname, 'w') as fout:
+            json.dump(neighbour_indices, fout, cls=NumpyEncoder)
+
+    return neighbour_indices
+
+
+def median_filter_hex_image(flat_image, index_list):
+    smooth_image = np.zeros_like(flat_image)
+    for pix_index, value in enumerate(flat_image):
+        neighbour_mask = index_list[pix_index]
+        median_value = np.median(flat_image[neighbour_mask])
+        smooth_image[pix_index] = median_value
+    return smooth_image
+
+
+def median_filter_hex_cube(flat_cube, index_list):
+    smooth_cube = np.zeros_like(flat_cube)
+
+    for pix_index, neighbour_mask in enumerate(index_list):
+        smooth_cube[:, pix_index] = np.median(flat_cube[:, neighbour_mask], axis=1)
+    return smooth_cube
