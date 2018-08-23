@@ -274,17 +274,21 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         if method != 'lstsq':
             corrnoise = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
+                instrument=instrument,
                 header=inImage.header, flat=lensletflat, refine=refine,
                 suppressreadnoise=suppressrn, smoothandmask=smoothandmask,
-                minpct=minpct, fitbkgnd=fitbkgnd, maxcpus=maxcpus, return_corrnoise=True)
+                minpct=minpct, fitbkgnd=fitbkgnd, maxcpus=maxcpus,
+                return_corrnoise=True)
             inImage.data -= corrnoise
         else:
             result = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
+                instrument=instrument,
                 header=inImage.header, flat=lensletflat, refine=refine,
                 suppressreadnoise=suppressrn, smoothandmask=smoothandmask,
                 minpct=minpct, fitbkgnd=fitbkgnd, returnresid=saveresid,
                 maxcpus=maxcpus)
+
             if saveresid:
                 datacube, resid = result
                 resid.write(re.sub('.*/', '', re.sub('.fits', '_resid.fits', filename)))
@@ -334,8 +338,11 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             inImage.data /= pixelflat + 1e-20
             inImage.ivar *= pixelflat**2
 
-        datacube = primitives.optext_spectra(inImage, loc, lam_midpts, delt_x=delt_x,
-                                             sig=sig, header=inImage.header, flat=lensletflat, maxcpus=maxcpus)
+        datacube = primitives.optext_spectra(inImage, loc, lam_midpts,
+                                             instrument=instrument,
+                                             delt_x=delt_x,
+                                             sig=sig, header=inImage.header,
+                                             flat=lensletflat, maxcpus=maxcpus)
 
     if datacube is None:
         raise ValueError("Datacube extraction method " + method + " not implemented.")
@@ -361,8 +368,9 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                    extrarot=rot_angle)
 
     if instrument.instrument_name == 'SPHERE' and resample == True:
-        clip_info_file = os.path.join(os.path.split(instrument.calibration_path)
-                                      [0], 'hexagon_mapping_calibration.json')
+        clip_info_file = os.path.join(
+            os.path.split(instrument.calibration_path)[0],
+            'hexagon_mapping_calibration.json')
         with open(clip_info_file) as json_data:
             clip_infos = json.load(json_data)
         datacube_resampled = copy.copy(datacube)

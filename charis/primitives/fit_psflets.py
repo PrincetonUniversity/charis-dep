@@ -7,6 +7,8 @@ from past.utils import old_div
 import logging
 import multiprocessing
 import time
+import os
+import json
 
 import numpy as np
 from astropy.io import fits
@@ -14,6 +16,9 @@ from scipy import interpolate, ndimage, signal, stats
 
 from charis.primitives import matutils
 from charis.image import Image
+from charis.image.image_geometry import (
+    median_filter_hex_cube, mad_std_hex_cube,
+    flatten_cube, deflatten_cube)
 
 from pdb import set_trace
 
@@ -58,12 +63,72 @@ def _smoothandmask(datacube, good):
 
     for i in range(cube.shape[0]):
         ivar_smooth = signal.convolve2d(ivar[i], widewindow, mode='same')
-        ivar[i] *= ivar[i] > old_div(ivar_smooth, 10.)
+        ivar[i] *= ivar[i] > ivar_smooth / 10.
 
         mask = signal.convolve2d(cube[i] * ivar[i], narrowwindow, mode='same')
         mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same') + 1e-100
         indx = np.where(np.all([ivar[i] == 0, good], axis=0))
         cube[i][indx] = mask[indx]
+
+    return datacube
+
+
+def _smoothandmask_hexgeometry(datacube, good, neighbour_indices):
+    """
+    Set bad spectral measurements to an inverse variance of zero.  The
+    threshold for effectively discarding data is 20 robust standard deviations
+    separation from the median of variance of adjacent hexagons or 5 robust
+    standard deviations from the median of adjacent flux values.
+    This rejection is done separately at each wavelength.
+
+    Then median of adjacent values to replace the
+    values of the masked spectral measurements.  Note that this last
+    step is purely cosmetic as the inverse variances are, in any case,
+    zero.
+
+    Parameters
+    ----------
+    datacube: image instance
+            containing 3D arrays data and ivar
+    good:     2D array
+            nonzero = good lenslet
+
+    Returns
+    -------
+    datacube: input datacube modified in place
+
+    """
+
+    flat_data = flatten_cube(datacube.data)
+    flat_ivar = flatten_cube(datacube.ivar)
+
+    less_than_zero = flat_data < 0.
+
+    smoothed_data = median_filter_hex_cube(flat_data, neighbour_indices)
+    smoothed_ivar = median_filter_hex_cube(flat_ivar, neighbour_indices)
+    surrounding_data_robust_std_dev = mad_std_hex_cube(flat_data, neighbour_indices)
+    surrounding_ivar_robust_std_dev = mad_std_hex_cube(flat_ivar, neighbour_indices)
+
+    non_zero = surrounding_data_robust_std_dev > 0
+    mask_ivar = np.zeros_like(flat_ivar)
+    mask_data = np.zeros_like(flat_data)
+
+    mask_ivar[non_zero] = np.abs(
+        flat_ivar[non_zero] - smoothed_ivar[non_zero]) / surrounding_ivar_robust_std_dev[non_zero] > 20.
+    mask_data[non_zero] = np.abs(
+        flat_data[non_zero] - smoothed_data[non_zero]) / surrounding_data_robust_std_dev[non_zero] > 5.
+
+    mask = np.logical_or.reduce([mask_data, mask_ivar, less_than_zero])
+
+    flat_ivar[mask] = 0.
+    flat_data[mask] = smoothed_data[mask]
+    flat_data[less_than_zero] = 0.
+
+    data = deflatten_cube(flat_data)
+    ivar = deflatten_cube(flat_ivar)
+
+    datacube.data = data
+    datacube.ivar = ivar
 
     return datacube
 
@@ -399,7 +464,7 @@ def _tag_psflets(shape, x, y, good, dx=10, dy=10):
 
     for i in range(x_int.shape[0]):
         if good[i]:
-            #psflet_indx[y_int[i] - 6:y_int[i] + 7, x_int[i] - 6:x_int[i] + 7] = i
+            # psflet_indx[y_int[i] - 6:y_int[i] + 7, x_int[i] - 6:x_int[i] + 7] = i
             iy1, iy2 = [y_int[i] - dy, y_int[i] + dy + 1]
             ix1, ix2 = [x_int[i] - dx, x_int[i] + dx + 1]
 
@@ -425,9 +490,10 @@ def _interp_sig(sigarr, imshape, lenslet_ix, lenslet_iy):
     return ndimage.map_coordinates(sigarr, [y, x], order=3, mode='nearest')
 
 
-def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
+def fit_spectra(im, psflets, lam, x, y, good, instrument,
+                header=fits.PrimaryHDU().header,
                 flat=None, refine=False, smoothandmask=True, returnresid=False,
-                suppressrdnse=False, return_corrnoise=False, minpct=70,
+                suppressreadnoise=False, return_corrnoise=False, minpct=70,
                 fitbkgnd=True, maxcpus=multiprocessing.cpu_count()):
     """
     Fit the microspectra to produce a data cube.  The heavy lifting is
@@ -465,7 +531,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
         (ivar will still be zero)? Default True.
     returnresid: boolean
         Return a residual image in addition the data cube?  Default False.
-    suppressrdnse: boolean
+    suppressreadnoise: boolean
         Estimate and subtract the read noise shared among the even and odd reference channels?  Default False.
     return_corrnoise: boolean
         Return the estimated correlated read noise (as opposed to a data cube)?  Default False.
@@ -595,7 +661,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     # intial guesses of the coefficients.
     ###################################################################
 
-    if refine or returnresid or suppressrdnse:
+    if refine or returnresid or suppressreadnoise:
 
         ###############################################################
         # Match lenslet to pixel at each wavelength.  The cython
@@ -633,7 +699,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
         # background.
         ###############################################################
 
-        if suppressrdnse:
+        if suppressreadnoise:
             corrnoise, pctpix = _get_corrnoise(data, im.ivar, minpct=minpct)
             data[:] = im.data - corrnoise
             im.ivar = _recalc_ivar(data, im.ivar)
@@ -710,8 +776,8 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
 
     header['cubemode'] = ('Chi^2 Fit to PSFlets', 'Method used to extract data cube')
     header['fitbkgnd'] = (fitbkgnd, 'Fit an undispersed background in each lenslet?')
-    header['reducern'] = (suppressrdnse, 'Suppress read noise using low ct rate pixels?')
-    if suppressrdnse:
+    header['reducern'] = (suppressreadnoise, 'Suppress read noise using low ct rate pixels?')
+    if suppressreadnoise:
         header['rnpctpix'] = (pctpix, '% of pixels used to estimate read noise')
     header['refine'] = (refine, 'Iterate solution to remove crosstalk?')
     header['lam_min'] = (np.amin(lam), 'Minimum (central) wavelength of extracted cube')
@@ -726,14 +792,29 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
     header['CDELT3'] = np.log(old_div(lam[1], lam[0])) * lam[0]
     header['CRPIX3'] = 1
 
-    datacube = Image(data=coefs, ivar=old_div(1., cov), header=header)
+    datacube = Image(data=coefs, ivar=1. / cov, header=header)
 
     if flat is not None:
         datacube.data /= flat + 1e-10
         datacube.ivar *= flat**2
 
     if smoothandmask:
-        datacube = _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
+        good = np.reshape(goodint, tuple(list(coefshape)[1:]))
+        if instrument.instrument_name == 'CHARIS':
+            datacube = _smoothandmask(
+                datacube, good)
+        elif instrument.instrument_name == 'SPHERE':
+            neighbour_indices_path = os.path.join(
+                os.path.split(
+                    instrument.calibration_path)[0], 'neighbour_indices.json')
+            with open(neighbour_indices_path) as json_data:
+                neighbour_indices = json.load(json_data)
+
+            datacube = _smoothandmask_hexgeometry(datacube,
+                                                  good, neighbour_indices)
+
+    # if smoothandmask:
+    #     datacube = _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
 
     datacube.header['maskivar'] = (smoothandmask, 'Set poor ivar to 0, smoothed I for cosmetics')
 
@@ -747,7 +828,7 @@ def fit_spectra(im, psflets, lam, x, y, good, header=fits.PrimaryHDU().header,
         return datacube
 
 
-def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
+def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=7, flat=None, sig=0.7,
                    smoothandmask=True, header=fits.PrimaryHDU().header,
                    maxcpus=multiprocessing.cpu_count()):
     """
@@ -858,6 +939,13 @@ def optext_spectra(im, PSFlet_tool, lam, delt_x=7, flat=None, sig=0.7,
 
     if smoothandmask:
         good = np.any(datacube.data != 0, axis=0)
-        datacube = _smoothandmask(datacube, good)
-
+        if instrument.instrument_name == 'CHARIS':
+            datacube = _smoothandmask(datacube, good)
+        elif instrument.instrument_name == 'SPHERE':
+            neighbour_indices_path = os.path.join(
+                os.path.split(
+                    instrument.calibration_path)[0], 'neighbour_indices.json')
+            with open(neighbour_indices_path) as json_data:
+                neighbour_indices = json.load(json_data)
+            datacube = _smoothandmask_hexgeometry(datacube, good, neighbour_indices)
     return datacube

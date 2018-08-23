@@ -18,6 +18,7 @@ import numpy as np
 from astropy.io import fits
 from matplotlib import pyplot as plt
 
+from astropy.stats import sigma_clip, mad_std
 from tqdm import tqdm
 import collections
 import math
@@ -229,7 +230,6 @@ def plot_fake_hex_image(hexagon_centers, flat_image):
 
     """
     from astropy.visualization import ImageNormalize, ZScaleInterval
-    # mask = np.median(flat_cube, axis=0) == 0.
     norm_counts = ImageNormalize(flat_image, interval=ZScaleInterval())
     plt.scatter(
         hexagon_centers[:, 0], hexagon_centers[:, 1], c=flat_image, norm=norm_counts)
@@ -353,12 +353,30 @@ def make_mapping(image_size=201, hexagon_size=1. / np.sqrt(3),
 
 def resample_image_cube(
         image_cube, clip_infos, hexagon_size=1 / np.sqrt(3)):
+    """Resample hexagonal image cube onto a rectilinear grid.
+
+    Parameters
+    ----------
+    image_cube : array
+        Hexagonal image cube (wave * y_index * x_index).
+    clip_infos : list
+        List of dictionaries containing hexagon index and overlap
+        area for each pixel.
+    hexagon_size : float
+        Side length of hexagon.
+
+    Returns
+    -------
+    array
+        Image cube on pixel grid.
+
+    """
     flat_cube = flatten_cube(image_cube)
     hexagon_area = hexagon_size**2 * 3 / 2 * np.sqrt(3)
     image_cube = np.zeros([len(flat_cube), len(clip_infos)])
     number_of_pixels = int(np.sqrt(len(clip_infos)))
 
-    for index, clip_info in enumerate(tqdm(clip_infos)):
+    for index, clip_info in enumerate(clip_infos):
         if len(clip_info['areas']) > 0:
             image_cube[:, index] = np.sum(
                 flat_cube[:, clip_info['hex_indices']] *
@@ -440,3 +458,88 @@ def median_filter_hex_cube(flat_cube, index_list):
     for pix_index, neighbour_mask in enumerate(index_list):
         smooth_cube[:, pix_index] = np.median(flat_cube[:, neighbour_mask], axis=1)
     return smooth_cube
+
+
+def mad_std_hex_cube(flat_cube, index_list):
+    surrounding_robust_std_dev = np.zeros_like(flat_cube)
+
+    for pix_index, neighbour_mask in enumerate(index_list):
+        surrounding_robust_std_dev[:, pix_index] = mad_std(flat_cube[:, neighbour_mask], axis=1)
+    return surrounding_robust_std_dev
+
+
+def mask_outliers_from_absolute_deviation(flat_cube, sigma=12):
+    good_pixel = flat_cube > 0.
+    for wave_idx in range(len(flat_cube)):
+        values = flat_cube[wave_idx][good_pixel[wave_idx]]
+        clipped = sigma_clip(sigma_clip(values, sigma=sigma, cenfunc=np.median, stdfunc=mad_std))
+        good_pixel[wave_idx][good_pixel[wave_idx]] = ~clipped.mask
+    return ~good_pixel
+
+
+def bad_corrected_smoothed_cube(flat_cube, bad_pixel_map, index_list):
+    smoothed_cube = median_filter_hex_cube(flat_cube, index_list)
+    flat_cube[bad_pixel_map] = smoothed_cube[bad_pixel_map]
+    corrected_smooth_cube = median_filter_hex_cube(flat_cube, index_list)
+    return corrected_smooth_cube
+
+
+def detect_outliers_median_filter(flat_ivar, index_list, sigma=12):
+    bad_pixel_map = mask_outliers_from_absolute_deviation(flat_ivar, sigma=sigma)
+    corrected_smooth_cube = bad_corrected_smoothed_cube(
+        flat_ivar.copy(), bad_pixel_map, index_list)
+
+    median_filter_mask = (1e-20 + flat_ivar) / (1e-20 + corrected_smooth_cube) > 1.1
+    return median_filter_mask
+
+
+def fix_bad_pixel(data, ivar, index_list, sigma=12):
+    flat_data = flatten_cube(data)
+    flat_ivar = flatten_cube(ivar)
+
+    median_filter_mask = detect_outliers_median_filter(flat_ivar, index_list, sigma=sigma)
+    flat_ivar[median_filter_mask] = 0.
+
+    smooth_data = bad_corrected_smoothed_cube(flat_data, median_filter_mask, index_list)
+    flat_data[median_filter_mask] = smooth_data[median_filter_mask]
+
+    data = deflatten_cube(flat_data)
+    ivar = deflatten_cube(flat_ivar)
+    return data, ivar, deflatten_cube(median_filter_mask)
+
+
+# with open('neighbour_indices.json') as json_data:
+#     index_list = json.load(json_data)
+# hexagon_centers = make_hex_coordinates(201)
+#
+# image_cube = fits.getdata(
+#     '/home/samland/science/sphere_calibration/test_data/ifs_test_data/YJ/science_cubes/waffle_cubes/SPHER.2015-05-14T06_40_52.356IFS_STAR_CENTER_WAFFLE_RAW_cube.fits')
+# variance = fits.getdata(
+#     '/home/samland/science/sphere_calibration/test_data/ifs_test_data/YJ/science_cubes/waffle_cubes/SPHER.2015-05-14T06_40_52.356IFS_STAR_CENTER_WAFFLE_RAW_cube.fits', 2)
+# flat_cube = flatten_cube(image_cube)
+# flat_ivar = flatten_cube(variance)
+# # from astropy.visualization import ZScaleInterval, ImageNormalize
+# #
+# #
+# # data1, ivar1, bad = fix_bad_pixel(image_cube, variance, index_list)
+# #
+# data2, ivar2, mask2 = smoothandmask(image_cube, variance, index_list)
+# # data3, ivar3, mask3 = smoothandmask2(image_cube, variance, index_list, sigma=12)
+# #
+# fits.writeto('data_simple.fits', data2, overwrite=True)
+# fits.writeto('ivar_simple.fits', ivar2, overwrite=True)
+# fits.writeto('data_abs.fits', data3, overwrite=True)
+# fits.writeto('ivar_abs.fits', ivar3, overwrite=True)
+
+# fits.writeto('1st_iter.fits', deflatten_cube(flat_variance), overwrite=True)
+#
+# flat_variance[zero_mask] = smoothed_variance[zero_mask]
+#
+# smoothed_variance = median_filter_hex_cube(flat_variance, index_list)
+#
+# bad_mask = flat_variance_orig < smoothed_variance / 10.
+#
+# flat_variance_orig[bad_mask] = 0.
+#
+#
+# fits.writeto('deviation.fits', deflatten_cube(deviation))
