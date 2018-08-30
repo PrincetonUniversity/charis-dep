@@ -23,8 +23,6 @@ import time
 import numpy as np
 from astropy.io import fits
 
-from pdb import set_trace
-
 try:
     import instruments
     import primitives
@@ -138,6 +136,10 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     if instrument.instrument_name == 'CHARIS':
         header = utr.metadata(filename, version=version)
+    elif instrument.instrument_name == 'SPHERE':
+        header = utr.metadata_SPHERE(filename, version=version)
+    else:
+        raise ValueError("Only CHARIS and SPHERE instruments implemented.")
 
     try:
         calhead = fits.open(os.path.join(calibdir, 'cal_params.fits'))[0].header
@@ -173,7 +175,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             ivar = maskarr.astype('float64')
         if len(data.shape) == 3:
             # var = np.std(data.astype('float64'), axis=0)**2
-            # const_term = np.ones_like(var) * 20.**2
+            # const_term = np.ones_like(var) * 1.5**2
             # var += const_term
             # var_mask = var > 0
             ivar = np.ones_like(data[0])
@@ -183,7 +185,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             data = np.mean(data.astype('float64'), axis=0) * maskarr
         else:
             data = data * maskarr
-        inImage = Image(data=data, ivar=ivar,
+        inImage = Image(data=data, ivar=ivar, header=header,
                         instrument_name=instrument.instrument_name)
 
     if bgsub:
@@ -244,8 +246,9 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         if fitshift:
             try:
                 psflets = np.load(os.path.join(calibdir, 'polychromefullR%d.npy' % (R2)))
-                offsets = np.arange(-5, 6)
+                offsets = instrument.offsets
                 psflets = primitives.calc_offset(psflets, inImage, offsets, maxcpus=maxcpus)
+
             except:
                 if verbose:
                     print('Fit shift failed. Continuing without fitting shift.')
@@ -258,7 +261,6 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         # lam_midpts = fits.getdata(
         #     '/home/samland/science/sphere_daten/51eri/IFS/new_DC_data_cubes/Sep26_YJ_nolsct_psfbin/ifs_convert_waffle_dc-IFS_SCIENCE_LAMBDA_INFO-lam.fits')
         # lam_midpts = 1000. * lam_midpts.astype('float64')
-
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
@@ -350,9 +352,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     ################################################################
     # Add the original header for reference as the last HDU
     ################################################################
-
-    datacube.extrahead = fits.open(filename)[0].header
-
+    datacube.extraheader = fits.open(filename)[0].header
     ################################################################
     # Add WCS for the cube
     # for now assume the image is centered on the cube

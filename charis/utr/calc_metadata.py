@@ -269,6 +269,121 @@ def metadata(filename, header=None, clear=True, version=None):
     return header
 
 
+def metadata_SPHERE(filename, header=None, clear=True, version=None):
+    """
+    Function metadata populates a FITS header (creating a new one if
+    necessary) with important information about an observation.
+
+    Parameters
+    ----------
+    filename:  string
+        To be called with astropy.io.fits.open(filename)
+    header:    fits header
+        Fits header object to append to (default = create new)
+    clear:    boolean
+        Whether to clear the header or not
+
+    Returns
+    -------
+    header:    fits header
+        With additional data
+
+    Notes
+    -----
+    The main calculation in this routine is for the parallactic angle;
+    other parameters are trivially computed or simply copied from the
+    original FITS header.  Entries that cannot be computed or found in
+    the original header will be given values of NaN or 'unavailable'.
+    Times and parallactic angles are computed for the mean time of
+    exposure, i.e, halfway between the time of the first and last
+    reads.
+
+    """
+    if header is None:
+        header = fits.PrimaryHDU().header
+    if clear:
+        header.clear()
+    if version is not None:
+        header.append(('version', version, 'Pipeline Version'), end=True)
+
+    header.append(('comment', ''), end=True)
+    header.append(('comment', '*' * 60), end=True)
+    header.append(('comment', '*' * 18 + ' Time and Pointing Data ' + '*' * 18), end=True)
+    header.append(('comment', '*' * 60), end=True)
+    header.append(('comment', ''), end=True)
+
+    # try:
+    #     origname = re.sub('.*CRSA', '', re.sub('.fits', '', filename))
+    #     header.append(('origname', origname, 'Original file ID number'), end=True)
+    # except:
+    #     pass
+
+    # COMPUTE PA HERE
+
+    # if not np.isfinite(mean_mjd):
+    #     mean_mjd = utc_date = utc_time = 'unavailable'
+    #
+    # for key in ['Name', 'object', 'imagetyp', 'telescop', 'exptime']:
+    #     header.append(_fetch(key, filename))
+    #
+    # header.append(('mjd', mean_mjd, 'Mean MJD of exposure'))
+    # header.append(('utc-date', utc_date, 'UTC date of exposure'))
+    # header.append(('utc-time', utc_time, 'Mean UTC time of exposure'))
+    #
+    # ####################################################################
+    # # Attempt to fetch useful/important keywords from the original
+    # # file's FITS header
+    # ####################################################################
+    #
+    # header.append(_fetch('ra', filename, comment='RA of telescope pointing'))
+    # header.append(_fetch('dec', filename, comment='DEC of telescope pointing'))
+    #
+    # for key in ['azimuth', 'altitude']:
+    #     header.append(_fetch(key, filename))
+    #
+    # #header['ra'] = (ra, 'RA of telescope pointing')
+    # #header['dec'] = (dec, 'DEC of telescope pointing')
+    #
+    # if np.isfinite(pa):
+    #     header['parang'] = (pa * 180 / np.pi, 'Mean parallactic angle (degrees)')
+    #
+    # else:
+    #     header['parang'] = ('unavailable', 'Mean parallactic angle (degrees)')
+    #
+    # header.append(_fetch('d_imrpap', filename, comment='Image rotator pupil position angle (degrees)'))
+    #
+    # filtnamekeys = ['Y_FLTNAM', 'FILTER01', 'HIERARCH CHARIS.FILTER.NAME']
+    # filtposkeys = ['Y_FLTSLT', 'HIERARCH CHARIS.FILTER.SLOT']
+    # prismnames = ['Y_PRISM', 'DISPERSR', 'Y_GRISM']
+    # shutterkeys = ['Y_SHUTTR', 'HIERARCH CHARIS.SHUTTER']
+    #
+    # for key in filtnamekeys:
+    #     card = _fetch(key, filename, comment='CHARIS filter name', newkey='filtname')
+    #     if card[1] != 'unavailable' or key == filtnamekeys[-1]:
+    #         header.append(card)
+    #         break
+    # for key in filtposkeys:
+    #     card = _fetch(key, filename, comment='CHARIS filter slot', newkey='filtslot')
+    #     if card[1] != 'unavailable' or key == filtposkeys[-1]:
+    #         header.append(card)
+    #         break
+    # for key in prismnames:
+    #     card = _fetch(key, filename, comment='CHARIS prism (lo/hi/out)', newkey='prism')
+    #     if card[1] != 'unavailable' or key == prismnames[-1]:
+    #         header.append(card)
+    #         break
+    # for key in shutterkeys:
+    #     card = _fetch(key, filename, comment='CHARIS shutter position', newkey='shutter')
+    #     if card[1] != 'unavailable' or key == shutterkeys[-1]:
+    #         header.append(card)
+    #         break
+    #
+    # for key in ['X_LYOT', 'X_CHAPKO', 'X_FPM', 'X_GRDST', 'X_GRDSEP', 'X_GRDAMP']:
+    #     header.append(_fetch(key, filename))
+
+    return header
+
+
 def addWCS(header, xpix, ypix, xpixscale=old_div(-0.015, 3600.), ypixscale=old_div(0.015, 3600.), extrarot=113.):
     '''
     Add the proper keywords to align the cube into the World Coordinate System.

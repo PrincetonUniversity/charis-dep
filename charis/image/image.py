@@ -31,7 +31,7 @@ class Image(object):
     """
 
     def __init__(self, filename='', data=None, ivar=None, chisq=None,
-                 header=fits.PrimaryHDU().header, extrahead=None,
+                 header=fits.PrimaryHDU().header, extraheader=None,
                  reads=None, flags=None, instrument_name=None):
         '''
         Image initialization
@@ -60,7 +60,7 @@ class Image(object):
         self.reads = reads
         self.flags = flags
         self.filename = filename
-        self.extrahead = extrahead
+        self.extraheader = extraheader
         self.instrument_name = instrument_name
 
         if data is None and filename != '':
@@ -148,9 +148,9 @@ class Image(object):
         if self.flags is not None:
             out.append(fits.PrimaryHDU(self.flags), hdr)
 
-        if self.extrahead is not None:
+        if self.extraheader is not None:
             try:
-                out.append(fits.PrimaryHDU(None, self.extrahead))
+                out.append(fits.PrimaryHDU(None, self.extraheader))
             except:
                 log.warn("Extra header in image class must be a FITS header.")
 

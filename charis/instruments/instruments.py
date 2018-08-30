@@ -40,6 +40,7 @@ class CHARIS(object):
         self.pixel_scale = 0.015 * u.arcsec / u.pixel
         self.gain = 2.
         self.wavelengthpolyorder = 3
+        self.offsets = np.arange(-4, 5)
         index_range = np.arange(-100, 101, dtype='float')
         self.lenslet_ix, self.lenslet_iy = np.meshgrid(index_range, index_range)
 
@@ -64,11 +65,17 @@ class SPHERE(object):
     __valid_observing_modes = ['YJ', 'YH']
     # 950, 1330, 970, 1640
     # 960, 1350, 960, 1650
+    # __wavelength_range = {'YJ': [950., 1330.] * u.nanometer,
+    #                       'YH': [970., 1640.] * u.nanometer}
     __wavelength_range = {'YJ': [950., 1330.] * u.nanometer,
-                          'YH': [970., 1640.] * u.nanometer}
+                          'YH': [935., 1695.] * u.nanometer}
+    #'YH': [945.7, 1676.6] * u.nanometer} #25
+    #'YH': [952.4, 1665.1] * u.nanometer} #50
 
+    # __resolution = {'YJ': 55,
+    #                 'YH': 35}
     __resolution = {'YJ': 55,
-                    'YH': 35}
+                    'YH': 48}
 
     __calibration_wavelength = {'YJ': [987.7, 1123.7, 1309.4] * u.nanometer,
                                 'YH': [987.7, 1123.7, 1309.4, 1545.1] * u.nanometer}
@@ -84,6 +91,7 @@ class SPHERE(object):
         self.gain = 1.8
         self.calibration_wavelength = self.__calibration_wavelength[observing_mode]
         self.wavelengthpolyorder = 2
+        self.offsets = np.arange(-2, 3)
         index_range = np.arange(-100, 101, dtype='float')
         self.lenslet_ix, self.lenslet_iy = np.meshgrid(index_range, index_range)
         self.lenslet_ix[::2] += 0.5
