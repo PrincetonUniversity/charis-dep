@@ -266,13 +266,33 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     #################################################################
     # Wavelengths at which to return the PSFlet templates
     #################################################################
+    if instrument.instrument_name == 'CHARIS':
+        Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
+        loglam_endpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
+        loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2.
+        lam_endpts = np.exp(loglam_endpts)
+        lam_midpts = np.exp(loglam_midpts)
+        print(lam_midpts)
 
-    Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
-    loglam_endpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
-    loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2.
-    lam_endpts = np.exp(loglam_endpts)
-    lam_midpts = np.exp(loglam_midpts)
+    elif instrument.instrument_name == 'SPHERE':
+        # Specify location of first and last wavelength midpoint instead of endpoint
+        # for More predictable cutoffs
+        Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
+        loglam_midpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
+        loglam_binsize = np.diff(loglam_midpts)
+        loglam_endpts = np.zeros(len(loglam_midpts) + 1)
+        for i in range(loglam_binsize.shape[0]):
+            loglam_endpts[i] = loglam_midpts[i] - loglam_binsize[i] / 2.
+        loglam_endpts[-2] = loglam_midpts[-1] - loglam_binsize[-1] / 2.
+        loglam_endpts[-1] = loglam_midpts[-1] + loglam_binsize[-1] / 2.
 
+        lam_endpts = np.exp(loglam_endpts)
+        lam_midpts = np.exp(loglam_midpts)
+        # f = interp1d(lam_midpts, np.diff(lam_endpts))
+        # print(f(985))
+        # print(f(1542))
+    else:
+        raise ValueError("Only CHARIS and SPHERE instruments implemented.")
     #################################################################
     # Compute the PSFlets integrated over small ranges in wavelength,
     # accounting for atmospheric+filter transmission.  Do this
