@@ -264,36 +264,6 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     out.writeto('PSFwidths.fits', overwrite=True)
 
     #################################################################
-    # Wavelengths at which to return the PSFlet templates
-    #################################################################
-    if instrument.instrument_name == 'CHARIS':
-        Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
-        loglam_endpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
-        loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2.
-        lam_endpts = np.exp(loglam_endpts)
-        lam_midpts = np.exp(loglam_midpts)
-        print(lam_midpts)
-
-    elif instrument.instrument_name == 'SPHERE':
-        # Specify location of first and last wavelength midpoint instead of endpoint
-        # for More predictable cutoffs
-        Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
-        loglam_midpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
-        loglam_binsize = np.diff(loglam_midpts)
-        loglam_endpts = np.zeros(len(loglam_midpts) + 1)
-        for i in range(loglam_binsize.shape[0]):
-            loglam_endpts[i] = loglam_midpts[i] - loglam_binsize[i] / 2.
-        loglam_endpts[-2] = loglam_midpts[-1] - loglam_binsize[-1] / 2.
-        loglam_endpts[-1] = loglam_midpts[-1] + loglam_binsize[-1] / 2.
-
-        lam_endpts = np.exp(loglam_endpts)
-        lam_midpts = np.exp(loglam_midpts)
-        # f = interp1d(lam_midpts, np.diff(lam_endpts))
-        # print(f(985))
-        # print(f(1542))
-    else:
-        raise ValueError("Only CHARIS and SPHERE instruments implemented.")
-    #################################################################
     # Compute the PSFlets integrated over small ranges in wavelength,
     # accounting for atmospheric+filter transmission.  Do this
     # calculation in parallel.
@@ -318,13 +288,15 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     for w in consumers:
         w.start()
 
+    Nspec = len(instrument.lam_midpts)
+
     for i in range(upsamp * (Nspec - 1)):
         ilam = i // upsamp
         dx = (i % upsamp) * 1. / upsamp
         tool = copy.deepcopy(psftool)
         tool.interp_arr[0, 0] -= dx
         tasks.put(Task(i, primitives.make_polychrome,
-                       (lam_endpts[ilam], lam_endpts[ilam + 1], hires_arrs,
+                       (instrument.lam_endpts[ilam], instrument.lam_endpts[ilam + 1], hires_arrs,
                         lam_hires, tool, allcoef, lenslet_ix, lenslet_iy,
                         psflet_res, nlam, instrument.transmission)))
     for i in range(ncpus):
@@ -356,7 +328,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     good = []
     buffer_size = 8
     for i in range(Nspec - 1):
-        _x, _y = psftool.return_locations(lam_midpts[i], allcoef, lenslet_ix, lenslet_iy)
+        _x, _y = psftool.return_locations(instrument.lam_midpts[i], allcoef, lenslet_ix, lenslet_iy)
         _good = (_x > buffer_size) * (_x < npix_x - buffer_size) * (_y > buffer_size) * (_y < npix_y - buffer_size)
         xpos += [_x]
         ypos += [_y]
@@ -367,7 +339,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     out = fits.HDUList(fits.PrimaryHDU(polyimage[:, :, ::upsamp].astype(np.float32)))
     out.writeto(os.path.join(outdir, 'polychromeR%d.fits' % (R)), overwrite=True)
 
-    outkey = fits.HDUList(fits.PrimaryHDU(lam_midpts))
+    outkey = fits.HDUList(fits.PrimaryHDU(instrument.lam_midpts))
     outkey.append(fits.PrimaryHDU(np.asarray(xpos)))
     outkey.append(fits.PrimaryHDU(np.asarray(ypos)))
     outkey.append(fits.PrimaryHDU(np.asarray(good).astype(np.uint8)))

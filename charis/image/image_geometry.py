@@ -407,7 +407,7 @@ def distance_from_points(point, points):
     return distance
 
 
-def find_neighbours(point, points, hexagon_size=1 / np.sqrt(3), include_center=False):
+def find_neighbours_for_point(point, points, hexagon_size=1 / np.sqrt(3), include_center=False):
     distance_to_neighbour = hexagon_size * np.sqrt(3) + 1e-8
     distance = distance_from_points(point, points)
     if include_center:
@@ -420,7 +420,7 @@ def find_neighbours(point, points, hexagon_size=1 / np.sqrt(3), include_center=F
 def find_neighbour_indices(hexagon_centers, hexagon_size=1. / np.sqrt(3), include_center=False):
     neighbours = []
     for hexagon in tqdm(hexagon_centers):
-        neighbours.append(np.where(find_neighbours(
+        neighbours.append(np.where(find_neighbours_for_point(
             hexagon, hexagon_centers, hexagon_size, include_center))[0])
     return neighbours
 

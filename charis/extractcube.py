@@ -305,21 +305,23 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     if method == 'optext' or method == 'apphot3' or method == 'apphot5':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
-        try:
-            lam_midpts = fits.open(os.path.join(calibdir, '/polychromekeyR%d.fits' % (R)))[0].data
-            R2 = R
-        except IOError:
-            keyfilenames = glob.glob(calibdir + '*polychromekeyR*.fits')
-            if len(keyfilenames) == 0:
-                raise IOError("No key file found in " + calibdir)
-            R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
-            lam = fits.open(keyfilenames[0])[0].data
-            lam1, lam2 = [lam[0], lam[-1]]
-            n = int(np.log(lam2 * 1. / lam1) * R2 + 1.5)
-            lam_midpts = np.exp(np.linspace(np.log(lam1), np.log(lam2), n))
-            if verbose:
-                print("Warning: calibration files not found at requested resolution of R = %d" % (R))
-                print("Found files at R = %d, using these instead." % (R2))
+        # try:
+        #     lam_midpts = fits.open(os.path.join(calibdir, '/polychromekeyR%d.fits' % (R)))[0].data
+        #     R2 = R
+        # except IOError:
+        # keyfilenames = glob.glob(calibdir + '*polychromekeyR*.fits')
+        # if len(keyfilenames) == 0:
+        #     raise IOError("No key file found in " + calibdir)
+        # R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
+        # lam = fits.open(keyfilenames[0])[0].data
+        lam_midpts, _ = instrument.wavelength(
+            instrument.wavelength_range[0],
+            instrument.wavelength_range[1],
+            resolution=R)
+        n = len(lam_midpts)
+        # lam1, lam2 = [lam[0], lam[-1]]
+        # n = int(np.log(lam2 * 1. / lam1) * R2 + 1.5)
+        # lam_midpts = np.exp(np.linspace(np.log(lam1), np.log(lam2), n))
 
         try:
             sig = fits.open(os.path.join(calibdir, 'PSFwidths.fits'))[0].data

@@ -58,7 +58,7 @@ def setup_charis(ext_modules):
                      ['charis/calibrations/CHARIS/K/lensletflat.fits',
                         'charis/calibrations/CHARIS/K/K_tottrans.dat',
                         'charis/calibrations/CHARIS/K/lamsol.dat'])],
-        install_requires=['numpy', 'scipy', 'astropy', 'tqdm', 'future', 'cython>=0.x'],
+        install_requires=['numpy', 'scipy', 'astropy', 'pandas', 'tqdm', 'future', 'cython>=0.x'],
         scripts=['scripts/buildcal', 'scripts/extractcube'],
         cmdclass={'build_ext': build_ext},
         ext_modules=ext_modules

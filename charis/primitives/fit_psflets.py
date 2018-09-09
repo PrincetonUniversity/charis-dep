@@ -10,6 +10,8 @@ import time
 import os
 import json
 
+from pdb import set_trace
+
 import numpy as np
 from astropy.io import fits
 from scipy import interpolate, ndimage, signal, stats
@@ -19,8 +21,6 @@ from charis.image import Image
 from charis.image.image_geometry import (
     median_filter_hex_cube, mad_std_hex_cube,
     flatten_cube, deflatten_cube)
-
-from pdb import set_trace
 
 log = logging.getLogger('main')
 
@@ -559,7 +559,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     ###################################################################
     # Fit the spectrum by minimizing chi squared
     ###################################################################
-
+    dx_cutout = 3
     x = np.asarray(x)
     y = np.asarray(y)
 
@@ -569,7 +569,6 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     indx = np.where(goodint)[0]
     dx = np.ones(psflets.shape[0], np.int32) * 10
     dy = np.ones(psflets.shape[0], np.int32) * 10
-
     if im.ivar is not None:
         isig = np.sqrt(im.ivar).astype(np.float64)
     else:
@@ -625,8 +624,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
 
         dx = np.ones(psflets.shape[0], np.int32) * 10
         dy = np.ones(psflets.shape[0], np.int32) * 10
-        dx[-n_add:] = 3
-        dy[-n_add:] = 20
+        dx[-n_add:] = 3  # width of fitting box
+        dy[-n_add:] = 20  # check for sphere
 
     coefshape = tuple([len(x)] + list(x[0].shape))
 
@@ -635,7 +634,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     # Factor of 5 or so speedup on a 16 core machine.
     ###################################################################
 
-    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, maxproc=maxcpus)
+    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, dx=dx_cutout, maxproc=maxcpus)
     nlens = xint.shape[1]
 
     ###################################################################
@@ -704,7 +703,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
             data[:] = im.data - corrnoise
             im.ivar = _recalc_ivar(data, im.ivar)
             isig = np.sqrt(im.ivar)
-            A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, maxproc=maxcpus)
+            A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, dx=dx_cutout, maxproc=maxcpus)
             coefs, cov = matutils.lstsq(A, b, indx, size, nlens, returncov=1, maxproc=maxcpus)
             coefs = coefs.T.reshape(coefshape)
             cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
@@ -734,7 +733,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
                 # Once more to get the undispersed background right
                 ####################################################
                 if fitbkgnd:
-                    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, maxproc=maxcpus)
+                    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx,
+                                                     psflets, dx=dx_cutout, maxproc=maxcpus)
                     coefs, cov = matutils.lstsq(A, b, indx, size, nlens, returncov=1, maxproc=maxcpus)
                     coefs = coefs.T.reshape(coefshape)
                     for i in range(len(psflets) - n_add, len(psflets)):
@@ -757,7 +757,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
 
         if refine:
             A, b, size = matutils.allcutouts(data, isig, xint, yint, indx,
-                                             psflets, maxproc=maxcpus)
+                                             psflets, dx=dx_cutout, maxproc=maxcpus)
             dcoefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
             if flat is not None:
                 coefs += dcoefs * lenslet_ok

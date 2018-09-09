@@ -147,7 +147,6 @@ class Image(object):
             out.append(fits.PrimaryHDU(self.chisq.astype(np.float32), hdr))
         if self.flags is not None:
             out.append(fits.PrimaryHDU(self.flags), hdr)
-
         if self.extraheader is not None:
             try:
                 out.append(fits.PrimaryHDU(None, self.extraheader))
