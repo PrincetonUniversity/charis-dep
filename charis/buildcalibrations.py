@@ -21,6 +21,7 @@ import pkg_resources
 from astropy import units as u
 from astropy.io import fits
 from scipy import interpolate, ndimage
+from tqdm import tqdm
 
 try:
     import instruments
@@ -306,15 +307,22 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
 
     if verbose:
         print('Generating narrowband template images')
-    for i in range(upsamp * (Nspec - 1)):
-        if verbose:
-            frac_complete = (i + 1) * 1. / (upsamp * (Nspec - 1))
-            N = int(frac_complete * 40)
-            print('-' * N + '>' + ' ' * (40 - N) + ' %3d%% complete\r' % (int(100 * frac_complete)), end='')
-        index, result = results.get()
-        ilam = index // upsamp
-        dx = (index % upsamp)
-        polyimage[ilam, :, dx::upsamp] = result
+        for i in tqdm(range(upsamp * (Nspec - 1)), miniters=ncpus):
+            # if verbose:
+            #     frac_complete = (i + 1) * 1. / (upsamp * (Nspec - 1))
+            #     N = int(frac_complete * 40)
+            #     print('-' * N + '>' + ' ' * (40 - N) + ' %3d%% complete\r' % (int(100 * frac_complete)), end='')
+            index, result = results.get()
+            ilam = index // upsamp
+            dx = (index % upsamp)
+            polyimage[ilam, :, dx::upsamp] = result
+    else:
+        for i in range(upsamp * (Nspec - 1)):
+            index, result = results.get()
+            ilam = index // upsamp
+            dx = (index % upsamp)
+            polyimage[ilam, :, dx::upsamp] = result
+
     if verbose:
         print('')
 
