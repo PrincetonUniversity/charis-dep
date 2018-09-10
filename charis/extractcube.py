@@ -37,6 +37,8 @@ except ImportError:
     from charis.image.image_geometry import resample_image_cube
     import charis
 
+from pdb import set_trace
+
 log = logging.getLogger('main')
 
 
@@ -167,21 +169,24 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
                                header=header, gain=gain, noisefac=noisefac,
                                maxcpus=maxcpus)
-
+        set_trace()
     elif instrument.instrument_name == 'SPHERE':
         data = fits.getdata(filename)
+        data *= instrument.gain
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
             ivar = maskarr.astype('float64')
         if len(data.shape) == 3:
             # var = np.std(data.astype('float64'), axis=0)**2
-            # const_term = np.ones_like(var) * 1.5**2
+            # var = np.sqrt(np.mean(data, axis=0))
+            # const_term = np.ones_like(var, dtype='float64') * 0.1**2
             # var += const_term
             # var_mask = var > 0
-            ivar = np.ones_like(data[0])
-            # ivar[var_mask] /= var[var_mask]
-            # ivar[~var_mask] = 0
+            # var[np.isnan(var)] = 1e30
+            ivar = np.ones_like(data[0], dtype='float64')
+            # ivar = 1. / var
             ivar *= maskarr
+            # set_trace()
             data = np.mean(data.astype('float64'), axis=0) * maskarr
         else:
             data = data * maskarr
@@ -314,10 +319,10 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         #     raise IOError("No key file found in " + calibdir)
         # R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
         # lam = fits.open(keyfilenames[0])[0].data
-        lam_midpts, _ = instrument.wavelength(
-            instrument.wavelength_range[0],
-            instrument.wavelength_range[1],
-            resolution=R)
+        lam_midpts, _ = instrument.wavelengths(
+            instrument.wavelength_range[0].value,
+            instrument.wavelength_range[1].value,
+            R)
         n = len(lam_midpts)
         # lam1, lam2 = [lam[0], lam[-1]]
         # n = int(np.log(lam2 * 1. / lam1) * R2 + 1.5)

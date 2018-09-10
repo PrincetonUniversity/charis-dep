@@ -407,34 +407,38 @@ def metadata_SPHERE(filename, header=None, clear=True, version=None):
          ('DATE', ('DATE', 'N/A')),
          ('MJD-OBS', ('MJD-OBS', -10000))])
 
-    orig_hdr = fits.getheader(filename)
-    import warnings
-    warnings.filterwarnings("ignore")
-    for key in header_list.keys():
-        header[key] = get_headerval_with_exeption(
-            orig_hdr, header_list[key][0], header_list[key][1])
+    try:
+        orig_hdr = fits.getheader(filename)
+        import warnings
+        warnings.filterwarnings("ignore")
+        for key in header_list.keys():
+            header[key] = get_headerval_with_exeption(
+                orig_hdr, header_list[key][0], header_list[key][1])
 
-    header_table = collections.OrderedDict()
-    for key in header_list.keys():
-        header_table[key] = []
+        header_table = collections.OrderedDict()
+        for key in header_list.keys():
+            header_table[key] = []
 
-    for key in header_list.keys():
-        header_table[key].append(get_headerval_with_exeption(
-            orig_hdr, header_list[key][0], header_list[key][1]))
+        for key in header_list.keys():
+            header_table[key].append(get_headerval_with_exeption(
+                orig_hdr, header_list[key][0], header_list[key][1]))
 
-    frames_info = pd.DataFrame(header_table)
-    frames_info['DATE-OBS'] = pd.to_datetime(frames_info['DATE-OBS'], utc=True)
-    frames_info['DATE'] = pd.to_datetime(frames_info['DATE'], utc=True)
-    frames_info['DET FRAM UTC'] = pd.to_datetime(frames_info['DET FRAM UTC'], utc=True)
-    compute_times(frames_info)
-    compute_angles(frames_info)
-    header['PARANG START'] = (frames_info['PARANG START'][0], '')
-    header['PARANG'] = (frames_info['PARANG'][0], '')
-    header['PARANG END'] = (frames_info['PARANG END'][0], '')
-    header['PUPIL OFFSET'] = (frames_info['PUPIL OFFSET'][0], '')
-    header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
-    header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
-    header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
+        frames_info = pd.DataFrame(header_table)
+        frames_info['DATE-OBS'] = pd.to_datetime(frames_info['DATE-OBS'], utc=True)
+        frames_info['DATE'] = pd.to_datetime(frames_info['DATE'], utc=True)
+        frames_info['DET FRAM UTC'] = pd.to_datetime(frames_info['DET FRAM UTC'], utc=True)
+
+        compute_times(frames_info)
+        compute_angles(frames_info)
+        header['PARANG START'] = (frames_info['PARANG START'][0], '')
+        header['PARANG'] = (frames_info['PARANG'][0], '')
+        header['PARANG END'] = (frames_info['PARANG END'][0], '')
+        header['PUPIL OFFSET'] = (frames_info['PUPIL OFFSET'][0], '')
+        header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
+        header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
+        header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
+    except:
+        pass
 
     return header
 
