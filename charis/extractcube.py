@@ -48,7 +48,9 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             flatfield=True, smoothandmask=True,
             minpct=70, fitbkgnd=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count(),
-            instrument=None, resample=True, verbose=True):
+            instrument=None, resample=True,
+            outdir="./", verbose=True):
+
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
 
@@ -298,13 +300,20 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
             if saveresid:
                 datacube, resid = result
-                resid.write(re.sub('.*/', '', re.sub('.fits', '_resid.fits', filename)))
+                resid.write(
+                    re.sub(
+                        '.*/', '',
+                        re.sub('.fits', '_resid.fits',
+                        os.path.join(outdir, filename))))
                 mask_resid = inImage.data > 0.
                 relative_resid = resid.data.copy()
                 relative_resid[mask_resid] /= inImage.data[mask_resid]
                 relative_resid[~mask_resid] = np.nan
-                fits.writeto(re.sub('.*/', '', re.sub('.fits', '_resid_relative.fits', filename)),
-                             relative_resid, overwrite=True)
+                fits.writeto(
+                    re.sub('.*/', '',
+                    re.sub('.fits', '_resid_relative.fits',
+                    os.path.join(outdir, filename))),
+                    relative_resid, overwrite=True)
             else:
                 datacube = result
 
@@ -384,10 +393,16 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         datacube_resampled.data = resample_image_cube(datacube.data, clip_infos, hexagon_size=1 / np.sqrt(3))
         datacube_resampled.ivar = resample_image_cube(datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
 
-        datacube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
-        datacube_resampled.write(re.sub('.fits', '_cube_resampled.fits', re.sub('.*/', '', filename)))
+        datacube.write(
+            re.sub('.fits', '_cube.fits',
+            re.sub('.*/', '', os.path.join(outdir, filename))))
+        datacube_resampled.write(
+            re.sub('.fits', '_cube_resampled.fits',
+            re.sub('.*/', '', os.path.join(outdir, filename))))
         return datacube, datacube_resampled
 
     else:
-        datacube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
+        datacube.write(
+            re.sub('.fits', '_cube.fits',
+            re.sub('.*/', '', os.path.join(outdir, filename))))
         return datacube
