@@ -149,7 +149,9 @@ class Image(object):
             out.append(fits.PrimaryHDU(self.flags), hdr)
         if self.extraheader is not None:
             try:
-                out.append(fits.PrimaryHDU(None, self.extraheader))
+                extra_hdr = fits.PrimaryHDU(None, self.extraheader)
+                extra_hdr.verify('fix')
+                out.append(extra_hdr)
             except:
                 log.warn("Extra header in image class must be a FITS header.")
 
