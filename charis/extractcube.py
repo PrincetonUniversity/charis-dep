@@ -301,18 +301,16 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             if saveresid:
                 datacube, resid = result
                 resid.write(
-                    re.sub(
-                        '.*/', '',
-                        re.sub('.fits', '_resid.fits',
-                        os.path.join(outdir, filename))))
+                    re.sub('.fits', '_resid.fits',
+                    os.path.join(outdir, os.path.basename(filename))))
                 mask_resid = inImage.data > 0.
                 relative_resid = resid.data.copy()
                 relative_resid[mask_resid] /= inImage.data[mask_resid]
                 relative_resid[~mask_resid] = np.nan
                 fits.writeto(
-                    re.sub('.*/', '',
+                    # re.sub('.*/', '',
                     re.sub('.fits', '_resid_relative.fits',
-                    os.path.join(outdir, filename))),
+                    os.path.join(outdir, os.path.basename(filename))),
                     relative_resid, overwrite=True)
             else:
                 datacube = result
@@ -395,14 +393,14 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
         datacube.write(
             re.sub('.fits', '_cube.fits',
-            re.sub('.*/', '', os.path.join(outdir, filename))))
+            os.path.join(outdir, os.path.basename(filename))))
         datacube_resampled.write(
             re.sub('.fits', '_cube_resampled.fits',
-            re.sub('.*/', '', os.path.join(outdir, filename))))
+            os.path.join(outdir, os.path.basename(filename))))
         return datacube, datacube_resampled
 
     else:
         datacube.write(
             re.sub('.fits', '_cube.fits',
-            re.sub('.*/', '', os.path.join(outdir, filename))))
+            os.path.join(outdir, os.path.basename(filename))))
         return datacube
