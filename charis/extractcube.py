@@ -171,7 +171,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
                                header=header, gain=gain, noisefac=noisefac,
                                maxcpus=maxcpus)
-        set_trace()
+
     elif instrument.instrument_name == 'SPHERE':
         data = fits.getdata(filename)
         data *= instrument.gain
@@ -207,6 +207,8 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 bg = hdulist[1].data
             if mask:
                 bg *= maskarr
+            if len(bg.shape) == 3:
+                bg = np.median(bg, axis=0)
             inImage.data -= bg
         except:
             bgsub = False
@@ -214,7 +216,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
-        inImage.write(re.sub('.*/', '', re.sub('.fits', '_ramp.fits', filename)))
+        inImage.write(re.sub('.fits', '_ramp.fits', os.path.join(outdir, os.path.basename(filename))))
 
     ################################################################
     # Read in necessary calibration files and extract the data cube.
@@ -366,7 +368,8 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     ################################################################
     # Add the original header for reference as the last HDU
     ################################################################
-    datacube.extraheader = fits.open(filename)[0].header
+    extrahdr = fits.open(filename)[0].header
+    datacube.extraheader = extrahdr
     ################################################################
     # Add WCS for the cube
     # for now assume the image is centered on the cube
