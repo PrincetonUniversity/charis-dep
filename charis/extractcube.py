@@ -50,7 +50,6 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             maxcpus=multiprocessing.cpu_count(),
             instrument=None, resample=True,
             outdir="./", verbose=True):
-
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
 
@@ -171,7 +170,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
                                header=header, gain=gain, noisefac=noisefac,
                                maxcpus=maxcpus)
-
+        set_trace()
     elif instrument.instrument_name == 'SPHERE':
         data = fits.getdata(filename)
         data *= instrument.gain
@@ -202,13 +201,13 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             else:
                 hdulist = fits.open(bgpath)
 
-            bg = hdulist[0].data
+            bg = hdulist[0].data * instrument.gain
             if bg is None:
                 bg = hdulist[1].data
-            if mask:
-                bg *= maskarr
             if len(bg.shape) == 3:
                 bg = np.median(bg, axis=0)
+            if mask:
+                bg *= maskarr
             inImage.data -= bg
         except:
             bgsub = False
@@ -304,7 +303,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 datacube, resid = result
                 resid.write(
                     re.sub('.fits', '_resid.fits',
-                    os.path.join(outdir, os.path.basename(filename))))
+                           os.path.join(outdir, os.path.basename(filename))))
                 mask_resid = inImage.data > 0.
                 relative_resid = resid.data.copy()
                 relative_resid[mask_resid] /= inImage.data[mask_resid]
@@ -312,7 +311,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 fits.writeto(
                     # re.sub('.*/', '',
                     re.sub('.fits', '_resid_relative.fits',
-                    os.path.join(outdir, os.path.basename(filename))),
+                           os.path.join(outdir, os.path.basename(filename))),
                     relative_resid, overwrite=True)
             else:
                 datacube = result
@@ -396,14 +395,14 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
         datacube.write(
             re.sub('.fits', '_cube.fits',
-            os.path.join(outdir, os.path.basename(filename))))
+                   os.path.join(outdir, os.path.basename(filename))))
         datacube_resampled.write(
             re.sub('.fits', '_cube_resampled.fits',
-            os.path.join(outdir, os.path.basename(filename))))
+                   os.path.join(outdir, os.path.basename(filename))))
         return datacube, datacube_resampled
 
     else:
         datacube.write(
             re.sub('.fits', '_cube.fits',
-            os.path.join(outdir, os.path.basename(filename))))
+                   os.path.join(outdir, os.path.basename(filename))))
         return datacube

@@ -153,7 +153,7 @@ class Image(object):
                 extra_hdr.verify('fix')
                 out.append(extra_hdr)
             except:
-                log.warn("Extra header in image class must be a FITS header.")
+                log.warn("Failed to attach extra header.")
 
         try:
             out.writeto(filename, overwrite=overwrite)

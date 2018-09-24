@@ -40,7 +40,8 @@ log = logging.getLogger('main')
 
 
 def read_in_file(infile, instrument, calibration_wavelength=None,
-                 ncpus=1, mask=None, calibdir=None, bgfiles=[]):
+                 ncpus=1, mask=None, calibdir=None, bgfiles=[],
+                 outdir="./"):
     if calibdir is None:
         calibdir = instrument.calibration_path
     if mask is None:
@@ -69,22 +70,42 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     ###############################################################
 
     print('Computing ramps from sequences of raw reads')
-    num = 0.
-    denom = 1e-100
-    ibg = 1
-    for filename in bgfiles:
-        bg = utr.calcramp(filename=filename, mask=mask, maxcpus=ncpus)
-        num = num + bg.data * bg.ivar
-        denom = denom + bg.ivar
-        hdr['bkgnd%03d' % (ibg)] = (re.sub('.*/', '', filename),
-                                    'Dark(s) used for background subtraction')
-        ibg += 1
-    if len(bgfiles) > 0:
-        background = Image(data=num / denom, ivar=1. / denom,
-                           instrument_name=instrument.instrument_name)
-        background.write('background.fits')
-    else:
-        hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
+    if instrument.instrument_name == 'CHARIS':
+        num = 0.
+        denom = 1e-100
+        ibg = 1
+        for idx, bgfile in enumerate(bgfiles):
+            bg = utr.calcramp(filename=bgfile, mask=mask, maxcpus=ncpus)
+            num = num + bg.data * bg.ivar
+            denom = denom + bg.ivar
+            hdr['bkgnd%03d' % (ibg)] = (re.sub('.*/', '', bgfile),
+                                        'Dark(s) used for background subtraction')
+            ibg += 1
+        if len(bgfiles) > 0:
+            background = Image(data=num / denom, ivar=1. / denom,
+                               instrument_name=instrument.instrument_name)
+            background.write('background.fits')
+        else:
+            hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
+
+    # elif instrument.instrument_name == 'SPHERE':
+    #     bgs = []
+    #     for idx, bgfile in enumerate(bgfiles):
+    #         bg = fits.getdata(bgfile)
+    #         if len(bg.shape) == 3:
+    #             bg = np.sort(bg.astype('float64'), axis=0)
+    #                 bgs.append(np.mean(bg[1:-1], axis=0) * mask)
+    #         hdr['bkgnd%03d' % (idx + 1)] = (re.sub('.*/', '', bgfile),
+    #                                     'Dark(s) used for background subtraction')
+    #     bg = np.mean(np.array(bgs), axis=0)
+    #     if len(bgiles) > 0:
+    #         inImage = Image(data=bg, ivar=mask.astype('float64'),
+    #                         instrument_name=instrument.instrument_name)
+    #         background.write('background.fits')
+    #     else:
+    #         hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
+    # else:
+    #     raise ValueError('Instrument not defined.')
 
     ###############################################################
     # Monochromatic flatfield image
@@ -113,9 +134,9 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
 
 
 def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
-                      outdir="./", order=None, upsample=True, header=None,
+                      order=None, upsample=True, header=None,
                       ncpus=multiprocessing.cpu_count(),
-                      nlam=10, verbose=True):
+                      nlam=10, outdir="./", verbose=True):
     """
     Build the calibration files needed to extract data cubes from
     sequences of CHARIS reads.
@@ -131,7 +152,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
 
 
     Optional inputs:
-    outdir:   directory in which to place
+
     order:    int, order of polynomial fit to position(lambda).
                  Default None (taken from instrument class).
     header:   FITS header, to which will be appended the shifts
@@ -141,6 +162,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
                  Default multiprocessing.cpu_count()
 
     nlam: int, number of monochromatic PSFlets per integrated PSFlet
+    outdir:   directory in which to place
 
     Returns None, writes calibration files to outdir.
 
