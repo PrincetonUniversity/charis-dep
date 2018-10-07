@@ -206,9 +206,12 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 bg = hdulist[1].data
             if len(bg.shape) == 3:
                 bg = np.median(bg, axis=0)
+                print("bg shape: {}".format(bg.shape))
             if mask:
                 bg *= maskarr
             inImage.data -= bg
+            inImage.data[inImage.data < 0.] = 1e-16
+            #fits.writeto('testtest.fits', inImage.data, overwrite=True)
         except:
             bgsub = False
             log.warn('No valid background image found in ' + calibdir)
