@@ -170,6 +170,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
                                header=header, gain=gain, noisefac=noisefac,
                                maxcpus=maxcpus)
+        file_ending = ''
     elif instrument.instrument_name == 'SPHERE':
         data = fits.getdata(filename)
         data *= instrument.gain
@@ -188,9 +189,15 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             # ivar = 1. / var
             ivar *= maskarr
             # set_trace()
-            data = data[read_idx].astype('float64') * maskarr
+            if read_idx is not None:
+                data = data[read_idx].astype('float64') * maskarr
+                file_ending = '_DIT_{:03d}'.format(read_idx)
+            else:
+                data = np.median(data.astype('float64'), axis=0) * maskarr
+                file_ending = ''
         else:
             data = data * maskarr
+            file_ending = ''
         inImage = Image(data=data, ivar=ivar, header=header,
                         instrument_name=instrument.instrument_name)
 
@@ -210,7 +217,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             if mask:
                 bg *= maskarr
             inImage.data -= bg
-            inImage.data[inImage.data < 0.] = 1e-16
+            inImage.data[inImage.data < 0.] = 1.
             #fits.writeto('testtest.fits', inImage.data, overwrite=True)
         except:
             bgsub = False
@@ -304,7 +311,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             if saveresid:
                 datacube, resid = result
                 resid.write(
-                    re.sub('.fits', '_resid_DIT_{:03d}.fits'.format(read_idx),
+                    re.sub('.fits', '_resid' + file_ending + '.fits',
                            os.path.join(outdir, os.path.basename(filename))))
                 mask_resid = inImage.data > 0.
                 relative_resid = resid.data.copy()
@@ -312,7 +319,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 relative_resid[~mask_resid] = np.nan
                 fits.writeto(
                     # re.sub('.*/', '',
-                    re.sub('.fits', '_resid_relative_DIT_{:03d}.fits'.format(read_idx),
+                    re.sub('.fits', '_resid_relative' + file_ending + '.fits',
                            os.path.join(outdir, os.path.basename(filename))),
                     relative_resid, overwrite=True)
             else:
@@ -396,10 +403,10 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         datacube_resampled.ivar = resample_image_cube(datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
 
         datacube.write(
-            re.sub('.fits', '_cube_DIT_{:03d}.fits'.format(read_idx),
+            re.sub('.fits', '_cube' + file_ending + '.fits',
                    os.path.join(outdir, os.path.basename(filename))))
         datacube_resampled.write(
-            re.sub('.fits', '_cube_resampled_DIT_{:03d}.fits'.format(read_idx),
+            re.sub('.fits', '_cube_resampled' + file_ending + '.fits',
                    os.path.join(outdir, os.path.basename(filename))))
         return datacube, datacube_resampled
 
