@@ -140,7 +140,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     if instrument.instrument_name == 'CHARIS':
         header = utr.metadata(filename, version=version)
     elif instrument.instrument_name == 'SPHERE':
-        header = utr.metadata_SPHERE(filename, version=version)
+        header = utr.metadata_SPHERE(filename, dit_idx=read_idx, version=version)
     else:
         raise ValueError("Only CHARIS and SPHERE instruments implemented.")
 
@@ -170,10 +170,10 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
                                header=header, gain=gain, noisefac=noisefac,
                                maxcpus=maxcpus)
-        set_trace()
     elif instrument.instrument_name == 'SPHERE':
         data = fits.getdata(filename)
         data *= instrument.gain
+
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
             ivar = maskarr.astype('float64')
@@ -188,7 +188,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             # ivar = 1. / var
             ivar *= maskarr
             # set_trace()
-            data = np.mean(data.astype('float64'), axis=0) * maskarr
+            data = data[read_idx].astype('float64') * maskarr
         else:
             data = data * maskarr
         inImage = Image(data=data, ivar=ivar, header=header,
@@ -259,7 +259,6 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 psflets = np.load(os.path.join(calibdir, 'polychromefullR%d.npy' % (R2)))
                 offsets = instrument.offsets
                 psflets = primitives.calc_offset(psflets, inImage, offsets, maxcpus=maxcpus)
-
             except:
                 if verbose:
                     print('Fit shift failed. Continuing without fitting shift.')
@@ -305,7 +304,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             if saveresid:
                 datacube, resid = result
                 resid.write(
-                    re.sub('.fits', '_resid.fits',
+                    re.sub('.fits', '_resid_DIT_{:03d}.fits'.format(read_idx),
                            os.path.join(outdir, os.path.basename(filename))))
                 mask_resid = inImage.data > 0.
                 relative_resid = resid.data.copy()
@@ -313,7 +312,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 relative_resid[~mask_resid] = np.nan
                 fits.writeto(
                     # re.sub('.*/', '',
-                    re.sub('.fits', '_resid_relative.fits',
+                    re.sub('.fits', '_resid_relative_DIT_{:03d}.fits'.format(read_idx),
                            os.path.join(outdir, os.path.basename(filename))),
                     relative_resid, overwrite=True)
             else:
@@ -397,10 +396,10 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         datacube_resampled.ivar = resample_image_cube(datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
 
         datacube.write(
-            re.sub('.fits', '_cube.fits',
+            re.sub('.fits', '_cube_DIT_{:03d}.fits'.format(read_idx),
                    os.path.join(outdir, os.path.basename(filename))))
         datacube_resampled.write(
-            re.sub('.fits', '_cube_resampled.fits',
+            re.sub('.fits', '_cube_resampled_DIT_{:03d}.fits'.format(read_idx),
                    os.path.join(outdir, os.path.basename(filename))))
         return datacube, datacube_resampled
 

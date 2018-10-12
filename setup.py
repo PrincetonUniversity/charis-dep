@@ -33,7 +33,7 @@ def setup_charis(ext_modules):
         name='charis',
         version='1.0.1',
         description='The Data Reduction Pipeline for the CHARIS Integral-Field Spectrograph',
-        author='Timothy Brandt, Maxime Rizzo',
+        author='Timothy Brandt, Maxime Rizzo, Matthias Samland',
         author_email='timothy.d.brandt@gmail.com',
         packages={'charis', 'charis.primitives', 'charis.utr', 'charis.image',
                     'charis.parallel'},

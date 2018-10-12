@@ -3,6 +3,7 @@ from builtins import str
 from past.utils import old_div
 import re
 import time
+import collections
 
 import numpy as np
 
@@ -16,6 +17,95 @@ from astropy.time import Time
 from charis.tools import compute_times, compute_angles
 
 from pdb import set_trace
+
+
+def get_headerval_with_exeption(header, keyword, default_val):
+    try:
+        val = header[keyword]
+    except KeyError:
+        val = default_val
+    except IOError:
+        val = default_val
+    return val
+
+
+def header_dataframe(filename):
+
+    header_list = collections.OrderedDict(
+        [('OBJECT', ('OBJECT', 'N/A')),
+         ('RA', ('RA', -10000)),
+         ('DEC', ('DEC', -10000)),
+         ('TEL TARG ALPHA', ('HIERARCH ESO TEL TARG ALPHA', -10000)),
+         ('TEL TARG DELTA', ('HIERARCH ESO TEL TARG DELTA', -10000)),
+         ('TEL TARG PMA', ('HIERARCH ESO TEL TARG PMA', -10000)),
+         ('TEL TARG PMD', ('HIERARCH ESO TEL TARG PMD', -10000)),
+         ('INS4 DROT2 RA', ('HIERARCH ESO INS4 DROT2 RA', -10000)),
+         ('INS4 DROT2 DEC', ('HIERARCH ESO INS4 DROT2 DEC', -10000)),
+         ('INS4 DROT2 MODE', ('HIERARCH ESO INS4 DROT2 MODE', 'N/A')),
+         ('INS4 DROT2 BEGIN', ('HIERARCH ESO INS4 DROT2 BEGIN', -10000)),
+         ('INS4 DROT2 END', ('HIERARCH ESO INS4 DROT2 END', -10000)),
+         ('TEL GEOELEV', ('HIERARCH ESO TEL GEOELEV', -10000)),
+         ('TEL GEOLAT', ('HIERARCH ESO TEL GEOLAT', -10000)),
+         ('TEL GEOLON', ('HIERARCH ESO TEL GEOLON', -10000)),
+         ('TEL ALT', ('HIERARCH ESO TEL ALT', -10000)),
+         ('EXPTIME', ('EXPTIME', -10000)),
+         ('DET SEQ1 DIT', ('HIERARCH ESO DET SEQ1 DIT', -10000)),
+         ('DET DIT DELAY', ('HIERARCH ESO DET DITDELAY', -10000)),
+         ('DET NDIT', ('HIERARCH ESO DET NDIT', -10000)),
+         ('INS COMB IFLT', ('HIERARCH ESO INS COMB IFLT', 'N/A')),
+         ('INS COMB ICOR', ('HIERARCH ESO INS COMB ICOR', 'N/A')),
+         ('INS4 FILT2 NAME', ('HIERARCH ESO INS4 FILT2 NAME', 'N/A')),
+         ('INS4 SHUT ST', ('HIERARCH ESO INS4 SHUT ST', 'N/A')),
+         ('INS2 COMB IFS', ('HIERARCH ESO INS2 COMB IFS', 'N/A')),
+         ('INS2 OPTI2 ID', ('HIERARCH ESO INS2 OPTI2 ID', 'N/A')),
+         ('DPR TYPE', ('HIERARCH ESO DPR TYPE', 'N/A')),
+         ('DPR TECH', ('HIERARCH ESO DPR TECH', 'N/A')),
+         ('DET ID', ('HIERARCH ESO DET ID', 'ZPL')),
+         ('SEQ ARM', ('HIERARCH ESO SEQ ARM', 'N/A')),
+         ('INS4 COMB ROT', ('HIERARCH ESO INS4 COMB ROT', 'N/A')),
+         ('INS1 PAC X', ('HIERARCH ESO INS1 PAC X', -10000)),
+         ('INS1 PAC Y', ('HIERARCH ESO INS1 PAC Y', -10000)),
+         ('DET READ CURNAME', ('HIERARCH ESO DET READ CURNAME', 'N/A')),
+         ('OCS WAFFLE AMPL', ('HIERARCH ESO OCS WAFFLE AMPL', -10000)),
+         ('OCS WAFFLE ORIENT', ('HIERARCH ESO OCS WAFFLE ORIENT', 'N/A')),
+         ('INS4 OPTI22 NAME', ('HIERARCH ESO INS4 OPTI22 NAME', 'N/A')),
+         ('TEL AMBI TAU0', ('HIERARCH ESO TEL AMBI TAU0', -10000)),
+         ('TEL AMBI FWHM START', ('HIERARCH ESO TEL AMBI FWHM START', -10000)),
+         ('TEL AMBI FWHM END', ('HIERARCH ESO TEL AMBI FWHM END', -10000)),
+         ('TEL AIRM START', ('HIERARCH ESO TEL AIRM START', -10000)),
+         ('OBS PROG ID', ('HIERARCH ESO OBS PROG ID', 'N/A')),
+         ('OBS PI-COI NAME', ('HIERARCH ESO OBS PI-COI NAME', 'N/A')),
+         ('OBS ID', ('HIERARCH ESO OBS ID', -10000)),
+         ('ORIGFILE', ('ORIGFILE', 'N/A')),
+         ('DET SEQ UTC', ('HIERARCH ESO DET SEQ UTC', 'N/A')),
+         ('DET FRAM UTC', ('HIERARCH ESO DET FRAM UTC', 'N/A')),
+         ('DATE-OBS', ('DATE-OBS', 'N/A')),
+         ('DATE', ('DATE', 'N/A')),
+         ('MJD-OBS', ('MJD-OBS', -10000))])
+
+    import warnings
+    warnings.filterwarnings("ignore")
+
+    orig_hdr = fits.getheader(filename)
+    header = orig_hdr.copy()
+    for key in header_list.keys():
+        header[key] = get_headerval_with_exeption(
+            orig_hdr, header_list[key][0], header_list[key][1])
+
+    header_table = collections.OrderedDict()
+    for key in header_list.keys():
+        header_table[key] = []
+
+    for key in header_list.keys():
+        header_table[key].append(get_headerval_with_exeption(
+            orig_hdr, header_list[key][0], header_list[key][1]))
+
+    frames_info = pd.DataFrame(header_table)
+    frames_info['DATE-OBS'] = pd.to_datetime(frames_info['DATE-OBS'], utc=True)
+    frames_info['DATE'] = pd.to_datetime(frames_info['DATE'], utc=True)
+    frames_info['DET FRAM UTC'] = pd.to_datetime(frames_info['DET FRAM UTC'], utc=True)
+
+    return frames_info
 
 
 def _fetch(key, filename, comment=None, newkey=None):
@@ -276,7 +366,7 @@ def metadata(filename, header=None, clear=True, version=None):
     return header
 
 
-def metadata_SPHERE(filename, header=None, clear=True, version=None):
+def metadata_SPHERE(filename, dit_idx=None, header=None, clear=True, version=None):
     """
     Function metadata populates a FITS header (creating a new one if
     necessary) with important information about an observation.
@@ -345,100 +435,20 @@ def metadata_SPHERE(filename, header=None, clear=True, version=None):
     header.append(_fetch('RA', filename, comment='RA of telescope pointing'))
     header.append(_fetch('DEC', filename, comment='DEC of telescope pointing'))
 
-    def get_headerval_with_exeption(header, keyword, default_val):
-        try:
-            val = header[keyword]
-        except KeyError:
-            val = default_val
-        except IOError:
-            val = default_val
-        return val
+    frames_info = header_dataframe(filename)
 
-    import collections
-    header_list = collections.OrderedDict(
-        [('OBJECT', ('OBJECT', 'N/A')),
-         ('RA', ('RA', -10000)),
-         ('DEC', ('DEC', -10000)),
-         ('TEL TARG ALPHA', ('HIERARCH ESO TEL TARG ALPHA', -10000)),
-         ('TEL TARG DELTA', ('HIERARCH ESO TEL TARG DELTA', -10000)),
-         ('TEL TARG PMA', ('HIERARCH ESO TEL TARG PMA', -10000)),
-         ('TEL TARG PMD', ('HIERARCH ESO TEL TARG PMD', -10000)),
-         ('INS4 DROT2 RA', ('HIERARCH ESO INS4 DROT2 RA', -10000)),
-         ('INS4 DROT2 DEC', ('HIERARCH ESO INS4 DROT2 DEC', -10000)),
-         ('INS4 DROT2 MODE', ('HIERARCH ESO INS4 DROT2 MODE', 'N/A')),
-         ('INS4 DROT2 BEGIN', ('HIERARCH ESO INS4 DROT2 BEGIN', -10000)),
-         ('INS4 DROT2 END', ('HIERARCH ESO INS4 DROT2 END', -10000)),
-         ('TEL GEOELEV', ('HIERARCH ESO TEL GEOELEV', -10000)),
-         ('TEL GEOLAT', ('HIERARCH ESO TEL GEOLAT', -10000)),
-         ('TEL GEOLON', ('HIERARCH ESO TEL GEOLON', -10000)),
-         ('TEL ALT', ('HIERARCH ESO TEL ALT', -10000)),
-         ('EXPTIME', ('EXPTIME', -10000)),
-         ('DET SEQ1 DIT', ('HIERARCH ESO DET SEQ1 DIT', -10000)),
-         ('DET DIT DELAY', ('HIERARCH ESO DET DITDELAY', -10000)),
-         ('DET NDIT', ('HIERARCH ESO DET NDIT', -10000)),
-         ('INS COMB IFLT', ('HIERARCH ESO INS COMB IFLT', 'N/A')),
-         ('INS COMB ICOR', ('HIERARCH ESO INS COMB ICOR', 'N/A')),
-         ('INS4 FILT2 NAME', ('HIERARCH ESO INS4 FILT2 NAME', 'N/A')),
-         ('INS4 SHUT ST', ('HIERARCH ESO INS4 SHUT ST', 'N/A')),
-         ('INS2 COMB IFS', ('HIERARCH ESO INS2 COMB IFS', 'N/A')),
-         ('INS2 OPTI2 ID', ('HIERARCH ESO INS2 OPTI2 ID', 'N/A')),
-         ('DPR TYPE', ('HIERARCH ESO DPR TYPE', 'N/A')),
-         ('DPR TECH', ('HIERARCH ESO DPR TECH', 'N/A')),
-         ('DET ID', ('HIERARCH ESO DET ID', 'ZPL')),
-         ('SEQ ARM', ('HIERARCH ESO SEQ ARM', 'N/A')),
-         ('INS4 COMB ROT', ('HIERARCH ESO INS4 COMB ROT', 'N/A')),
-         ('INS1 PAC X', ('HIERARCH ESO INS1 PAC X', -10000)),
-         ('INS1 PAC Y', ('HIERARCH ESO INS1 PAC Y', -10000)),
-         ('DET READ CURNAME', ('HIERARCH ESO DET READ CURNAME', 'N/A')),
-         ('OCS WAFFLE AMPL', ('HIERARCH ESO OCS WAFFLE AMPL', -10000)),
-         ('OCS WAFFLE ORIENT', ('HIERARCH ESO OCS WAFFLE ORIENT', 'N/A')),
-         ('INS4 OPTI22 NAME', ('HIERARCH ESO INS4 OPTI22 NAME', 'N/A')),
-         ('TEL AMBI TAU0', ('HIERARCH ESO TEL AMBI TAU0', -10000)),
-         ('TEL AMBI FWHM START', ('HIERARCH ESO TEL AMBI FWHM START', -10000)),
-         ('TEL AMBI FWHM END', ('HIERARCH ESO TEL AMBI FWHM END', -10000)),
-         ('TEL AIRM START', ('HIERARCH ESO TEL AIRM START', -10000)),
-         ('OBS PROG ID', ('HIERARCH ESO OBS PROG ID', 'N/A')),
-         ('OBS PI-COI NAME', ('HIERARCH ESO OBS PI-COI NAME', 'N/A')),
-         ('OBS ID', ('HIERARCH ESO OBS ID', -10000)),
-         ('ORIGFILE', ('ORIGFILE', 'N/A')),
-         ('DET SEQ UTC', ('HIERARCH ESO DET SEQ UTC', 'N/A')),
-         ('DET FRAM UTC', ('HIERARCH ESO DET FRAM UTC', 'N/A')),
-         ('DATE-OBS', ('DATE-OBS', 'N/A')),
-         ('DATE', ('DATE', 'N/A')),
-         ('MJD-OBS', ('MJD-OBS', -10000))])
-
-    try:
-        orig_hdr = fits.getheader(filename)
-        import warnings
-        warnings.filterwarnings("ignore")
-        for key in header_list.keys():
-            header[key] = get_headerval_with_exeption(
-                orig_hdr, header_list[key][0], header_list[key][1])
-
-        header_table = collections.OrderedDict()
-        for key in header_list.keys():
-            header_table[key] = []
-
-        for key in header_list.keys():
-            header_table[key].append(get_headerval_with_exeption(
-                orig_hdr, header_list[key][0], header_list[key][1]))
-
-        frames_info = pd.DataFrame(header_table)
-        frames_info['DATE-OBS'] = pd.to_datetime(frames_info['DATE-OBS'], utc=True)
-        frames_info['DATE'] = pd.to_datetime(frames_info['DATE'], utc=True)
-        frames_info['DET FRAM UTC'] = pd.to_datetime(frames_info['DET FRAM UTC'], utc=True)
-
-        compute_times(frames_info)
-        compute_angles(frames_info)
-        header['PARANG START'] = (frames_info['PARANG START'][0], '')
-        header['PARANG'] = (frames_info['PARANG'][0], '')
-        header['PARANG END'] = (frames_info['PARANG END'][0], '')
-        header['PUPIL OFFSET'] = (frames_info['PUPIL OFFSET'][0], '')
-        header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
-        header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
-        header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
-    except:
-        pass
+    # try:
+    compute_times(frames_info, idx=dit_idx)
+    compute_angles(frames_info)
+    header['PARANG START'] = (frames_info['PARANG START'][0], '')
+    header['PARANG'] = (frames_info['PARANG'][0], '')
+    header['PARANG END'] = (frames_info['PARANG END'][0], '')
+    header['PUPIL OFFSET'] = (frames_info['PUPIL OFFSET'][0], '')
+    header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
+    header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
+    header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
+    # except:
+    #     pass
 
     return header
 

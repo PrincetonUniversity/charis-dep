@@ -114,7 +114,7 @@ if __name__ == "__main__":
         smoothandmask = True
 
     for filename in filenames:
-        cube = extractcube.getcube(
+        _ = extractcube.getcube(
             filename=filename, read_idx=read_idx, bgsub=bgsub,
             # bgpath='/home/samland/science/sphere_calibration/test_data/ifs_test_data/YJ/calibration_files/darks_and_badpixel_maps/sky_cen.fits',
             bgpath='/home/samland/science/sphere_calibration/test_data/ifs_test_data/YH/calibration_files/darks_and_badpixelmaps/sky_cen.fits',

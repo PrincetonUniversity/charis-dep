@@ -19,6 +19,8 @@ from astropy.time import Time
 from astropy.modeling import models, fitting
 from matplotlib.backends.backend_pdf import PdfPages
 
+from pdb import set_trace
+
 
 def parallatic_angle(ha, dec, geolat):
     '''
@@ -49,7 +51,7 @@ def parallatic_angle(ha, dec, geolat):
     return np.degrees(pa)
 
 
-def compute_times(frames_info):
+def compute_times(frames_info, idx=None):
     '''
     Compute the various timestamps associated to frames
 
@@ -66,7 +68,9 @@ def compute_times(frames_info):
     DIT = np.array(frames_info['DET SEQ1 DIT'].values.astype(np.float) * 1000, dtype='timedelta64[ms]')
 
     # calculate UTC time stamps
-    idx = frames_info.index.get_level_values(0).values  # level 1 in original
+    if idx is None:
+        idx = frames_info.index.get_level_values(0).values  # level 1 in original
+
     ts_start = time_start + time_delta * idx
     ts = time_start + time_delta * idx + DIT / 2
     ts_end = time_start + time_delta * idx + DIT
