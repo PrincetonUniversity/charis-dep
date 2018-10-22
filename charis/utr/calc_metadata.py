@@ -430,17 +430,15 @@ def metadata_SPHERE(filename, dit_idx=None, header=None, clear=True, version=Non
 
     frames_info, header_table = header_dataframe(filename)
     header_table = Table(header_table)
-    from dicpm.embed_shell import ipsh
-    # try:
 
     for key in header_table.keys():
         header[key] = header_table[0][key]
 
-    header.append(('comment', ''), end=True)
-    header.append(('comment', '*' * 60), end=True)
-    header.append(('comment', '*' * 18 + ' Time and Pointing Data ' + '*' * 18), end=True)
-    header.append(('comment', '*' * 60), end=True)
-    header.append(('comment', ''), end=True)
+    # header.append(('comment', ''), end=True)
+    # header.append(('comment', '*' * 60), end=True)
+    # header.append(('comment', '*' * 18 + ' Time and Pointing Data ' + '*' * 18), end=True)
+    # header.append(('comment', '*' * 60), end=True)
+    # header.append(('comment', ''), end=True)
 
     if dit_idx == [1, None]:
         dit_idx = 1
