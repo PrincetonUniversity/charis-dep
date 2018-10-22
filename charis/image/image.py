@@ -147,7 +147,7 @@ class Image(object):
             out.append(fits.PrimaryHDU(self.chisq.astype(np.float32), hdr))
         if self.flags is not None:
             out.append(fits.PrimaryHDU(self.flags), hdr)
-        #if self.extraheader is not None:
+        # if self.extraheader is not None:
         #    try:
         #        extra_hdr = fits.PrimaryHDU(None, self.extraheader)
         #        extra_hdr.verify('fix')
@@ -155,9 +155,10 @@ class Image(object):
         #    except:
         #        log.warn("Failed to attach extra header.")
 
-        #try:
+        # try:
+
         out.writeto(filename, overwrite=overwrite)
         log.info("Writing data to " + filename)
 
-        #except:
+        # except:
         #    log.error("Unable to write FITS file " + filename)

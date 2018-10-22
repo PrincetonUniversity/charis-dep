@@ -4,6 +4,8 @@ from past.utils import old_div
 import re
 import time
 import collections
+import warnings
+
 
 import numpy as np
 
@@ -12,11 +14,10 @@ import pandas as pd
 from astropy import coordinates as coord
 from astropy import units as u
 from astropy.io import fits
+from astropy.table import Table
 from astropy.time import Time
 
 from charis.tools import compute_times, compute_angles
-
-from pdb import set_trace
 
 
 def get_headerval_with_exeption(header, keyword, default_val):
@@ -30,6 +31,7 @@ def get_headerval_with_exeption(header, keyword, default_val):
 
 
 def header_dataframe(filename):
+    warnings.filterwarnings("ignore")
 
     header_list = collections.OrderedDict(
         [('OBJECT', ('OBJECT', 'N/A')),
@@ -83,9 +85,6 @@ def header_dataframe(filename):
          ('DATE', ('DATE', 'N/A')),
          ('MJD-OBS', ('MJD-OBS', -10000))])
 
-    import warnings
-    warnings.filterwarnings("ignore")
-
     orig_hdr = fits.getheader(filename)
     header = orig_hdr.copy()
     for key in header_list.keys():
@@ -99,13 +98,12 @@ def header_dataframe(filename):
     for key in header_list.keys():
         header_table[key].append(get_headerval_with_exeption(
             orig_hdr, header_list[key][0], header_list[key][1]))
-
     frames_info = pd.DataFrame(header_table)
     frames_info['DATE-OBS'] = pd.to_datetime(frames_info['DATE-OBS'], utc=True)
     frames_info['DATE'] = pd.to_datetime(frames_info['DATE'], utc=True)
     frames_info['DET FRAM UTC'] = pd.to_datetime(frames_info['DET FRAM UTC'], utc=True)
 
-    return frames_info
+    return frames_info, header_table
 
 
 def _fetch(key, filename, comment=None, newkey=None):
@@ -396,18 +394,13 @@ def metadata_SPHERE(filename, dit_idx=None, header=None, clear=True, version=Non
     reads.
 
     """
+    warnings.filterwarnings("ignore")
     if header is None:
         header = fits.PrimaryHDU().header
     if clear:
         header.clear()
     if version is not None:
         header.append(('version', version, 'Pipeline Version'), end=True)
-
-    header.append(('comment', ''), end=True)
-    header.append(('comment', '*' * 60), end=True)
-    header.append(('comment', '*' * 18 + ' Time and Pointing Data ' + '*' * 18), end=True)
-    header.append(('comment', '*' * 60), end=True)
-    header.append(('comment', ''), end=True)
 
     # try:
     #     origname = re.sub('.*CRSA', '', re.sub('.fits', '', filename))
@@ -432,14 +425,29 @@ def metadata_SPHERE(filename, dit_idx=None, header=None, clear=True, version=Non
     # # file's FITS header
     # ####################################################################
 
-    header.append(_fetch('RA', filename, comment='RA of telescope pointing'))
-    header.append(_fetch('DEC', filename, comment='DEC of telescope pointing'))
+    # header.append(_fetch('RA', filename, comment='RA of telescope pointing'))
+    # header.append(_fetch('DEC', filename, comment='DEC of telescope pointing'))
 
-    frames_info = header_dataframe(filename)
-
+    frames_info, header_table = header_dataframe(filename)
+    header_table = Table(header_table)
+    from dicpm.embed_shell import ipsh
     # try:
+
+    for key in header_table.keys():
+        header[key] = header_table[0][key]
+
+    header.append(('comment', ''), end=True)
+    header.append(('comment', '*' * 60), end=True)
+    header.append(('comment', '*' * 18 + ' Time and Pointing Data ' + '*' * 18), end=True)
+    header.append(('comment', '*' * 60), end=True)
+    header.append(('comment', ''), end=True)
+
+    if dit_idx == [1, None]:
+        dit_idx = 1
+
     compute_times(frames_info, idx=dit_idx)
     compute_angles(frames_info)
+
     header['PARANG START'] = (frames_info['PARANG START'][0], '')
     header['PARANG'] = (frames_info['PARANG'][0], '')
     header['PARANG END'] = (frames_info['PARANG END'][0], '')
@@ -447,8 +455,11 @@ def metadata_SPHERE(filename, dit_idx=None, header=None, clear=True, version=Non
     header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
     header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
     header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
+    # for key in frames_
     # except:
     #     pass
+
+    # for key in frames_info
 
     return header
 

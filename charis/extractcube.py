@@ -189,7 +189,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             # ivar = 1. / var
             ivar *= maskarr
             # set_trace()
-            if read_idx is not None:
+            if read_idx is not None and not [1, None]:
                 data = data[read_idx].astype('float64') * maskarr
                 file_ending = '_DIT_{:03d}'.format(read_idx)
             else:
