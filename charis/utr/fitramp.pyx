@@ -600,13 +600,13 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
                     ichan = k/64
                     x = cts[i + 1, j, k] - cts[i, j, k]
                     x = x - (ref[i + 1, ichan] - ref[i, ichan])
-                    if x > 10*stds[ichan]:  # >10sigma in read noise
+                    if x > 20*stds[ichan]:  # >10sigma in read noise
                         y = cts[nread - 1, j, k] - cts[0, j, k]
                         y = y - (ref[nread - 1, ichan] - ref[0, ichan])
                         y = y/(nread - 1.)
                         if y < ctrates[j, k]:
                             y = ctrates[j, k]
-                        if x > 5*y:  # >5 times expected count rate
+                        if x > 10*y:  # >5 times expected count rate
                             ivar[j, k] = 0
 
     ####################################################################
