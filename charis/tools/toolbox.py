@@ -164,10 +164,10 @@ def compute_angles(frames_info):
     # Derotation angles
     #
     # PA_on-sky = PA_detector + PARANGLE + True_North + PUP_OFFSET + INSTRUMENT_OFFSET
-    #  PUP_OFFSET = -135.99 ± 0.11
+    #  PUP_OFFSET = -135.99 +/- 0.11
     #  INSTRUMENT_OFFSET
-    #   IFS = +100.48 ± 0.10
-    #   IRD =    0.00 ± 0.00
+    #   IFS = +100.48 +/- 0.10
+    #   IRD =    0.00 +/- 0.00
     #
     instru = frames_info['SEQ ARM'].unique()
     if len(instru) != 1:
@@ -355,8 +355,8 @@ def lines_intersect(a1, a2, b1, b2):
         return None
 
     # find intersection
-    denom = pda @ db
-    num = pda @ dp
+    denom = np.dot(pda, db)
+    num = np.dot(pda, dp)
 
     return (num / denom) * db + b1
 
