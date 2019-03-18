@@ -178,14 +178,14 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
             ivar = maskarr.astype('float64')
-        if len(data.shape) == 3:
+        if data.ndim == 3:
             # var = np.std(data.astype('float64'), axis=0)**2
             # var = np.sqrt(np.mean(data, axis=0))
             # const_term = np.ones_like(var, dtype='float64') * 0.1**2
             # var += const_term
             # var_mask = var > 0
             # var[np.isnan(var)] = 1e30
-            ivar = np.ones_like(data[0], dtype='float64')
+            ivar = np.ones(data[0].shape, dtype='float64')
             # ivar = 1. / var
             ivar *= maskarr
             # set_trace()
@@ -195,9 +195,13 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             else:
                 data = np.median(data.astype('float64'), axis=0) * maskarr
                 file_ending = ''
-        else:
+        elif data.ndim == 2:
             data = data * maskarr
+            ivar = np.ones(data.shape, dtype='float64')
+            ivar *= maskarr
             file_ending = ''
+        else:
+            raise ValueError("Data must be images or cubes.")
         inImage = Image(data=data, ivar=ivar, header=header,
                         instrument_name=instrument.instrument_name)
 
