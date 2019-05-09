@@ -81,34 +81,54 @@ class SPHERE(object):
     # 960, 1350, 960, 1650
     # __wavelength_range = {'YJ': [950., 1330.] * u.nanometer,
     #                       'YH': [970., 1640.] * u.nanometer}
+    # __wavelength_range = {'YJ': [940., 1370.] * u.nanometer,
+    #                       'Y': [935., 1710.] * u.nanometer}
+    # __wavelength_range = {'YJ': [940., 1370.] * u.nanometer,
+    #                       'YH': [945., 1650.] * u.nanometer}
     __wavelength_range = {'YJ': [940., 1370.] * u.nanometer,
-                          'YH': [935., 1710.] * u.nanometer}
+                          'YH': [948., 1654.] * u.nanometer}
     # 'YH': [935., 1695.] * u.nanometer}
     #'YH': [945.7, 1676.6] * u.nanometer} #25
     #'YH': [952.4, 1665.1] * u.nanometer} #50
 
-    # __resolution = {'YJ': 55,
-    #                 'YH': 35}
     __resolution = {'YJ': 55,
                     'YH': 35}
+    # __resolution = {'YJ': 55,
+    #                 'YH': 70}
 
     __calibration_wavelength = {'YJ': [987.7, 1123.7, 1309.4] * u.nanometer,
                                 'YH': [987.7, 1123.7, 1309.4, 1545.1] * u.nanometer}
 
-    def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
-        Nspec = int(np.log(
-            upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
-        loglam_midpts = np.linspace(np.log(
-            lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
-        loglam_binsize = np.diff(loglam_midpts)
-        loglam_endpts = np.zeros(len(loglam_midpts) + 1)
-        for i in range(loglam_binsize.shape[0]):
-            loglam_endpts[i] = loglam_midpts[i] - loglam_binsize[i] / 2.
-        loglam_endpts[-2] = loglam_midpts[-1] - loglam_binsize[-1] / 2.
-        loglam_endpts[-1] = loglam_midpts[-1] + loglam_binsize[-1] / 2.
+    # def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
+    #     Nspec = int(np.log(
+    #         upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
+    #     loglam_midpts = np.linspace(np.log(
+    #         lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
+    #     loglam_binsize = np.diff(loglam_midpts)
+    #     loglam_endpts = np.zeros(len(loglam_midpts) + 1)
+    #     for i in range(loglam_binsize.shape[0]):
+    #         loglam_endpts[i] = loglam_midpts[i] - loglam_binsize[i] / 2.
+    #     loglam_endpts[-2] = loglam_midpts[-1] - loglam_binsize[-1] / 2.
+    #     loglam_endpts[-1] = loglam_midpts[-1] + loglam_binsize[-1] / 2.
+    #
+    #     lam_endpts = np.exp(loglam_endpts)
+    #     lam_midpts = np.exp(loglam_midpts)
+    #
+    #     return lam_midpts, lam_endpts
 
-        lam_endpts = np.exp(loglam_endpts)
-        lam_midpts = np.exp(loglam_midpts)
+    # def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
+    #     Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
+    #     loglam_endpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
+    #     loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2.
+    #     lam_endpts = np.exp(loglam_endpts)
+    #     lam_midpts = np.exp(loglam_midpts)
+    #
+    #     return lam_midpts, lam_endpts
+
+    def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
+        lam_midpts = np.linspace(0.957478, 1.63575, 39)
+        binsize = np.diff(lam_midpts)[0]
+        lam_endpts = np.append(lam_midpts - binsize / 2., [lam_midpts[-1] + binsize])
 
         return lam_midpts, lam_endpts
 

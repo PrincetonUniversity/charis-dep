@@ -313,7 +313,7 @@ class PSFLets(object):
         ###################################################################
 
         if lam1 is None:
-            lam1 = old_div(np.amin(lam), 1.04)
+            lam1 = np.amin(lam) / 1.04
         if lam2 is None:
             lam2 = np.amax(lam) * 1.03
         interporder = order

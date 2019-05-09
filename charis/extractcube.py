@@ -344,7 +344,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             instrument.wavelength_range[0].value,
             instrument.wavelength_range[1].value,
             R)
-        n = len(lam_midpts)
+        # n = len(lam_midpts)
         # lam1, lam2 = [lam[0], lam[-1]]
         # n = int(np.log(lam2 * 1. / lam1) * R2 + 1.5)
         # lam_midpts = np.exp(np.linspace(np.log(lam1), np.log(lam2), n))

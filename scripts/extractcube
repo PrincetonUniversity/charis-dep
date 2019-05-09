@@ -126,3 +126,16 @@ if __name__ == "__main__":
             minpct=minpct, fitbkgnd=fitbkgnd,
             saveresid=saveresid)
         # cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
+    # for filename in filenames:
+    #     for read_idx in range(ndit):
+    #         _ = extractcube.getcube(
+    #             filename=filename, read_idx=read_idx, bgsub=bgsub,
+    #             # bgpath='/home/samland/science/sphere_calibration/test_data/ifs_test_data/YJ/calibration_files/darks_and_badpixel_maps/sky_cen.fits',
+    #             bgpath='/home/samland/science/sphere_calibration/test_data/ifs_test_data/YH/calibration_files/darks_and_badpixelmaps/sky_cen.fits',
+    #             mask=mask, gain=gain, noisefac=noisefac,
+    #             saveramp=saveramp, refine=refine, maxcpus=maxcpus,
+    #             calibdir=calibdir, R=R, method=method,
+    #             smoothandmask=smoothandmask, flatfield=flatfield,
+    #             fitshift=fitshift, suppressrn=suppressrn,
+    #             minpct=minpct, fitbkgnd=fitbkgnd,
+    #             saveresid=saveresid)
