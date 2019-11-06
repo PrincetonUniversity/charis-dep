@@ -126,7 +126,7 @@ class SPHERE(object):
     #     return lam_midpts, lam_endpts
 
     def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
-        lam_midpts = np.linspace(0.957478, 1.63575, 39)
+        lam_midpts = np.linspace(957.478, 1635.75, 39)
         binsize = np.diff(lam_midpts)[0]
         lam_endpts = np.append(lam_midpts - binsize / 2., [lam_midpts[-1] + binsize])
 

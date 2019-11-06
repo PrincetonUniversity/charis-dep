@@ -42,7 +42,7 @@ from pdb import set_trace
 log = logging.getLogger('main')
 
 
-def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
+def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
             bgsub=True, bgpath=None, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, suppressrn=True, fitshift=True,
             flatfield=True, smoothandmask=True,
@@ -189,9 +189,10 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             # ivar = 1. / var
             ivar *= maskarr
             # set_trace()
-            if read_idx is not None and not [1, None]:
+            if read_idx is not None and read_idx != [1, None]:
                 data = data[read_idx].astype('float64') * maskarr
                 file_ending = '_DIT_{:03d}'.format(read_idx)
+                print(file_ending)
             else:
                 data = np.median(data.astype('float64'), axis=0) * maskarr
                 file_ending = ''
@@ -361,7 +362,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             else:
                 delt_x = 5
         else:
-            delt_x = 7
+            delt_x = 5 # 7
 
         if flatfield:
             pixelflat = fits.open(os.path.join(calibdir, 'pixelflat.fits'))[0].data

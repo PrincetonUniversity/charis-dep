@@ -283,8 +283,9 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
             fit = interpolate.interp1d(np.asarray(lam_hires), longsigarr[:, i, j],
                                        bounds_error=False, fill_value='extrapolate')
             fullsigarr[i, j] = fit(psftool.lam_indx[i, j])
+
     out = fits.HDUList(fits.PrimaryHDU(fullsigarr.astype(np.float32)))
-    out.writeto('PSFwidths.fits', overwrite=True)
+    out.writeto(os.path.join(outdir, 'PSFwidths.fits'), overwrite=True)
 
     #################################################################
     # Compute the PSFlets integrated over small ranges in wavelength,

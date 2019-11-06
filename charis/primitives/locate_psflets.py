@@ -193,7 +193,7 @@ class PSFLets(object):
         '''
 
         if lam1 is None:
-            lam1 = old_div(np.amin(lam), 1.04)
+            lam1 = np.amin(lam) / 1.04
         if lam2 is None:
             lam2 = np.amax(lam) * 1.03
 
@@ -761,7 +761,8 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
         coef_lin = [0 for i in range(6)]
 
         res = optimize.minimize(_corrval, coef_lin, args=(
-            x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac, coef_opt), method='Powell', options={'xtol': 1e-6, 'ftol': 1e-6})
+            x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s], subfiltered, polyorder, trimfrac, coef_opt),
+            method='Powell', options={'xtol': 1e-6, 'ftol': 1e-6})
         coef_lin = res.x
         for i in range(len(coef)):
             coef_opt[i] = _insertorder(coef_lin, coef_opt[i], add=True)
