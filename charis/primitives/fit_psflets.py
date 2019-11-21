@@ -742,7 +742,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
                         psflet_indx = all_psflet_indx[i]
                         bkgnd += psflets[i] * coefs_flat[psflet_indx]
 
-                return corrnoise + bkgnd
+                return corrnoise + bkgnd, coefs
 
         else:
             corrnoise = 0
@@ -764,7 +764,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
             else:
                 coefs += dcoefs
 
-            if returnresid:
+            #if returnresid:
+            if returnresid or return_corrnoise:
                 data[:] = im.data - corrnoise
                 for i in range(len(psflets)):
                     psflet_indx = all_psflet_indx[i]
@@ -773,6 +774,9 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
                     coefs_flat = np.reshape(coefs[i], -1)
                     data -= psflets[i] * coefs_flat[psflet_indx]
                 resid = Image(data=data, ivar=im.ivar)
+
+            if return_corrnoise:
+                return data, coefs
 
     header['cubemode'] = ('Chi^2 Fit to PSFlets', 'Method used to extract data cube')
     header['fitbkgnd'] = (fitbkgnd, 'Fit an undispersed background in each lenslet?')
@@ -829,6 +833,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
 
 
 def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=7, flat=None, sig=0.7,
+                   coefs_in=None, psflets=None, lampsflets=None,
                    smoothandmask=True, header=fits.PrimaryHDU().header,
                    maxcpus=multiprocessing.cpu_count()):
     """
@@ -909,10 +914,20 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=7, flat=None, sig=0.
     else:
         raise ValueError(
             "Spot size must be either a floating point number or a 3D array of the same shape as the lenslet positions.")
+    
+    if coefs_in is not None:
+        nlam_psflets = min(psflets.shape[0], len(lampsflets))
+        coefs, tot_ivar = matutils.optext_hybrid(data, ivar, 
+                                    lenslet_ix, lenslet_iy, sig,
+                                    coefs_in, psflets, np.log(lampsflets),
+                                    nlam_psflets, loglam_indx, nlam, loglam,
+                                    Nmax, delt_x=delt_x, maxproc=maxcpus)
+    else:
+        coefs, tot_ivar = matutils.optext(data, ivar, lenslet_ix, lenslet_iy, sig,
+                                          loglam_indx, nlam, loglam, Nmax,
+                                          delt_x=delt_x, maxproc=maxcpus)
 
-    coefs, tot_ivar = matutils.optext(data, ivar, lenslet_ix, lenslet_iy, sig,
-                                      loglam_indx, nlam, loglam, Nmax,
-                                      delt_x=delt_x, maxproc=maxcpus)
+    
 
     if np.median(sig) < 10:
         cubemode = 'Optimal Extraction'
