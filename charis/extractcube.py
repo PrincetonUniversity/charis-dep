@@ -45,7 +45,7 @@ log = logging.getLogger('main')
 def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
             bgsub=True, bgpath=None, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, suppressrn=True, fitshift=True,
-            flatfield=True, smoothandmask=True,
+            flatfield=True, smoothandmask=True, crosstalk_scale=0.8,
             minpct=70, fitbkgnd=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count(),
             instrument=None, resample=True,
@@ -173,7 +173,6 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         file_ending = ''
     elif instrument.instrument_name == 'SPHERE':
         data = fits.getdata(filename)
-        data *= instrument.gain
 
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
@@ -213,7 +212,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             else:
                 hdulist = fits.open(bgpath)
 
-            bg = hdulist[0].data * instrument.gain
+            bg = hdulist[0].data
             if bg is None:
                 bg = hdulist[1].data
             if len(bg.shape) == 3:
@@ -221,6 +220,18 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 print("bg shape: {}".format(bg.shape))
             if mask:
                 bg *= maskarr
+
+            if instrument.instrument_name == 'SPHERE':
+                # Region to match background counts for SPHERE IFS
+                i1, i2, j1, j2 = None, 120, None, 400
+                indx = maskarr[i1:i2, j1:j2] == 1
+                norm = inImage.data[i1:i2, j1:j2][indx]
+                norm /= bg[i1:i2, j1:j2][indx]
+                norm = norm.flatten()
+                # Trimmed mean to match count rates
+                norm = np.mean(np.sort(norm)[len(norm)//4:-len(norm)//4])
+                bg *= norm
+
             inImage.data -= bg
             inImage.data[inImage.data < 0.] = 1.
             #fits.writeto('testtest.fits', inImage.data, overwrite=True)
@@ -252,7 +263,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
     datacube = None
 
-    if method == 'lstsq' or suppressrn:
+    if method == 'lstsq' or suppressrn or refine:
         try:
             keyfile = fits.open(os.path.join(calibdir, 'polychromekeyR%d.fits' % (R)))
             R2 = R
@@ -270,7 +281,11 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             try:
                 psflets = np.load(os.path.join(calibdir, 'polychromefullR%d.npy' % (R2)))
                 offsets = instrument.offsets
-                psflets = primitives.calc_offset(psflets, inImage, offsets, maxcpus=maxcpus)
+                # Unless this is CHARIS, default to a single offset image-wide
+                dx = inImage.data.shape[0]
+                if instrument.instrument_name == 'CHARIS':
+                    dx /= 16
+                psflets = primitives.calc_offset(psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
             except:
                 if verbose:
                     print('Fit shift failed. Continuing without fitting shift.')
@@ -280,6 +295,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
         header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
         lam_midpts = keyfile[0].data
+        lam_psflets = lam_midpts.copy()
         # lam_midpts = fits.getdata(
         #     '/home/samland/science/sphere_daten/51eri/IFS/new_DC_data_cubes/Sep26_YJ_nolsct_psfbin/ifs_convert_waffle_dc-IFS_SCIENCE_LAMBDA_INFO-lam.fits')
         # lam_midpts = 1000. * lam_midpts.astype('float64')
@@ -296,14 +312,25 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         ############################################################
 
         if method != 'lstsq':
-            corrnoise = primitives.fit_spectra(
+            corrnoise, coefs = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
                 instrument=instrument,
                 header=inImage.header, flat=lensletflat, refine=refine,
                 suppressreadnoise=suppressrn, smoothandmask=smoothandmask,
                 minpct=minpct, fitbkgnd=fitbkgnd, maxcpus=maxcpus,
                 return_corrnoise=True)
-            inImage.data -= corrnoise
+            if suppressrn:
+                inImage.data -= corrnoise
+            elif refine:
+                # This is to remove crosstalk: we remove the
+                # contribution of each lenslet to its nearest
+                # neighbors, scaled by crosstalk_scale.  In this case
+                # corrnoise actually refers to the residuals.  We take
+                # a mixture of the residuals and the data, with the
+                # mixture scaled by crosstalk_scale; the components
+                # from the coefficients will be added back in later.
+                coefs *= crosstalk_scale
+                inImage.data += crosstalk_scale*(corrnoise - inImage.data)
         else:
             result = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
@@ -321,7 +348,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 mask_resid = inImage.data > 0.
                 relative_resid = resid.data.copy()
                 relative_resid[mask_resid] /= inImage.data[mask_resid]
-                relative_resid[~mask_resid] = np.nan
+                relative_resid[mask_resid] = np.nan
                 fits.writeto(
                     # re.sub('.*/', '',
                     re.sub('.fits', '_resid_relative' + file_ending + '.fits',
@@ -369,11 +396,19 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             inImage.data /= pixelflat + 1e-20
             inImage.ivar *= pixelflat**2
 
+        # If we did the crosstalk correction, we need to add the model
+        # spectra back in and do a modified optimal extraction.
+        if refine:
+            _coefs, _psflets, _lam_psflets = coefs, psflets, lam_psflets
+        else:
+            _coefs, _psflets, _lam_psflets = None, None, None
+            
         datacube = primitives.optext_spectra(inImage, loc, lam_midpts,
-                                             instrument=instrument,
-                                             delt_x=delt_x,
-                                             sig=sig, header=inImage.header,
-                                             flat=lensletflat, maxcpus=maxcpus)
+                                        instrument=instrument, delt_x=delt_x,
+                                        coefs_in=_coefs, psflets=_psflets,
+                                        lampsflets=_lam_psflets,
+                                        sig=sig, header=inImage.header,
+                                        flat=lensletflat, maxcpus=maxcpus)
 
     if datacube is None:
         raise ValueError("Datacube extraction method " + method + " not implemented.")
