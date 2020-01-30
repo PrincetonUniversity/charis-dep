@@ -17,6 +17,9 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.time import Time
 
+from astropy.utils import iers
+iers.Conf.iers_auto_url.set('ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all')
+
 from charis.tools import compute_times, compute_angles
 
 
