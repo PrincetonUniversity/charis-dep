@@ -284,7 +284,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 # Unless this is CHARIS, default to a single offset image-wide
                 dx = inImage.data.shape[0]
                 if instrument.instrument_name == 'CHARIS':
-                    dx /= 16
+                    dx = int(dx / 16)
                 psflets = primitives.calc_offset(psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
             except:
                 if verbose:
@@ -402,7 +402,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             _coefs, _psflets, _lam_psflets = coefs, psflets, lam_psflets
         else:
             _coefs, _psflets, _lam_psflets = None, None, None
-            
+
         datacube = primitives.optext_spectra(inImage, loc, lam_midpts,
                                         instrument=instrument, delt_x=delt_x,
                                         coefs_in=_coefs, psflets=_psflets,
