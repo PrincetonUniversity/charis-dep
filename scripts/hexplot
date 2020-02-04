@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import pkg_resources
+import subprocess
+
+filename = sys.argv[1]
+
+cwd = os.getcwd()
+script_path = pkg_resources.resource_filename('charis', 'hexplot.py')
+file_path = '/home/masa4294/science/sphere_calibration/test_data/HD2133_wd/scidata/SPHER.2017-11-30T00.44.27.117IFS_STAR_CENTER_WAFFLE_RAW_cube.fits'
+
+subprocess.run("bokeh serve --show {} --args '{}'".format(script_path, filename), shell=True, check=True, stdout=subprocess.PIPE)
