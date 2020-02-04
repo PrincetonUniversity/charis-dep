@@ -12,11 +12,11 @@ from bokeh.models import ColumnDataSource, HoverTool, LayoutDOM
 from bokeh.models import LinearColorMapper  # , LogTicker, ColorBar
 from bokeh.models.widgets import Slider, Panel, Tabs
 from bokeh.transform import linear_cmap
-# from bokeh.util.hex import hexbin, cartesian_to_axial, axial_to_cartesian
+from bokeh.util.hex import hexbin, axial_to_cartesian
 try:
-    from image.hex import hexbin, cartesian_to_axial, axial_to_cartesian
+    from image.hex import cartesian_to_axial
 except ImportError:
-    from charis.image.hex import hexbin, cartesian_to_axial, axial_to_cartesian
+    from charis.image.hex import artesian_to_axial
 
 import pandas as pd
 
