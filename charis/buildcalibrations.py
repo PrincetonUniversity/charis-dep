@@ -314,7 +314,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
 
     Nspec = len(instrument.lam_midpts)
 
-    for i in range(upsamp * (Nspec - 1)):
+    for i in range(upsamp * Nspec):
         ilam = i // upsamp
         dx = (i % upsamp) * 1. / upsamp
         tool = copy.deepcopy(psftool)
@@ -326,11 +326,11 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     for i in range(ncpus):
         tasks.put(None)
 
-    polyimage = np.empty((Nspec - 1, npix_y, npix_x * upsamp), np.float32)
+    polyimage = np.empty((Nspec, npix_y, npix_x * upsamp), np.float32)
 
     if verbose:
         print('Generating narrowband template images')
-        for i in tqdm(range(upsamp * (Nspec - 1)), miniters=ncpus):
+        for i in tqdm(range(upsamp * Nspec), miniters=ncpus):
             # if verbose:
             #     frac_complete = (i + 1) * 1. / (upsamp * (Nspec - 1))
             #     N = int(frac_complete * 40)
@@ -340,7 +340,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
             dx = (index % upsamp)
             polyimage[ilam, :, dx::upsamp] = result
     else:
-        for i in range(upsamp * (Nspec - 1)):
+        for i in range(upsamp * Nspec):
             index, result = results.get()
             ilam = index // upsamp
             dx = (index % upsamp)
@@ -358,7 +358,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     ypos = []
     good = []
     buffer_size = 8
-    for i in range(Nspec - 1):
+    for i in range(Nspec):
         _x, _y = psftool.return_locations(instrument.lam_midpts[i], allcoef, lenslet_ix, lenslet_iy)
         _good = (_x > buffer_size) * (_x < npix_x - buffer_size) * (_y > buffer_size) * (_y < npix_y - buffer_size)
         xpos += [_x]
