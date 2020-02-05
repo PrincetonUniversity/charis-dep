@@ -45,7 +45,7 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     if calibdir is None:
         calibdir = instrument.calibration_path
     if mask is None:
-        mask = fits.open(os.path.join(calibdir, 'mask.fits'))[0].data
+        mask = fits.getdata(os.path.join(calibdir, 'mask.fits'))
 
     hdr = fits.PrimaryHDU().header
     hdr.clear()
@@ -56,7 +56,7 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     hdr['calfname'] = (re.sub('.*/', '', infilelist[0]),
                        'Monochromatic image used for calibration')
     try:
-        hdr['cal_date'] = (fits.open(infilelist[0])[0].header['mjd'],
+        hdr['cal_date'] = (fits.getheader(infilelist[0])['mjd'],
                            'MJD date of calibration image')
     except:
         hdr['cal_date'] = ('unavailable', 'MJD date of calibration image')
@@ -175,7 +175,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
         calibdir = instrument.calibration_path
 
     if mask is None:
-        mask = fits.open(os.path.join(calibdir, 'mask.fits'))[0].data
+        mask = fits.getdata(os.path.join(calibdir, 'mask.fits'))
 
     tstart = time.time()
     lower_wavelength_limit, upper_wavelength_limit = instrument.wavelength_range.value
@@ -236,7 +236,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     #################################################################
 
     hires_list = np.sort(glob.glob(os.path.join(calibdir, 'hires_psflets_lam*.fits')))
-    hires_arrs = [fits.open(filename)[0].data for filename in hires_list]
+    hires_arrs = [fits.getdata(filename) for filename in hires_list]
     lam_hires = [float(re.sub('.*lam', '', re.sub('.fits', '', filename)))
                  for filename in hires_list]
     psflet_res = 9  # Oversampling of high-resolution PSFlet images
@@ -380,6 +380,8 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     out.writeto(os.path.join(outdir, 'cal_params.fits'), overwrite=True)
 
     shutil.copy(os.path.join(calibdir, 'lensletflat.fits'), os.path.join(outdir, 'lensletflat.fits'))
+    shutil.copy(os.path.join(calibdir, 'background_scaling_mask.fits'),
+        os.path.join(outdir, 'background_scaling_mask.fits'))
 
     for filename in ['mask.fits', 'pixelflat.fits']:
         shutil.copy(os.path.join(calibdir, filename), os.path.join(outdir, filename))
