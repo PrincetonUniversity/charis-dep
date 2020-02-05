@@ -22,6 +22,7 @@ import time
 
 import numpy as np
 from astropy.io import fits
+from astropy.stats import mad_std, sigma_clipped_stats
 
 try:
     import instruments
@@ -133,7 +134,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     except:
         version = None
 
-    header = fits.open(filename)[0].header
+    header = fits.getheader(filename)
     instrument, _, _ = instruments.instrument_from_data(
         header, calibration=False, interactive=False)
 
@@ -145,7 +146,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         raise ValueError("Only CHARIS and SPHERE instruments implemented.")
 
     try:
-        calhead = fits.open(os.path.join(calibdir, 'cal_params.fits'))[0].header
+        calhead = fits.getheader(os.path.join(calibdir, 'cal_params.fits'))
         header.append(('comment', ''), end=True)
         header.append(('comment', '*' * 60), end=True)
         header.append(('comment', '*' * 21 + ' Calibration Data ' + '*' * 21), end=True)
@@ -164,7 +165,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
     maskarr = None
     if mask is True:
-        maskarr = fits.open(os.path.join(calibdir, 'mask.fits'))[0].data
+        maskarr = fits.getdata(os.path.join(calibdir, 'mask.fits'))
 
     if instrument.instrument_name == 'CHARIS':
         inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
@@ -211,26 +212,38 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 hdulist = fits.open(os.path.join(calibdir, 'background.fits'))
             else:
                 hdulist = fits.open(bgpath)
-
             bg = hdulist[0].data
             if bg is None:
                 bg = hdulist[1].data
+            hdulist.close()
             if len(bg.shape) == 3:
                 bg = np.median(bg, axis=0)
-                print("bg shape: {}".format(bg.shape))
             if mask:
                 bg *= maskarr
+            # print("bg shape: {}".format(bg.shape))
 
             if instrument.instrument_name == 'SPHERE':
                 # Region to match background counts for SPHERE IFS
-                i1, i2, j1, j2 = None, 120, None, 400
-                indx = maskarr[i1:i2, j1:j2] == 1
-                norm = inImage.data[i1:i2, j1:j2][indx]
-                norm /= bg[i1:i2, j1:j2][indx]
-                norm = norm.flatten()
-                # Trimmed mean to match count rates
-                norm = np.mean(np.sort(norm)[len(norm)//4:-len(norm)//4])
+                try:
+                    bgscalemask = fits.getdata(os.path.join(
+                        calibdir, 'background_scaling_mask.fits')).astype('bool')
+                    norm = inImage.data[bgscalemask] / bg[bgscalemask]
+                except FileNotFoundError:
+                    print("Background scaling mask not found. Falling back on naive scheme.")
+                    i1, i2, j1, j2 = None, 120, None, 400
+                    indx = maskarr[i1:i2, j1:j2] == 1
+                    norm = inImage.data[i1:i2, j1:j2][indx]
+                    norm /= bg[i1:i2, j1:j2][indx]
+
+                norm = norm[np.isfinite(norm)].flatten()
+                _, norm, _ = sigma_clipped_stats(
+                    norm, sigma=2.0, sigma_lower=None, sigma_upper=None,
+                    maxiters=5, cenfunc='median', stdfunc='std',
+                    std_ddof=0)
+                # # Trimmed mean to match count rates
+                # norm = np.mean(np.sort(norm)[len(norm)//4:-len(norm)//4])
                 bg *= norm
+                print("Background subtracted")
 
             inImage.data -= bg
             inImage.data[inImage.data < 0.] = 1.
@@ -255,8 +268,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     header.append(('comment', ''), end=True)
 
     if flatfield:
-        lensletflat = fits.open(
-            os.path.join(calibdir, 'lensletflat.fits'))[0].data.astype('float64')
+        lensletflat = fits.getdata(os.path.join(calibdir, 'lensletflat.fits')).astype('float64')
     else:
         lensletflat = None
     header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
@@ -291,7 +303,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                     print('Fit shift failed. Continuing without fitting shift.')
                 fitshift = False
         if not fitshift:
-            psflets = fits.open(os.path.join(calibdir, 'polychromeR%d.fits' % (R2)))[0].data
+            psflets = fits.getdata(os.path.join(calibdir, 'polychromeR%d.fits' % (R2)))
 
         header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
         lam_midpts = keyfile[0].data
@@ -302,9 +314,10 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
+        keyfile.close()
 
         if flatfield:
-            psflets = psflets * fits.open(os.path.join(calibdir, 'pixelflat.fits'))[0].data
+            psflets = psflets * fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
 
         ############################################################
         # Do an initial least-squares fit to remove correlated read
@@ -348,7 +361,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 mask_resid = inImage.data > 0.
                 relative_resid = resid.data.copy()
                 relative_resid[mask_resid] /= inImage.data[mask_resid]
-                relative_resid[mask_resid] = np.nan
+                relative_resid[~mask_resid] = np.nan
+                relative_resid[np.abs(relative_resid) > mad_std(relative_resid, ignore_nan=True) * 6] = np.nan
                 fits.writeto(
                     # re.sub('.*/', '',
                     re.sub('.fits', '_resid_relative' + file_ending + '.fits',
@@ -372,13 +386,15 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             instrument.wavelength_range[0].value,
             instrument.wavelength_range[1].value,
             R)
+        # lam_midpts = np.linspace(800, 1750, 200)
+
         # n = len(lam_midpts)
         # lam1, lam2 = [lam[0], lam[-1]]
         # n = int(np.log(lam2 * 1. / lam1) * R2 + 1.5)
         # lam_midpts = np.exp(np.linspace(np.log(lam1), np.log(lam2), n))
 
         try:
-            sig = fits.open(os.path.join(calibdir, 'PSFwidths.fits'))[0].data
+            sig = fits.getdata(os.path.join(calibdir, 'PSFwidths.fits'))
         except IOError:
             sig = 0.7
 
@@ -392,7 +408,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             delt_x = 5 # 7
 
         if flatfield:
-            pixelflat = fits.open(os.path.join(calibdir, 'pixelflat.fits'))[0].data
+            pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
             inImage.data /= pixelflat + 1e-20
             inImage.ivar *= pixelflat**2
 
@@ -416,7 +432,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     ################################################################
     # Add the original header for reference as the last HDU
     ################################################################
-    extrahdr = fits.open(filename)[0].header
+    extrahdr = fits.getheader(filename)
     datacube.extraheader = extrahdr
     ################################################################
     # Add WCS for the cube
