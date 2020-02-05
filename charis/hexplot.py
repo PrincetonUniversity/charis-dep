@@ -16,7 +16,7 @@ from bokeh.util.hex import hexbin, axial_to_cartesian
 try:
     from image.hex import cartesian_to_axial
 except ImportError:
-    from charis.image.hex import artesian_to_axial
+    from charis.image.hex import cartesian_to_axial
 
 import pandas as pd
 

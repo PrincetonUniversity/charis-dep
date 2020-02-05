@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 from builtins import range
@@ -14,11 +15,6 @@ import re
 import numpy as np
 from astropy.io import fits
 from scipy import interpolate, ndimage, optimize, signal
-
-try:
-    from charis.image import Image
-except:
-    from image import Image
 
 log = logging.getLogger('main')
 

@@ -17,7 +17,7 @@ from astropy.io import fits
 from scipy import interpolate, ndimage, signal, stats
 
 from charis.primitives import matutils
-from charis.image import Image
+from charis.image.image import Image
 from charis.image.image_geometry import (
     median_filter_hex_cube, mad_std_hex_cube,
     flatten_cube, deflatten_cube)
@@ -914,10 +914,10 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=7, flat=None, sig=0.
     else:
         raise ValueError(
             "Spot size must be either a floating point number or a 3D array of the same shape as the lenslet positions.")
-    
+
     if coefs_in is not None:
         nlam_psflets = min(psflets.shape[0], len(lampsflets))
-        coefs, tot_ivar = matutils.optext_hybrid(data, ivar, 
+        coefs, tot_ivar = matutils.optext_hybrid(data, ivar,
                                     lenslet_ix, lenslet_iy, sig,
                                     coefs_in, psflets, np.log(lampsflets),
                                     nlam_psflets, loglam_indx, nlam, loglam,
@@ -927,7 +927,7 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=7, flat=None, sig=0.
                                           loglam_indx, nlam, loglam, Nmax,
                                           delt_x=delt_x, maxproc=maxcpus)
 
-    
+
 
     if np.median(sig) < 10:
         cubemode = 'Optimal Extraction'
