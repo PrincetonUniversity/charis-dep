@@ -77,6 +77,10 @@ if __name__ == "__main__":
     except:
         refine = True
     try:
+        crosstalk_scale = Config.getfloat('Extract', 'crosstalkscale')
+    except:
+        crosstalk_scale = 0.8
+    try:
         suppressrn = Config.getboolean('Extract', 'suppressrn')
     except:
         suppressrn = True
@@ -118,7 +122,9 @@ if __name__ == "__main__":
             filename=filename, read_idx=read_idx, bgsub=bgsub,
             bgpath=None,
             mask=mask, gain=gain, noisefac=noisefac,
-            saveramp=saveramp, refine=refine, maxcpus=maxcpus,
+            saveramp=saveramp, refine=refine,
+            crosstalk_scale=crosstalk_scale,
+            maxcpus=maxcpus,
             calibdir=calibdir, R=R, method=method,
             smoothandmask=smoothandmask, flatfield=flatfield,
             fitshift=fitshift, suppressrn=suppressrn,
