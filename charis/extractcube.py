@@ -30,12 +30,14 @@ try:
     import utr
     from image import Image
     from image.image_geometry import resample_image_cube
+    from tools import sph_ifs_correct_spectral_xtalk
 except ImportError:
     from charis import instruments
     from charis import primitives
     from charis import utr
     from charis.image import Image
     from charis.image.image_geometry import resample_image_cube
+    from charis.tools import sph_ifs_correct_spectral_xtalk
     import charis
 
 from pdb import set_trace
@@ -45,8 +47,10 @@ log = logging.getLogger('main')
 
 def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
             bgsub=True, bgpath=None, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
-            method='lstsq', refine=True, suppressrn=True, fitshift=True,
-            flatfield=True, smoothandmask=True, crosstalk_scale=0.8,
+            method='lstsq', refine=True, crosstalk_scale=0.8,
+            dc_xtalk_correction=False,
+            suppressrn=True, fitshift=True,
+            flatfield=True, smoothandmask=True,
             minpct=70, fitbkgnd=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count(),
             instrument=None, resample=True,
@@ -246,11 +250,21 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 print("Background subtracted")
 
             inImage.data -= bg
-            inImage.data[inImage.data < 0.] = 1.
+            # inImage.data[inImage.data < 0.] = 1.
             #fits.writeto('testtest.fits', inImage.data, overwrite=True)
         except:
             bgsub = False
             log.warn('No valid background image found in ' + calibdir)
+
+    if dc_xtalk_correction is True:
+        inImage.data, convolved_image = sph_ifs_correct_spectral_xtalk(
+            inImage.data, mask=~(maskarr.astype('bool')))
+        fits.writeto(
+            # re.sub('.*/', '',
+            re.sub('.fits', '_convolved_image' + file_ending + '.fits',
+                   os.path.join(outdir, os.path.basename(filename))),
+            convolved_image, overwrite=True)
+
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
@@ -334,7 +348,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 return_corrnoise=True)
             if suppressrn:
                 inImage.data -= corrnoise
-            elif refine:
+            elif refine and not dc_xtalk_correction:
                 # This is to remove crosstalk: we remove the
                 # contribution of each lenslet to its nearest
                 # neighbors, scaled by crosstalk_scale.  In this case
@@ -344,6 +358,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 # from the coefficients will be added back in later.
                 coefs *= crosstalk_scale
                 inImage.data += crosstalk_scale*(corrnoise - inImage.data)
+                print("Crosstalk scale: {}".format(crosstalk_scale))
         else:
             result = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
@@ -382,11 +397,11 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         #     raise IOError("No key file found in " + calibdir)
         # R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
         # lam = fits.open(keyfilenames[0])[0].data
-        lam_midpts, _ = instrument.wavelengths(
-            instrument.wavelength_range[0].value,
-            instrument.wavelength_range[1].value,
-            R)
-        # lam_midpts = np.linspace(800, 1750, 200)
+        # lam_midpts, _ = instrument.wavelengths(
+        #     instrument.wavelength_range[0].value,
+        #     instrument.wavelength_range[1].value,
+        #     R)
+        lam_midpts = np.linspace(920, 1700, 200)
 
         # n = len(lam_midpts)
         # lam1, lam2 = [lam[0], lam[-1]]

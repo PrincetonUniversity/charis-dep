@@ -23,18 +23,22 @@ from astropy.io import fits
 from scipy import interpolate, ndimage
 from tqdm import tqdm
 
+from pdb import set_trace
+
 try:
     import instruments
     import primitives
     import utr
     from image import Image
     from parallel import Task, Consumer
+    from tools import expected_spectrum, sph_ifs_correct_spectral_xtalk
 except ImportError:
     from charis import instruments
     from charis import primitives
     from charis import utr
     from charis.image import Image
     from charis.parallel import Task, Consumer
+    from charis.tools import expected_spectrum, sph_ifs_correct_spectral_xtalk
 
 log = logging.getLogger('main')
 
@@ -136,7 +140,9 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
 def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
                       order=None, upsample=True, header=None,
                       ncpus=multiprocessing.cpu_count(),
-                      nlam=10, outdir="./", verbose=True):
+                      nlam=10, outdir="./",
+                      stellar_temperature=None,
+                      verbose=True):
     """
     Build the calibration files needed to extract data cubes from
     sequences of CHARIS reads.
@@ -287,13 +293,23 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     out = fits.HDUList(fits.PrimaryHDU(fullsigarr.astype(np.float32)))
     out.writeto(os.path.join(outdir, 'PSFwidths.fits'), overwrite=True)
 
+    lenslet_ix, lenslet_iy = instrument.lenslet_ix, instrument.lenslet_iy
+
+
     #################################################################
     # Compute the PSFlets integrated over small ranges in wavelength,
     # accounting for atmospheric+filter transmission.  Do this
     # calculation in parallel.
     #################################################################
 
-    lenslet_ix, lenslet_iy = instrument.lenslet_ix, instrument.lenslet_iy
+    if stellar_temperature is not None:
+        print('Applying spectrum of {}.'.format(stellar_temperature.__str__()))
+        transmission = expected_spectrum(
+            stellar_temperature=stellar_temperature,
+            wavelength=instrument.transmission[:, 0] * u.nm,
+            transmission=instrument.transmission[:, 1])
+    else:
+        transmission = instrument.transmission
 
     #################################################################
     # Oversampling in x in final calibration frame.  If >1, fitting a
@@ -322,7 +338,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
         tasks.put(Task(i, primitives.make_polychrome,
                        (instrument.lam_endpts[ilam], instrument.lam_endpts[ilam + 1], hires_arrs,
                         lam_hires, tool, allcoef, lenslet_ix, lenslet_iy,
-                        psflet_res, nlam, instrument.transmission)))
+                        psflet_res, nlam, transmission)))
     for i in range(ncpus):
         tasks.put(None)
 

@@ -12,6 +12,8 @@ import logging
 import os
 import re
 
+from pdb import set_trace
+
 import numpy as np
 from astropy.io import fits
 from scipy import interpolate, ndimage, optimize, signal
@@ -130,7 +132,7 @@ class PSFLets(object):
             xarr[:, i] = np.log(lam)**i
 
         for i in range(self.interp_arr.shape[1]):
-            coef = np.linalg.lstsq(xarr, allcoef[:, i])[0]
+            coef = np.linalg.lstsq(xarr, allcoef[:, i], rcond=None)[0]
             self.interp_arr[:, i] = coef
 
     def return_locations_short(self, coef, lenslet_ix, lenslet_iy):
@@ -674,7 +676,7 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
 
     x = np.arange(-1 * int(3 * sig + 1), int(3 * sig + 1) + 1)
     x, y = np.meshgrid(x, x)
-    gaussian = np.exp(old_div(-(x**2 + y**2), (2 * sig**2)))
+    gaussian = np.exp(-(x**2 + y**2) / (2 * sig**2))
 
     if inImage.ivar is None:
         unfiltered = signal.convolve2d(inImage.data, gaussian, mode='same')

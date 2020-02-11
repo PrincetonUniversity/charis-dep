@@ -184,13 +184,13 @@ def make_polychrome(lam1, lam2, hires_arrs, lam_arr, psftool, allcoef,
     x, y = np.meshgrid(x, x)
     npix = hires_arrs[0].shape[2] // upsample
 
-    dloglam = old_div((np.log(lam2) - np.log(lam1)), nlam)
-    loglam = np.log(lam1) + old_div(dloglam, 2.) + np.arange(nlam) * dloglam
+    dloglam = (np.log(lam2) - np.log(lam1)) / nlam
+    loglam = np.log(lam1) + dloglam / 2. + np.arange(nlam) * dloglam
 
     for lam in np.exp(loglam):
 
         if trans is not None:
-            indx = np.where(np.abs(np.log(old_div(trans[:, 0], lam))) < old_div(dloglam, 2.))
+            indx = np.where(np.abs(np.log(trans[:, 0] / lam)) < dloglam / 2.)
             meantrans = np.mean(trans[:, 1][indx])
 
         ################################################################

@@ -1,4 +1,4 @@
-""" Adapted from A. Vigan VLTPF Pipeline
+""" Partially adapted from A. Vigan's VLTPF Pipeline
 Commit: f20dbcc on Feb 6 """
 from __future__ import print_function
 
@@ -14,12 +14,115 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.colors as colors
 
+from astropy.convolution import convolve
 from astropy.io import fits
 from astropy.time import Time
 from astropy.modeling import models, fitting
+from astropy.modeling.models import BlackBody
+
 from matplotlib.backends.backend_pdf import PdfPages
 
 from pdb import set_trace
+
+
+def expected_spectrum(stellar_temperature, wavelength, transmission):
+    """Create normalized stellar spectrum after transmission.
+
+    Parameters
+    ----------
+    stellar_temperature : class:`~astropy.units.Quantity`
+        Temperature of the host star.
+    wavelength : class:`~astropy.units.Quantity`
+        Wavelength of transmission curve.
+    transmission : array_like
+        Total transmission of instrument + atmosphere.
+
+    Returns
+    -------
+    array
+        Black body spectrum multiplied by tranmission.
+
+    """
+
+    bb = BlackBody(temperature=stellar_temperature)
+
+    spectrum = bb(wavelength)
+    spectrum /= np.max(spectrum)
+    transmitted_spectrum = spectrum * transmission
+    transmitted_spectrum /= np.max(transmitted_spectrum)
+
+    transmission_curve = np.vstack(
+        [wavelength.value, transmitted_spectrum.value]).T
+
+    return transmission_curve
+
+
+def sph_ifs_correct_spectral_xtalk(img, mask=None):
+    '''
+    Corrects a IFS frame from the spectral crosstalk
+
+    This routines corrects for the SPHERE/IFS spectral crosstalk at
+    small scales and (optionally) at large scales. This correction is
+    necessary to correct the signal that is "leaking" between
+    lenslets. See Antichi et al. (2009ApJ...695.1042A) for a
+    theoretical description of the IFS crosstalk. Some informations
+    regarding its correction are provided in Vigan et al. (2015), but
+    this procedure still lacks a rigorous description and performance
+    analysis.
+
+    Since the correction of the crosstalk involves a convolution by a
+    kernel of size 41x41, the values at the edges of the frame depend
+    on how you choose to apply the convolution. Current implementation
+    is EDGE_TRUNCATE. In other parts of the image (i.e. far from the
+    edges), the result is identical to original routine by Dino
+    Mesa. Note that in the original routine, the convolution that was
+    coded did not treat the edges in a clean way defined
+    mathematically. The scipy.ndimage.convolve() function offers
+    different possibilities for the edges that are all documented.
+
+    Parameters
+    ----------
+    img : array_like
+        Input IFS science frame
+
+    Returns
+    -------
+    img_corr : array_like
+        Science frame corrected from the spectral crosstalk
+
+    '''
+
+    # definition of the dimension of the matrix
+    sepmax = 20
+    dim    = sepmax*2+1
+    bfac   = 0.727986/1.8
+
+    # defines a matrix to be used around each pixel
+    # (the value of the matrix is lower for greater
+    # distances form the center.
+    x, y = np.meshgrid(np.arange(dim)-sepmax, np.arange(dim)-sepmax)
+    rdist  = np.sqrt(x**2 + y**2)
+    kernel = 1 / (1+rdist**3 / bfac**3)
+    kernel[(np.abs(x) <= 1) & (np.abs(y) <= 1)] = 0
+
+    mask = mask.astype('bool')
+    mask[0:4, :] = False
+    mask[:, 0:4] = False
+    mask[-4:, :] = False
+    mask[:, -4:] = False
+
+    # convolution and subtraction
+    print('> compute convolution')
+    conv = convolve(
+        img, kernel, boundary='fill', fill_value=0.0,
+        nan_treatment='interpolate',
+        normalize_kernel=False, mask=mask, preserve_nan=False,
+        normalization_zero_tol=1e-08)
+    # conv_scipy = ndimage.convolve(img, kernel, mode='reflect')
+    print('> subtract convolution')
+    img_corr = img - conv
+
+    return img_corr, conv
 
 
 def parallatic_angle(ha, dec, geolat):
@@ -194,7 +297,7 @@ def compute_angles(frames_info):
     frames_info['PUPIL OFFSET'] = pupoff + instru_offset
 
     # final derotation value
-    frames_info['DEROT ANGLE'] = frames_info['PARANG'] + pupoff
+    frames_info['DEROT ANGLE'] = frames_info['PARANG'] + instru_offset + pupoff
 
 
 def compute_bad_pixel_map(bpm_files, dtype=np.uint8):
