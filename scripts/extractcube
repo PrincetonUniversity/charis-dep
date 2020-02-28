@@ -35,7 +35,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
             method='lstsq', refine=True, suppressrn=True, fitshift=True,
             flatfield=True, smoothandmask=True,
             minpct=70, fitbkgnd=True, saveresid=False,
-            maxcpus=multiprocessing.cpu_count()):
+            maxcpus=multiprocessing.cpu_count(), outdir='./'):
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
 
@@ -77,6 +77,8 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
     11. fitshift: Fit a subpixel shift in the psflet locations across
                  the detector?  Recommended except for quicklook.  Cost
                  is modest compared to cube extraction
+    12. outdir:  Path to the directory that any output files will be
+                 saved to.
 
     Returns:
     1. datacube: an instance of the Image class containing the data cube.
@@ -161,7 +163,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
-        inImage.write(re.sub('.*/', '', re.sub('.fits', '_ramp.fits', filename)))
+        inImage.write(re.sub('.*/', outdir, re.sub('.fits', '_ramp.fits', filename)))
 
     ################################################################
     # Read in necessary calibration files and extract the data cube.
@@ -235,7 +237,7 @@ def getcube(filename, read_idx=[1, None], calibdir='calibrations/20160408/',
                 maxcpus=maxcpus)
             if saveresid:
                 datacube, resid = result
-                resid.write(re.sub('.*/', '', re.sub('.fits', '_resid.fits', filename)))
+                resid.write(re.sub('.*/', outdir, re.sub('.fits', '_resid.fits', filename)))
             else:
                 datacube = result
 
@@ -316,7 +318,7 @@ if __name__ == "__main__":
     main( filenames, sys.argv[len(sys.argv) - 1] )
     
 
-def main( filenames, initfile):
+def main( filenames, initfile, outdir='./'):
     """
     Top-level task to run extractcube from the python environment. When called from the command line, passes input 
     (after parsing) to this function.
@@ -325,9 +327,15 @@ def main( filenames, initfile):
     1. filenames:   List of file paths and names to the observation
                     fits files to be extracted.
     2. initfile:    Path and name to the init file for extractcube.
+    
+    Optional inputs:
+    3. outdir:      Path to the directory where the output files 
+                    will be saved. Can be path from current working
+                    directory or full path. Default is to save in 
+                    current working directory.
         
 
-    Returns None, writes extracted cube files to working directory.
+    Returns None, writes extracted cube files to directory specified by outdir.
     
     If importing into Python for direct use or automation, recommend using pyximport (for Cython handling) and importing
     module via imp.load_source. Eg:
@@ -339,7 +347,8 @@ def main( filenames, initfile):
     >>> extractcube = imp.load_source('extractcube', '/path/to/charis-dep/scripts/extractcube' )
 
     """
-
+    if not outdir.endswith('/') and outdir != '':
+        outdir += '/'
     
     Config = ConfigParser.ConfigParser()
     Config.read(initfile)
@@ -423,5 +432,5 @@ def main( filenames, initfile):
                        smoothandmask=smoothandmask, flatfield=flatfield,
                        fitshift=fitshift, suppressrn=suppressrn,
                        minpct=minpct, fitbkgnd=fitbkgnd,
-                       saveresid=saveresid)
-        cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', '', filename)))
+                       saveresid=saveresid, outdir=outdir)
+        cube.write(re.sub('.fits', '_cube.fits', re.sub('.*/', outdir, filename)))
