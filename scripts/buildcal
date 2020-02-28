@@ -306,6 +306,8 @@ def main(infilelist, bgfiles, band, lam, upsample, nthreads, outdir="./"):
     
     if not outdir.endswith('/') and outdir != '' :
         outdir += '/'
+    elif outdir == '':
+        outdir = './'
     
     ###############################################################
     # Wavelength limits in nm
