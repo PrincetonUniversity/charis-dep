@@ -312,9 +312,37 @@ if __name__ == "__main__":
 
     if len(filenames) == 0:
         raise ValueError("No matching CHARIS files found by extractcube.")
+    
+    main( filenames, sys.argv[len(sys.argv) - 1] )
+    
 
+def main( filenames, initfile):
+    """
+    Top-level task to run extractcube from the python environment. When called from the command line, passes input 
+    (after parsing) to this function.
+
+    Inputs:
+    1. filenames:   List of file paths and names to the observation
+                    fits files to be extracted.
+    2. initfile:    Path and name to the init file for extractcube.
+        
+
+    Returns None, writes extracted cube files to working directory.
+    
+    If importing into Python for direct use or automation, recommend using pyximport (for Cython handling) and importing
+    module via imp.load_source. Eg:
+    
+    >>> import pyximport
+    >>> pyximport.install(language_level=2)
+    (None, <pyximport.pyximport.PyxImporter object at 0x10bac3d50>)
+    >>> import imp
+    >>> extractcube = imp.load_source('extractcube', '/path/to/charis-dep/scripts/extractcube' )
+
+    """
+
+    
     Config = ConfigParser.ConfigParser()
-    Config.read(sys.argv[len(sys.argv) - 1])
+    Config.read(initfile)
 
     read_0 = Config.getint('Ramp', 'read_0')
     try:
