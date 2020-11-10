@@ -1,30 +1,30 @@
 #!/usr/bin/env python
 
 import sys
+
 import numpy as np
 from astropy.io import fits
-
-from bokeh.io import output_file, show, curdoc
-from bokeh.plotting import figure
-from bokeh.io import curdoc
-from bokeh.layouts import row, column, widgetbox, gridplot
-from bokeh.models import ColumnDataSource, HoverTool, LayoutDOM
+from bokeh.io import curdoc, output_file, show
+from bokeh.layouts import column, gridplot, row, widgetbox
 from bokeh.models import LinearColorMapper  # , LogTicker, ColorBar
-from bokeh.models.widgets import Slider, Panel, Tabs
+from bokeh.models import ColumnDataSource, HoverTool, LayoutDOM
+from bokeh.models.widgets import Panel, Slider, Tabs
+from bokeh.plotting import figure
 from bokeh.transform import linear_cmap
-from bokeh.util.hex import hexbin, axial_to_cartesian
+from bokeh.util.hex import axial_to_cartesian, hexbin
+
 try:
     from image.hex import cartesian_to_axial
 except ImportError:
     from charis.image.hex import cartesian_to_axial
 
-import pandas as pd
+from pdb import set_trace
 
+import pandas as pd
 from astropy.visualization import (AsymmetricPercentileInterval,
                                    ImageNormalize, LinearStretch, LogStretch,
                                    MinMaxInterval, PercentileInterval,
                                    ZScaleInterval)
-from pdb import set_trace
 
 
 def crop_hex_cube(image_cube, i1=None, i2=None, j1=None, j2=None):
@@ -68,36 +68,52 @@ TOOLS = "pan,wheel_zoom,box_zoom,reset,save,box_select,lasso_select"
 
 filename = sys.argv[1]
 hdu_list = fits.open(filename)
-image_cube = hdu_list[1].data
-variance_cube = hdu_list[2].data
+# image_cube = hdu_list[1].data
+image_cube = fits.getdata(filename)
+
+if image_cube.ndim == 2:
+    image_cube = np.expand_dims(image_cube, axis=0)
+N = image_cube.shape[0]
 
 # image_cube_drh = fits.getdata(file_drh)
 X, Y, image_cube = crop_hex_cube(image_cube, i1=16, i2=-16, j1=16, j2=-16)
-_, _, variance_cube = crop_hex_cube(variance_cube, i1=16, i2=-16, j1=16, j2=-16)
+centers = np.vstack([X.ravel(), Y.ravel()]).T
 
 # image_cube2 = fits.getdata(filename2)
 # _, _, image_cube2 = crop_hex_cube(image_cube2, i1=16, i2=-16, j1=16, j2=-16)
 # image_cube2 = flatten_cube(image_cube2)
 
 image_cube = flatten_cube(image_cube)
-variance_cube = flatten_cube(variance_cube)
-
-N = image_cube.shape[0]
-
-centers = np.vstack([X.ravel(), Y.ravel()]).T
 
 mask = image_cube[0] == 0.
 centers = centers[~mask]
 image_cube = image_cube[:, ~mask]
-variance_cube = variance_cube[:, ~mask]
+
+try:
+    variance_cube = hdu_list[2].data
+    if variance_cube.ndim == 2:
+        variance_cube = np.expand_dims(variance_cube, axis=0)
+    _, _, variance_cube = crop_hex_cube(variance_cube, i1=16, i2=-16, j1=16, j2=-16)
+    variance_cube = flatten_cube(variance_cube)
+    variance_cube = variance_cube[:, ~mask]
+    norm_variance = ImageNormalize(variance_cube[3], interval=ZScaleInterval())
+except:
+    variance_cube = None
+hdu_list.close()
+
+
 # image_cube2 = image_cube2[:, ~mask]
 
 q, r = cartesian_to_axial(
     centers[:, 0], centers[:, 1], size=1 / np.sqrt(3), orientation="pointytop", aspect_scale=1)
 # df = pd.DataFrame(
 # data=dict(q=q, r=r, counts=image_slice.flatten(), x=centers[:, 0], y=centers[:, 1]))
-source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :],
-                                    variance=variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
+if variance_cube is None:
+    source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :],
+                                        variance=np.zeros_like(image_cube[0, :]), x=centers[:, 0], y=centers[:, 1]))
+else:
+    source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :],
+                                        variance=variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
 # source2 = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube2[0, :],
 #                                      variance=variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
 
@@ -114,8 +130,7 @@ left.grid.visible = False
 # right.grid.visible = False
 # right.sizing_mode = 'scale_width'
 
-norm_counts = ImageNormalize(image_cube[3], interval=ZScaleInterval())
-norm_variance = ImageNormalize(variance_cube[3], interval=ZScaleInterval())
+norm_counts = ImageNormalize(image_cube[0], interval=ZScaleInterval())
 # norm_counts2 = ImageNormalize(image_cube2[0], interval=ZScaleInterval())
 
 # mask_drh = image_cube_drh[10] != 0.
@@ -139,41 +154,38 @@ a = left.hex_tile(
 # b = right.image(image=[image_cube_drh[10]], x=0, y=0, dw=291, dh=291,
 #                 color_mapper=LinearColorMapper(palette='Inferno256', low=norm_drh.vmin, high=norm_drh.vmax))
 
-slider = Slider(start=0, end=(N - 1), value=0, step=1, title="Wavelength")
-# slider2 = Slider(start=0, end=(N - 1), value=0, step=1, title="Wavelength")
+if N > 1:
+    slider = Slider(start=0, end=(N - 1), value=0, step=1, title="Wavelength")
+    # slider2 = Slider(start=0, end=(N - 1), value=0, step=1, title="Wavelength")
 
+    def update(attr, old, new):
+        source.data['counts'] = image_cube[int(slider.value), :]
+        norm_counts = ImageNormalize(image_cube[int(slider.value)], interval=ZScaleInterval())
 
-def update(attr, old, new):
-    source.data['counts'] = image_cube[int(slider.value), :]
-    norm_counts = ImageNormalize(image_cube[int(slider.value)], interval=ZScaleInterval())
+        # source.data['variance'] = variance_cube[int(slider.value), :]
+        # norm_variance = ImageNormalize(variance_cube[slider_value], interval=ZScaleInterval())
 
-    # source.data['variance'] = variance_cube[int(slider.value), :]
-    # norm_variance = ImageNormalize(variance_cube[slider_value], interval=ZScaleInterval())
+        # source2.data['counts'] = image_cube2[int(slider.value), :]
+        # norm_counts2 = ImageNormalize(image_cube2[slider_value], interval=ZScaleInterval())
 
-    # source2.data['counts'] = image_cube2[int(slider.value), :]
-    # norm_counts2 = ImageNormalize(image_cube2[slider_value], interval=ZScaleInterval())
+        a.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts.vmin, norm_counts.vmax)
+        # b.glyph.fill_color = linear_cmap('variance', 'Inferno256', norm_variance.vmin, norm_variance.vmax)
+        # b.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts2.vmin, norm_counts2.vmax)
 
-    a.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts.vmin, norm_counts.vmax)
-    # b.glyph.fill_color = linear_cmap('variance', 'Inferno256', norm_variance.vmin, norm_variance.vmax)
-    # b.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts2.vmin, norm_counts2.vmax)
+    # def update2(attr, old, new):
+    #
+    #     source2.data['counts'] = image_cube2[int(slider.value), :]
+    #     norm_counts2 = ImageNormalize(image_cube2[slider_value], interval=ZScaleInterval())
+    #
+    #     # source.data['variance'] = variance_cube[int(slider.value), :]
+    #     # norm_variance = ImageNormalize(variance_cube[slider_value], interval=ZScaleInterval())
+    #
+    #     # a.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts.vmin, norm_counts.vmax)
+    #     # b.glyph.fill_color = linear_cmap('variance', 'Inferno256', norm_variance.vmin, norm_variance.vmax)
+    #     b.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts2.vmin, norm_counts2.vmax)
 
-
-# def update2(attr, old, new):
-#
-#     source2.data['counts'] = image_cube2[int(slider.value), :]
-#     norm_counts2 = ImageNormalize(image_cube2[slider_value], interval=ZScaleInterval())
-#
-#     # source.data['variance'] = variance_cube[int(slider.value), :]
-#     # norm_variance = ImageNormalize(variance_cube[slider_value], interval=ZScaleInterval())
-#
-#     # a.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts.vmin, norm_counts.vmax)
-#     # b.glyph.fill_color = linear_cmap('variance', 'Inferno256', norm_variance.vmin, norm_variance.vmax)
-#     b.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts2.vmin, norm_counts2.vmax)
-
-
-slider.on_change('value', update)
-# slider2.on_change('value', update2)
-
+    slider.on_change('value', update)
+    # slider2.on_change('value', update2)
 
 hover = HoverTool(tooltips=[
     ("count", "@counts"),
@@ -187,8 +199,11 @@ left.add_tools(hover)
 
 # p = gridplot([[left, right],
 #               [slider, slider2]], plot_width=750, plot_height=750)
-p = gridplot([[left, None],
-              [slider, None]], plot_width=750, plot_height=750)
+if N > 1:
+    p = gridplot([[left, None],
+                  [slider, None]], plot_width=750, plot_height=750)
+else:
+    p = left
 # p = layout(t([left, slider])
 # p.sizing_mode = 'scale_width'
 curdoc().add_root(p)

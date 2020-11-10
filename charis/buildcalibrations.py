@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
-from builtins import input
-from builtins import str
-from builtins import range
 import copy
 import glob
 import logging
@@ -15,6 +12,8 @@ import re
 import shutil
 import sys
 import time
+from builtins import input, range, str
+from pdb import set_trace
 
 import numpy as np
 import pkg_resources
@@ -23,22 +22,18 @@ from astropy.io import fits
 from scipy import interpolate, ndimage
 from tqdm import tqdm
 
-from pdb import set_trace
-
 try:
     import instruments
     import primitives
     import utr
     from image import Image
-    from parallel import Task, Consumer
-    from tools import expected_spectrum, sph_ifs_correct_spectral_xtalk
+    from parallel import Consumer, Task
+    from tools import expected_spectrum
 except ImportError:
-    from charis import instruments
-    from charis import primitives
-    from charis import utr
+    from charis import instruments, primitives, utr
     from charis.image import Image
-    from charis.parallel import Task, Consumer
-    from charis.tools import expected_spectrum, sph_ifs_correct_spectral_xtalk
+    from charis.parallel import Consumer, Task
+    from charis.tools import expected_spectrum
 
 log = logging.getLogger('main')
 
@@ -126,12 +121,17 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
                             instrument_name=instrument.instrument_name)
 
     elif instrument.instrument_name == 'SPHERE':
+        readnoise = 6.
         for filename in infilelist:
             data = fits.getdata(filename)
             if len(data.shape) == 3:
                 data = np.sort(data.astype('float64'), axis=0)
                 data = np.mean(data[1:-1], axis=0) * mask
-            inImage = Image(data=data, ivar=mask.astype('float64'),
+                var = np.abs(data) * instrument.gain + readnoise**2
+                var[mask == 0] = 1e20
+                ivar = 1. / var
+
+            inImage = Image(data=data, ivar=ivar,
                             instrument_name=instrument.instrument_name)
 
     return inImage, hdr
@@ -295,7 +295,6 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
 
     lenslet_ix, lenslet_iy = instrument.lenslet_ix, instrument.lenslet_iy
 
-
     #################################################################
     # Compute the PSFlets integrated over small ranges in wavelength,
     # accounting for atmospheric+filter transmission.  Do this
@@ -395,9 +394,12 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     out = fits.HDUList(fits.PrimaryHDU(None, header))
     out.writeto(os.path.join(outdir, 'cal_params.fits'), overwrite=True)
 
-    shutil.copy(os.path.join(calibdir, 'lensletflat.fits'), os.path.join(outdir, 'lensletflat.fits'))
+    shutil.copy(os.path.join(calibdir, 'lensletflat.fits'),
+                os.path.join(outdir, 'lensletflat.fits'))
     shutil.copy(os.path.join(calibdir, 'background_scaling_mask.fits'),
-        os.path.join(outdir, 'background_scaling_mask.fits'))
+                os.path.join(outdir, 'background_scaling_mask.fits'))
+    shutil.copy(os.path.join(calibdir, 'background.fits'),
+                os.path.join(outdir, 'background.fits'))
 
     for filename in ['mask.fits', 'pixelflat.fits']:
         shutil.copy(os.path.join(calibdir, filename), os.path.join(outdir, filename))

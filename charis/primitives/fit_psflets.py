@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 
-from __future__ import absolute_import
-from __future__ import division
-from builtins import range
-from past.utils import old_div
+from __future__ import absolute_import, division
+
+import json
 import logging
 import multiprocessing
-import time
 import os
-import json
-
+import time
+from builtins import range
 from pdb import set_trace
 
 import numpy as np
 from astropy.io import fits
+from charis.image.image import Image
+from charis.image.image_geometry import (deflatten_cube, flatten_cube,
+                                         mad_std_hex_cube,
+                                         median_filter_hex_cube)
+from charis.primitives import matutils
+from past.utils import old_div
 from scipy import interpolate, ndimage, signal, stats
 
-from charis.primitives import matutils
-from charis.image.image import Image
-from charis.image.image_geometry import (
-    median_filter_hex_cube, mad_std_hex_cube,
-    flatten_cube, deflatten_cube)
+# from trap.embed_shell import ipsh
 
 log = logging.getLogger('main')
 
@@ -73,9 +73,9 @@ def _smoothandmask(datacube, good):
     return datacube
 
 
-def _smoothandmask_hexgeometry(datacube, good, neighbour_indices):
+def _smoothandmask_hexgeometry(datacube, good, neighbour_indices, mask_negative=False):
     """
-    Set bad spectral measurements to an inverse variance of zero.  The
+    Set bad spectral measurements to an inverse variance of zero. The
     threshold for effectively discarding data is 20 robust standard deviations
     separation from the median of variance of adjacent hexagons or 5 robust
     standard deviations from the median of adjacent flux values.
@@ -99,10 +99,14 @@ def _smoothandmask_hexgeometry(datacube, good, neighbour_indices):
 
     """
 
+    # ipsh()
     flat_data = flatten_cube(datacube.data)
     flat_ivar = flatten_cube(datacube.ivar)
 
-    less_than_zero = flat_data < 0.
+    if mask_negative:
+        less_than_zero = flat_data < 0.
+    else:
+        less_than_zero = np.zeros_like(flat_data).astype('bool')
 
     smoothed_data = median_filter_hex_cube(flat_data, neighbour_indices)
     smoothed_ivar = median_filter_hex_cube(flat_ivar, neighbour_indices)
@@ -122,7 +126,8 @@ def _smoothandmask_hexgeometry(datacube, good, neighbour_indices):
 
     flat_ivar[mask] = 0.
     flat_data[mask] = smoothed_data[mask]
-    flat_data[less_than_zero] = 0.
+    if mask_negative:
+        flat_data[less_than_zero] = 0.
 
     data = deflatten_cube(flat_data)
     ivar = deflatten_cube(flat_ivar)
@@ -764,7 +769,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
             else:
                 coefs += dcoefs
 
-            #if returnresid:
+            # if returnresid:
             if returnresid or return_corrnoise:
                 data[:] = im.data - corrnoise
                 for i in range(len(psflets)):
@@ -801,13 +806,19 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     if flat is not None:
         datacube.data /= flat + 1e-10
         datacube.ivar *= flat**2
+        badlenslets = np.logical_or(flat == 0., flat == 1.)
+    else:
+        badlenslets = np.zeros(datacube.data.shape[-2], datacube.data.shape[-1])
 
     if smoothandmask:
+        # ipsh()
         good = np.reshape(goodint, tuple(list(coefshape)[1:]))
         if instrument.instrument_name == 'CHARIS':
             datacube = _smoothandmask(
                 datacube, good)
         elif instrument.instrument_name == 'SPHERE':
+            datacube.ivar[:, badlenslets] = 0
+            good[badlenslets] = 0
             neighbour_indices_path = os.path.join(
                 os.path.split(
                     instrument.calibration_path)[0], 'neighbour_indices.json')
@@ -815,10 +826,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
                 neighbour_indices = json.load(json_data)
 
             datacube = _smoothandmask_hexgeometry(datacube,
-                                                  good, neighbour_indices)
-
-    # if smoothandmask:
-    #     datacube = _smoothandmask(datacube, np.reshape(goodint, tuple(list(coefshape)[1:])))
+                                                  good,
+                                                  neighbour_indices)
 
     datacube.header['maskivar'] = (smoothandmask, 'Set poor ivar to 0, smoothed I for cosmetics')
 
@@ -832,7 +841,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
         return datacube
 
 
-def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=7, flat=None, sig=0.7,
+def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, flat=None, sig=0.7,
                    coefs_in=None, psflets=None, lampsflets=None,
                    smoothandmask=True, header=fits.PrimaryHDU().header,
                    maxcpus=multiprocessing.cpu_count()):
@@ -918,16 +927,14 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=7, flat=None, sig=0.
     if coefs_in is not None:
         nlam_psflets = min(psflets.shape[0], len(lampsflets))
         coefs, tot_ivar = matutils.optext_hybrid(data, ivar,
-                                    lenslet_ix, lenslet_iy, sig,
-                                    coefs_in, psflets, np.log(lampsflets),
-                                    nlam_psflets, loglam_indx, nlam, loglam,
-                                    Nmax, delt_x=delt_x, maxproc=maxcpus)
+                                                 lenslet_ix, lenslet_iy, sig,
+                                                 coefs_in, psflets, np.log(lampsflets),
+                                                 nlam_psflets, loglam_indx, nlam, loglam,
+                                                 Nmax, delt_x=delt_x, maxproc=maxcpus)
     else:
         coefs, tot_ivar = matutils.optext(data, ivar, lenslet_ix, lenslet_iy, sig,
                                           loglam_indx, nlam, loglam, Nmax,
                                           delt_x=delt_x, maxproc=maxcpus)
-
-
 
     if np.median(sig) < 10:
         cubemode = 'Optimal Extraction'
@@ -948,7 +955,7 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=7, flat=None, sig=0.
 
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)
 
-    if flat is not None:
+    if flat is not None and instrument.instrument_name == 'CHARIS':
         datacube.data /= flat + 1e-10
         datacube.ivar *= flat**2
 

@@ -5,22 +5,20 @@
 #########################################################################
 
 from __future__ import print_function
+from charis import extractcube
+import numpy as np
+from builtins import range
+import time
+import sys
+import re
+import os
+import multiprocessing
+import glob
+import configparser
 
 from future import standard_library
+
 standard_library.install_aliases()
-
-from builtins import range
-import os
-import configparser
-import glob
-import multiprocessing
-import re
-import sys
-import time
-
-import numpy as np
-
-from charis import extractcube
 
 
 if __name__ == "__main__":
@@ -56,10 +54,22 @@ if __name__ == "__main__":
         noisefac = Config.getfloat('Ramp', 'noisefac')
     except:
         noisefac = 0
-
-    saveramp = Config.getboolean('Ramp', 'saveramp')
-    bgsub = Config.getboolean('Calib', 'bgsub')
-    mask = Config.getboolean('Calib', 'mask')
+    try:
+        saveramp = Config.getboolean('Ramp', 'saveramp')
+    except:
+        saveramp = True
+    try:
+        bgsub = Config.getboolean('Calib', 'bgsub')
+    except:
+        bgsub = True
+    try:
+        mask = Config.getboolean('Calib', 'mask')
+    except:
+        mask = True
+    try:
+        fixbadpixels = Config.getboolean('Calib', 'fixbadpixels')
+    except:
+        fixbadpixels = False
     try:
         flatfield = Config.getboolean('Calib', 'flatfield')
     except:
@@ -79,7 +89,7 @@ if __name__ == "__main__":
     try:
         crosstalk_scale = Config.getfloat('Extract', 'crosstalkscale')
     except:
-        crosstalk_scale = 0.8
+        crosstalk_scale = 1.0
     try:
         dc_xtalk_correction = Config.getboolean('Extract', 'dcxtalkcorrection')
     except:
@@ -124,8 +134,8 @@ if __name__ == "__main__":
     for filename in filenames:
         _ = extractcube.getcube(
             filename=filename, read_idx=read_idx, bgsub=bgsub,
-            bgpath=None,
-            mask=mask, gain=gain, noisefac=noisefac,
+            bgpath=None, mask=mask, fixbadpixels=fixbadpixels,
+            gain=gain, noisefac=noisefac,
             saveramp=saveramp, refine=refine,
             crosstalk_scale=crosstalk_scale,
             dc_xtalk_correction=dc_xtalk_correction,
@@ -135,7 +145,6 @@ if __name__ == "__main__":
             fitshift=fitshift, suppressrn=suppressrn,
             minpct=minpct, fitbkgnd=fitbkgnd,
             saveresid=saveresid)
-
 
     # for filename in filenames:
     #     for read_idx in range(ndit):

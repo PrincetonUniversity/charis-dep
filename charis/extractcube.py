@@ -6,23 +6,25 @@
 
 from __future__ import print_function
 
-from future import standard_library
-standard_library.install_aliases()
-from builtins import range
-import os
-import configparser
 import copy
 import glob
+import json
 import logging
 import multiprocessing
-import json
+import os
 import re
-import sys
-import time
+from pdb import set_trace
 
+import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 from astropy.stats import mad_std, sigma_clipped_stats
+from future import standard_library
+# from trap.embed_shell import ipsh
+# from trap.plotting_tools import plot_scale
+
+standard_library.install_aliases()
+
 
 try:
     import instruments
@@ -32,21 +34,19 @@ try:
     from image.image_geometry import resample_image_cube
     from tools import sph_ifs_correct_spectral_xtalk
 except ImportError:
-    from charis import instruments
-    from charis import primitives
-    from charis import utr
+    import charis
+    from charis import instruments, primitives, utr
     from charis.image import Image
     from charis.image.image_geometry import resample_image_cube
-    from charis.tools import sph_ifs_correct_spectral_xtalk
-    import charis
+    from charis.tools import sph_ifs_correct_spectral_xtalk, sph_ifs_fix_badpix
 
-from pdb import set_trace
 
 log = logging.getLogger('main')
 
 
 def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
-            bgsub=True, bgpath=None, mask=True, gain=2, noisefac=0, saveramp=False, R=30,
+            bgsub=True, bgpath=None, mask=True, fixbadpixels=False,
+            gain=2, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, crosstalk_scale=0.8,
             dc_xtalk_correction=False,
             suppressrn=True, fitshift=True,
@@ -177,36 +177,52 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                                maxcpus=maxcpus)
         file_ending = ''
     elif instrument.instrument_name == 'SPHERE':
-        data = fits.getdata(filename)
+        data = fits.getdata(filename).astype('float64')
+        readnoise = 6
 
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
-            ivar = maskarr.astype('float64')
+        if flatfield:
+            pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
+            good_pixels = np.logical_and(pixelflat > 0.5, pixelflat < 1.5)
+            maskarr[~good_pixels] = 0
+            # ivar = maskarr.astype('float64')
+
+        nonlinear_threshold = 25000
+        nonlinear = data > nonlinear_threshold
+
         if data.ndim == 3:
-            # var = np.std(data.astype('float64'), axis=0)**2
-            # var = np.sqrt(np.mean(data, axis=0))
-            # const_term = np.ones_like(var, dtype='float64') * 0.1**2
-            # var += const_term
-            # var_mask = var > 0
-            # var[np.isnan(var)] = 1e30
-            ivar = np.ones(data[0].shape, dtype='float64')
-            # ivar = 1. / var
-            ivar *= maskarr
-            # set_trace()
+            var = np.abs(data) * instrument.gain + readnoise**2
+            var[:, maskarr == 0] = 1e20
+            var[nonlinear] = 1e20
+            ivar = 1. / var
+            # ivar = np.ones_like(data, dtype='float64')
+
             if read_idx is not None and read_idx != [1, None]:
-                data = data[read_idx].astype('float64') * maskarr
+                data = data[read_idx] * maskarr
+                ivar = ivar[read_idx]
                 file_ending = '_DIT_{:03d}'.format(read_idx)
                 print(file_ending)
             else:
-                data = np.median(data.astype('float64'), axis=0) * maskarr
+                if len(data) > 1:
+                    data = np.mean(data, axis=0) * maskarr
+                    ivar = np.mean(ivar, axis=0)
+                else:
+                    data = data[0]
+                    ivar = ivar[0]
                 file_ending = ''
         elif data.ndim == 2:
+            # ivar = np.ones(data.shape, dtype='float64')
+            # ivar *= maskarr
             data = data * maskarr
-            ivar = np.ones(data.shape, dtype='float64')
-            ivar *= maskarr
+            var = np.abs(data) * instrument.gain + readnoise**2
+            var[maskarr == 0] = 1e20
+            var[nonlinear] = 1e20
+            ivar = 1. / var
             file_ending = ''
         else:
             raise ValueError("Data must be images or cubes.")
+
         inImage = Image(data=data, ivar=ivar, header=header,
                         instrument_name=instrument.instrument_name)
 
@@ -251,20 +267,29 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
             inImage.data -= bg
             # inImage.data[inImage.data < 0.] = 1.
-            #fits.writeto('testtest.fits', inImage.data, overwrite=True)
+            # fits.writeto('testtest.fits', inImage.data, overwrite=True)
         except:
             bgsub = False
             log.warn('No valid background image found in ' + calibdir)
 
     if dc_xtalk_correction is True:
+        bpm = np.logical_not(
+            fits.getdata(os.path.join(calibdir, 'mask.fits')).astype('bool'))
+        # if instrument.instrument_name == 'SPHERE' and flatfield:
+        #     pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
+        #     good_pixels = pixelflat > 0.
+        #     inImage.data[good_pixels] /= pixelflat[good_pixels]
+        #     inImage.ivar[good_pixels] *= pixelflat[good_pixels]**2
+        #     print("Divide by flat for good pixels")
+        print('Fixing bad pixels')
+        inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+
         inImage.data, convolved_image = sph_ifs_correct_spectral_xtalk(
             inImage.data, mask=~(maskarr.astype('bool')))
         fits.writeto(
-            # re.sub('.*/', '',
             re.sub('.fits', '_convolved_image' + file_ending + '.fits',
                    os.path.join(outdir, os.path.basename(filename))),
             convolved_image, overwrite=True)
-
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
@@ -330,8 +355,10 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         good = keyfile[3].data
         keyfile.close()
 
-        if flatfield:
-            psflets = psflets * fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
+        if flatfield:  # and instrument.instrument_name == 'CHARIS':
+            # Only apply flat field to pixels with non-anomalous flat field values
+            good_pixels = maskarr != 0
+            psflets[:, good_pixels] = psflets[:, good_pixels] * pixelflat[good_pixels]
 
         ############################################################
         # Do an initial least-squares fit to remove correlated read
@@ -356,8 +383,9 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 # a mixture of the residuals and the data, with the
                 # mixture scaled by crosstalk_scale; the components
                 # from the coefficients will be added back in later.
-                coefs *= crosstalk_scale
-                inImage.data += crosstalk_scale*(corrnoise - inImage.data)
+                if crosstalk_scale > 0:
+                    coefs *= crosstalk_scale
+                    inImage.data += crosstalk_scale*(corrnoise - inImage.data)
                 print("Crosstalk scale: {}".format(crosstalk_scale))
         else:
             result = primitives.fit_spectra(
@@ -397,11 +425,15 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         #     raise IOError("No key file found in " + calibdir)
         # R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
         # lam = fits.open(keyfilenames[0])[0].data
-        # lam_midpts, _ = instrument.wavelengths(
+        lam_midpts, _ = instrument.wavelengths(
+            instrument.wavelength_range[0].value,
+            instrument.wavelength_range[1].value,
+            R)
+        # lam_midpts = np.linspace(
         #     instrument.wavelength_range[0].value,
         #     instrument.wavelength_range[1].value,
-        #     R)
-        lam_midpts = np.linspace(920, 1700, 200)
+        #     39)
+        # lam_midpts = np.linspace(950, 1650, 50)
 
         # n = len(lam_midpts)
         # lam1, lam2 = [lam[0], lam[-1]]
@@ -411,6 +443,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         try:
             sig = fits.getdata(os.path.join(calibdir, 'PSFwidths.fits'))
         except IOError:
+            print("Failed to load PSFwidths.fits. Defaulting to standard PSF width.")
             sig = 0.7
 
         if method == 'apphot3' or method == 'apphot5':
@@ -420,10 +453,11 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             else:
                 delt_x = 5
         else:
-            delt_x = 5 # 7
+            delt_x = 5
 
-        if flatfield:
+        if flatfield:  # and instrument.instrument_name == 'CHARIS':
             pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
+            # psflets[:, good_pixels] = psflets[:, good_pixels] * pixelflat[good_pixels]
             inImage.data /= pixelflat + 1e-20
             inImage.ivar *= pixelflat**2
 
@@ -435,11 +469,13 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             _coefs, _psflets, _lam_psflets = None, None, None
 
         datacube = primitives.optext_spectra(inImage, loc, lam_midpts,
-                                        instrument=instrument, delt_x=delt_x,
-                                        coefs_in=_coefs, psflets=_psflets,
-                                        lampsflets=_lam_psflets,
-                                        sig=sig, header=inImage.header,
-                                        flat=lensletflat, maxcpus=maxcpus)
+                                             instrument=instrument, delt_x=delt_x,
+                                             coefs_in=_coefs, psflets=_psflets,
+                                             lampsflets=_lam_psflets,
+                                             sig=sig, header=inImage.header,
+                                             flat=lensletflat,
+                                             smoothandmask=smoothandmask,
+                                             maxcpus=maxcpus)
 
     if datacube is None:
         raise ValueError("Datacube extraction method " + method + " not implemented.")
@@ -463,7 +499,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                    xpixscale=-0.0164 / 3600., ypixscale=0.0164 / 3600.,
                    extrarot=rot_angle)
 
-    if instrument.instrument_name == 'SPHERE' and resample == True:
+    if instrument.instrument_name == 'SPHERE' and resample:
         clip_info_file = os.path.join(
             os.path.split(instrument.calibration_path)[0],
             'hexagon_mapping_calibration.json')

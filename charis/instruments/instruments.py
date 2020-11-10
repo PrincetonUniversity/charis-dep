@@ -1,8 +1,8 @@
 from __future__ import print_function
-# from abc import ABCMeta, abstractmethod, abstractproperty
-from builtins import input
-from builtins import object
+
 import os
+# from abc import ABCMeta, abstractmethod, abstractproperty
+from builtins import input, object
 
 import numpy as np
 import pkg_resources

@@ -2,27 +2,24 @@
 Commit: f20dbcc on Feb 6 """
 from __future__ import print_function
 
-from builtins import zip
-from builtins import range
-import pandas as pd
-import numpy as np
+from builtins import range, zip
+from pdb import set_trace
+
 import astropy.coordinates as coord
 import astropy.units as units
-import scipy.ndimage as ndimage
 import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import matplotlib.colors as colors
-
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import scipy.ndimage as ndimage
 from astropy.convolution import convolve
 from astropy.io import fits
-from astropy.time import Time
-from astropy.modeling import models, fitting
+from astropy.modeling import fitting, models
 from astropy.modeling.models import BlackBody
-
+from astropy.time import Time
 from matplotlib.backends.backend_pdf import PdfPages
-
-from pdb import set_trace
 
 
 def expected_spectrum(stellar_temperature, wavelength, transmission):
@@ -94,14 +91,14 @@ def sph_ifs_correct_spectral_xtalk(img, mask=None):
 
     # definition of the dimension of the matrix
     sepmax = 20
-    dim    = sepmax*2+1
-    bfac   = 0.727986/1.8
+    dim = sepmax*2+1
+    bfac = 0.727986/1.8
 
     # defines a matrix to be used around each pixel
     # (the value of the matrix is lower for greater
     # distances form the center.
     x, y = np.meshgrid(np.arange(dim)-sepmax, np.arange(dim)-sepmax)
-    rdist  = np.sqrt(x**2 + y**2)
+    rdist = np.sqrt(x**2 + y**2)
     kernel = 1 / (1+rdist**3 / bfac**3)
     kernel[(np.abs(x) <= 1) & (np.abs(y) <= 1)] = 0
 
@@ -123,6 +120,97 @@ def sph_ifs_correct_spectral_xtalk(img, mask=None):
     img_corr = img - conv
 
     return img_corr, conv
+
+
+def sph_ifs_fix_badpix(img, bpm):
+    '''
+    Clean the bad pixels in an IFU image
+
+    Extremely effective routine to remove bad pixels in IFS data. It
+    goes through all bad pixels and fit a line beween the first good
+    pixels encountered along the same column as the bad pixel,
+    i.e. along the spectral axis of each micro-spectrum. Works very
+    well because as zeroth-order the spectrum is very smooth and can
+    be approximated by a line over one (or a few) bad pixels.
+
+    Parameters
+    ----------
+    img : array_like
+        The image to be cleaned
+
+    bpm : array_like
+        Bad pixel map
+
+    logger : logHandler object
+        Log handler for the reduction. Default is root logger
+
+    Returns
+    -------
+    img_clean : array_like
+        The cleaned image
+    '''
+
+    # copy the original image
+    # print('> copy input image')
+    img_clean = img.copy()
+
+    # extension over which the good pixels will be looked for along
+    # the spectral direction starting from the bad pixel
+    ext = 10
+
+    # remove edges in bad pixel map
+    bpm[:ext+1, :] = 0
+    bpm[:, :ext+1] = 0
+    bpm[-ext-1:, :] = 0
+    bpm[:, -ext-1:] = 0
+
+    # use NaN for identifying bad pixels directly in the image
+    img_clean[bpm == 1] = np.nan
+
+    # static indices for searching good pixels and for the linear fit
+    idx = np.arange(2*ext+1)
+    idx_lh = np.arange(ext)+1
+
+    # loop over bad pixels
+    # print('> loop over bad pixels')
+    badpix = np.where(bpm == 1)
+    for y, x in zip(badpix[0], badpix[1]):
+        # extract sub-region along the spectral direction
+        sub = img_clean[y-ext:y+ext+1, x]
+
+        # sub-regions "above" and "below" the bad pixel
+        sub_low = np.flip(img_clean[y-ext:y, x], axis=0)
+        sub_hig = img_clean[y+1:y+1+ext, x]
+
+        # if any of the two is completely bad: skip
+        # occurs only in the vignetted areas
+        if np.all(np.isnan(sub_low)) or np.all(np.isnan(sub_hig)):
+            continue
+
+        # indices of the first good pixels "above" and "below" the bad pixel
+        imin_low = idx_lh[~np.isnan(sub_low)].min()
+        imin_hig = idx_lh[~np.isnan(sub_hig)].min()
+
+        # linear fit
+        xl = idx[ext-imin_low]
+        yl = sub[ext-imin_low]
+
+        xh = idx[ext+imin_hig]
+        yh = sub[ext+imin_hig]
+
+        a = (yh - yl) / (xh - xl)
+        b = yh - a*xh
+
+        fit = a*idx + b
+
+        # replace bad pixel with the fit
+        img_clean[y-imin_low+1:y+imin_hig, x] = fit[ext-imin_low+1:ext+imin_hig]
+
+    # put back original value in regions that could not be corrected
+    mask = np.isnan(img_clean)
+    img_clean[mask] = img[mask]
+
+    return img_clean
 
 
 def parallatic_angle(ha, dec, geolat):
