@@ -10,6 +10,8 @@ import numpy as np
 from astropy.io import fits
 from scipy import linalg, ndimage, signal
 
+from trap.embed_shell import ipsh
+
 from . import matutils
 
 

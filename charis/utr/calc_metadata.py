@@ -1,26 +1,23 @@
 from __future__ import division
-from builtins import str
-from past.utils import old_div
+
+import collections
 import re
 import time
-import collections
 import warnings
-
+from builtins import str
 
 import numpy as np
-
 import pandas as pd
-
 from astropy import coordinates as coord
 from astropy import units as u
 from astropy.io import fits
 from astropy.table import Table
 from astropy.time import Time
-
 from astropy.utils import iers
-iers.Conf.iers_auto_url.set('ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all')
+from charis.tools import compute_angles, compute_times
+from past.utils import old_div
 
-from charis.tools import compute_times, compute_angles
+iers.Conf.iers_auto_url.set('ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all')
 
 
 def get_headerval_with_exeption(header, keyword, default_val):
@@ -445,19 +442,20 @@ def metadata_SPHERE(filename, dit_idx=None, header=None, clear=True, version=Non
 
     if dit_idx == [1, None]:
         dit_idx = 1
-    try:
-        compute_times(frames_info, idx=dit_idx)
-        compute_angles(frames_info)
+    # try:
 
-        header['PARANG START'] = (frames_info['PARANG START'][0], '')
-        header['PARANG'] = (frames_info['PARANG'][0], '')
-        header['PARANG END'] = (frames_info['PARANG END'][0], '')
-        header['PUPIL OFFSET'] = (frames_info['PUPIL OFFSET'][0], '')
-        header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
-        header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
-        header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
-    except:
-        print('Unable to compute parallactic angle for {}'.format(filename))
+    compute_times(frames_info, idx=dit_idx)
+    compute_angles(frames_info)
+
+    header['PARANG START'] = (frames_info['PARANG START'][0], '')
+    header['PARANG'] = (frames_info['PARANG'][0], '')
+    header['PARANG END'] = (frames_info['PARANG END'][0], '')
+    header['PUPIL OFFSET'] = (frames_info['PUPIL OFFSET'][0], '')
+    header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
+    header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
+    header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
+    # except:
+    #     print('Unable to compute parallactic angle for {}'.format(filename))
 
     return header
 

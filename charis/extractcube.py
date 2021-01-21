@@ -20,7 +20,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.stats import mad_std, sigma_clipped_stats
 from future import standard_library
-# from trap.embed_shell import ipsh
+from trap.embed_shell import ipsh
 # from trap.plotting_tools import plot_scale
 
 standard_library.install_aliases()
@@ -45,10 +45,12 @@ log = logging.getLogger('main')
 
 
 def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
-            bgsub=True, bgpath=None, mask=True, fixbadpixels=False,
-            gain=2, noisefac=0, saveramp=False, R=30,
+            bgsub=True, bgpath=None, bg_scaling_without_mask=False,
+            mask=True, fixbadpixels=False,
+            gain=2, nonlinear_threshold=25000, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, crosstalk_scale=0.8,
             dc_xtalk_correction=False,
+            linear_wavelength=False,
             suppressrn=True, fitshift=True,
             flatfield=True, smoothandmask=True,
             minpct=70, fitbkgnd=True, saveresid=False,
@@ -188,8 +190,10 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             maskarr[~good_pixels] = 0
             # ivar = maskarr.astype('float64')
 
-        nonlinear_threshold = 25000
-        nonlinear = data > nonlinear_threshold
+        if nonlinear_threshold is not None:
+            nonlinear = data > nonlinear_threshold
+        else:
+            nonlinear = np.zeros([data.shape[-2], data.shape[-1]]).astype('bool')
 
         if data.ndim == 3:
             var = np.abs(data) * instrument.gain + readnoise**2
@@ -227,23 +231,26 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                         instrument_name=instrument.instrument_name)
 
     if bgsub:
-        try:
-            if bgpath is None:
-                hdulist = fits.open(os.path.join(calibdir, 'background.fits'))
-            else:
-                hdulist = fits.open(bgpath)
-            bg = hdulist[0].data
-            if bg is None:
-                bg = hdulist[1].data
-            hdulist.close()
-            if len(bg.shape) == 3:
-                bg = np.median(bg, axis=0)
-            if mask:
-                bg *= maskarr
-            # print("bg shape: {}".format(bg.shape))
+        # try:
+        if bgpath is None:
+            hdulist = fits.open(os.path.join(calibdir, 'background.fits'))
+        else:
+            hdulist = fits.open(bgpath)
+        bg = hdulist[0].data
+        if bg is None:
+            bg = hdulist[1].data
+        hdulist.close()
+        if len(bg.shape) == 3:
+            bg = np.median(bg, axis=0)
+        if mask:
+            bg *= maskarr
+        # print("bg shape: {}".format(bg.shape))
 
-            if instrument.instrument_name == 'SPHERE':
-                # Region to match background counts for SPHERE IFS
+        if instrument.instrument_name == 'SPHERE':
+            # Region to match background counts for SPHERE IFS
+            if bg_scaling_without_mask:
+                norm = inImage.data[maskarr == 1] / bg[maskarr == 1]
+            else:
                 try:
                     bgscalemask = fits.getdata(os.path.join(
                         calibdir, 'background_scaling_mask.fits')).astype('bool')
@@ -255,22 +262,22 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                     norm = inImage.data[i1:i2, j1:j2][indx]
                     norm /= bg[i1:i2, j1:j2][indx]
 
-                norm = norm[np.isfinite(norm)].flatten()
-                _, norm, _ = sigma_clipped_stats(
-                    norm, sigma=2.0, sigma_lower=None, sigma_upper=None,
-                    maxiters=5, cenfunc='median', stdfunc='std',
-                    std_ddof=0)
-                # # Trimmed mean to match count rates
-                # norm = np.mean(np.sort(norm)[len(norm)//4:-len(norm)//4])
-                bg *= norm
-                print("Background subtracted")
+            norm = norm[np.isfinite(norm)].flatten()
+            _, norm, _ = sigma_clipped_stats(
+                norm, sigma=2., sigma_lower=None, sigma_upper=None,
+                maxiters=5, cenfunc='median', stdfunc='std',
+                std_ddof=0)
+            # # Trimmed mean to match count rates
+            # norm = np.mean(np.sort(norm)[len(norm)//4:-len(norm)//4])
+            bg *= norm
+            print("Background subtracted")
 
-            inImage.data -= bg
-            # inImage.data[inImage.data < 0.] = 1.
-            # fits.writeto('testtest.fits', inImage.data, overwrite=True)
-        except:
-            bgsub = False
-            log.warn('No valid background image found in ' + calibdir)
+        inImage.data -= bg
+        # inImage.data[inImage.data < 0.] = 1.
+        # fits.writeto('testtest.fits', inImage.data, overwrite=True)
+        # except:
+        #     bgsub = False
+        #     log.warn('No valid background image found in ' + calibdir)
 
     if dc_xtalk_correction is True:
         bpm = np.logical_not(
@@ -401,16 +408,16 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 resid.write(
                     re.sub('.fits', '_resid' + file_ending + '.fits',
                            os.path.join(outdir, os.path.basename(filename))))
-                mask_resid = inImage.data > 0.
-                relative_resid = resid.data.copy()
-                relative_resid[mask_resid] /= inImage.data[mask_resid]
-                relative_resid[~mask_resid] = np.nan
-                relative_resid[np.abs(relative_resid) > mad_std(relative_resid, ignore_nan=True) * 6] = np.nan
-                fits.writeto(
-                    # re.sub('.*/', '',
-                    re.sub('.fits', '_resid_relative' + file_ending + '.fits',
-                           os.path.join(outdir, os.path.basename(filename))),
-                    relative_resid, overwrite=True)
+                # mask_resid = inImage.data > 0.
+                # relative_resid = resid.data.copy()
+                # relative_resid[mask_resid] /= inImage.data[mask_resid]
+                # relative_resid[~mask_resid] = np.nan
+                # relative_resid[np.abs(relative_resid) > mad_std(relative_resid, ignore_nan=True) * 6] = np.nan
+                # fits.writeto(
+                #     # re.sub('.*/', '',
+                #     re.sub('.fits', '_resid_relative' + file_ending + '.fits',
+                #            os.path.join(outdir, os.path.basename(filename))),
+                #     relative_resid, overwrite=True)
             else:
                 datacube = result
 
@@ -425,14 +432,16 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         #     raise IOError("No key file found in " + calibdir)
         # R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
         # lam = fits.open(keyfilenames[0])[0].data
-        lam_midpts, _ = instrument.wavelengths(
-            instrument.wavelength_range[0].value,
-            instrument.wavelength_range[1].value,
-            R)
-        # lam_midpts = np.linspace(
-        #     instrument.wavelength_range[0].value,
-        #     instrument.wavelength_range[1].value,
-        #     39)
+        if linear_wavelength:
+            lam_midpts = np.linspace(
+                instrument.wavelength_range[0].value,
+                instrument.wavelength_range[1].value,
+                39)
+        else:
+            lam_midpts, _ = instrument.wavelengths(
+                instrument.wavelength_range[0].value,
+                instrument.wavelength_range[1].value,
+                R)
         # lam_midpts = np.linspace(950, 1650, 50)
 
         # n = len(lam_midpts)

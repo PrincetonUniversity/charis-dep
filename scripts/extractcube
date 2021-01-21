@@ -95,6 +95,10 @@ if __name__ == "__main__":
     except:
         dc_xtalk_correction = False
     try:
+        linear_wavelength = Config.getboolean('Extract', 'linearwavelength')
+    except:
+        linear_wavelength = False
+    try:
         suppressrn = Config.getboolean('Extract', 'suppressrn')
     except:
         suppressrn = True
@@ -139,6 +143,7 @@ if __name__ == "__main__":
             saveramp=saveramp, refine=refine,
             crosstalk_scale=crosstalk_scale,
             dc_xtalk_correction=dc_xtalk_correction,
+            linear_wavelength=linear_wavelength,
             maxcpus=maxcpus,
             calibdir=calibdir, R=R, method=method,
             smoothandmask=smoothandmask, flatfield=flatfield,

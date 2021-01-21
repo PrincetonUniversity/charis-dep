@@ -1,6 +1,7 @@
 """ Partially adapted from A. Vigan's VLTPF Pipeline
 Commit: f20dbcc on Feb 6 """
 from __future__ import print_function
+from trap.embed_shell import ipsh
 
 from builtins import range, zip
 from pdb import set_trace
@@ -20,6 +21,8 @@ from astropy.modeling import fitting, models
 from astropy.modeling.models import BlackBody
 from astropy.time import Time
 from matplotlib.backends.backend_pdf import PdfPages
+
+global_cmap = 'inferno'
 
 
 def expected_spectrum(stellar_temperature, wavelength, transmission):
@@ -301,22 +304,25 @@ def compute_angles(frames_info):
         The data frame with all the information on science frames
     '''
 
-    # derotator drift check and correction
     date_fix = Time('2016-07-12')
     if np.any(frames_info['MJD'].values <= date_fix.mjd):
-        alt = frames_info['TEL ALT'].values.astype(np.float)
-        drot2 = frames_info['INS4 DROT2 BEGIN'].values.astype(np.float)
-        pa_correction = np.degrees(np.arctan(np.tan(np.radians(alt - 2. * drot2))))
+        try:
+            alt = frames_info['TEL ALT'].values.astype(np.float)
+            drot2 = frames_info['INS4 DROT2 BEGIN'].values.astype(np.float)
+            pa_correction = np.degrees(np.arctan(np.tan(np.radians(alt-2.*drot2))))
+        except KeyError:
+            pa_correction = 0
     else:
         pa_correction = 0
 
     # RA/DEC
     ra_drot = frames_info['INS4 DROT2 RA'].values.astype(np.float)
     ra_drot_h = np.floor(ra_drot / 1e4)
-    ra_drot_m = np.floor((ra_drot - ra_drot_h * 1e4) / 1e2)
-    ra_drot_s = ra_drot - ra_drot_h * 1e4 - ra_drot_m * 1e2
-    ra = coord.Angle((ra_drot_h, ra_drot_m, ra_drot_s), units.hour)
-    frames_info['RA'] = ra
+    ra_drot_m = np.floor((ra_drot - ra_drot_h * 1e4)/1e2)
+    ra_drot_s = ra_drot - ra_drot_h*1e4 - ra_drot_m*1e2
+    ra_hour = coord.Angle((ra_drot_h, ra_drot_m, ra_drot_s), units.hour)
+    ra_deg = ra_hour*15
+    frames_info['RA'] = ra_deg
 
     dec_drot = frames_info['INS4 DROT2 DEC'].values.astype(np.float)
     sign = np.sign(dec_drot)
@@ -328,28 +334,62 @@ def compute_angles(frames_info):
     dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
     frames_info['DEC'] = dec
 
-    # calculate parallactic angles
     geolon = coord.Angle(frames_info['TEL GEOLON'].values[0], units.degree)
     geolat = coord.Angle(frames_info['TEL GEOLAT'].values[0], units.degree)
     geoelev = frames_info['TEL GEOELEV'].values[0]
 
-    utc = Time(frames_info['TIME START'].values.astype(str), scale='utc', location=(geolon, geolat, geoelev))
+    location = (geolon, geolat, geoelev)
+    # calculate parallactic angles
+    utc = Time(frames_info['TIME'].values.astype(str), scale='utc', location=location)
     lst = utc.sidereal_time('apparent')
-    ha = lst - ra
-    pa = parallatic_angle(ha, dec[0], geolat)
-    frames_info['PARANG START'] = pa.value + pa_correction
-
-    utc = Time(frames_info['TIME'].values.astype(str), scale='utc', location=(geolon, geolat, geoelev))
-    lst = utc.sidereal_time('apparent')
-    ha = lst - ra
+    ha = lst - ra_hour
     pa = parallatic_angle(ha, dec[0], geolat)
     frames_info['PARANG'] = pa.value + pa_correction
+    frames_info['HOUR ANGLE'] = ha
+    frames_info['LST'] = lst
 
-    utc = Time(frames_info['TIME END'].values.astype(str), scale='utc', location=(geolon, geolat, geoelev))
+    # Altitude and airmass
+    # j2000 = coord.SkyCoord(ra=ra_hour, dec=dec, frame='icrs', obstime=utc)
+    # altaz = j2000.transform_to(coord.AltAz(location=location))
+    #
+    # frames_info['ALTITUDE'] = altaz.alt.value
+    # frames_info['AZIMUTH'] = altaz.az.value
+    # frames_info['AIRMASS'] = altaz.secz.value
+
+    utc = Time(frames_info['TIME START'].values.astype(str), scale='utc', location=location)
     lst = utc.sidereal_time('apparent')
-    ha = lst - ra
+    ha = lst - ra_hour
+    pa = parallatic_angle(ha, dec[0], geolat)
+    frames_info['PARANG START'] = pa.value + pa_correction
+    frames_info['HOUR ANGLE START'] = ha
+    frames_info['LST START'] = lst
+
+    utc = Time(frames_info['TIME END'].values.astype(str), scale='utc', location=location)
+    lst = utc.sidereal_time('apparent')
+    ha = lst - ra_hour
     pa = parallatic_angle(ha, dec[0], geolat)
     frames_info['PARANG END'] = pa.value + pa_correction
+    frames_info['HOUR ANGLE END'] = ha
+    frames_info['LST END'] = lst
+
+    # calculate parallactic angles
+    # utc = Time(frames_info['TIME START'].values.astype(str), scale='utc', location=(geolon, geolat, geoelev))
+    # lst = utc.sidereal_time('apparent')
+    # ha = lst - ra_hour
+    # pa = parallatic_angle(ha, dec[0], geolat)
+    # frames_info['PARANG START'] = pa.value + pa_correction
+    #
+    # utc = Time(frames_info['TIME'].values.astype(str), scale='utc', location=(geolon, geolat, geoelev))
+    # lst = utc.sidereal_time('apparent')
+    # ha = lst - ra_hour
+    # pa = parallatic_angle(ha, dec[0], geolat)
+    # frames_info['PARANG'] = pa.value + pa_correction
+    #
+    # utc = Time(frames_info['TIME END'].values.astype(str), scale='utc', location=(geolon, geolat, geoelev))
+    # lst = utc.sidereal_time('apparent')
+    # ha = lst - ra_hour
+    # pa = parallatic_angle(ha, dec[0], geolat)
+    # frames_info['PARANG END'] = pa.value + pa_correction
 
     #
     # Derotation angles
@@ -385,7 +425,7 @@ def compute_angles(frames_info):
     frames_info['PUPIL OFFSET'] = pupoff + instru_offset
 
     # final derotation value
-    frames_info['DEROT ANGLE'] = frames_info['PARANG'] + instru_offset + pupoff
+    frames_info['DEROT ANGLE'] = frames_info['PARANG'] + pupoff + instru_offset
 
 
 def compute_bad_pixel_map(bpm_files, dtype=np.uint8):
@@ -552,45 +592,54 @@ def lines_intersect(a1, a2, b1, b2):
     return (num / denom) * db + b1
 
 
-def star_centers_from_PSF_cube(cube, wave, pixel, display=False, save_path=None):
+def star_centers_from_PSF_img_cube(cube, wave, pixel, exclude_fraction=0.1, box_size=60,
+                                   save_path=None):
     '''
-    Compute star center from PSF images
+    Compute star center from PSF images (IRDIS CI, IRDIS DBI, IFS)
+
     Parameters
     ----------
     cube : array_like
-        PSF IFS cube
+        IRDIFS PSF cube
+
     wave : array_like
         Wavelength values, in nanometers
+
     pixel : float
         Pixel scale, in mas/pixel
 
-    display : bool
-        Display the fit of the satelitte spots
+    exclude_fraction : float
+        Exclude a fraction of the image borders to avoid getting
+        biased by hot pixels close to the edges. Default is 10%
+
+    box_size : int
+        Size of the box in which the fit is performed. Default is 60 pixels
+
     save_path : str
-        Path where to save the fit images
+        Path where to save the fit images. Default is None, which means
+        that the plot is not produced
+
 
     Returns
     -------
-    img_center : array_like
+    img_centers : array_like
         The star center in each frame of the cube
+
     '''
 
     # standard parameters
     nwave = wave.size
-    loD = wave * 1e-6 / 8 * 180 / np.pi * 3600 * 1000 / pixel
-    box = 30
+    loD = wave*1e-9 / 8 * 180/np.pi * 3600 * 1000 / pixel
+    box = box_size // 2
 
     # spot fitting
     xx, yy = np.meshgrid(np.arange(2 * box), np.arange(2 * box))
 
-    # multi-page PDF to save result
-    if save_path is not None:
-        pdf = PdfPages(save_path)
-
     # loop over images
-    img_center = np.zeros((nwave, 2))
-    for idx, (wave, img) in enumerate(zip(wave, cube)):
-        print('  wave {0:2d}/{1:2d} ({2:.3f} micron)'.format(idx + 1, nwave, wave))
+    img_centers = np.zeros((nwave, 2))
+    # failed_centers = np.zeros(nwave, dtype=np.bool)
+    for idx, (cwave, img) in enumerate(zip(wave, cube)):
+        print('   ==> wave {0:2d}/{1:2d} ({2:4.0f} nm)'.format(idx + 1, nwave, cwave))
 
         # remove any NaN
         img = np.nan_to_num(img)
@@ -598,8 +647,22 @@ def star_centers_from_PSF_cube(cube, wave, pixel, display=False, save_path=None)
         # center guess
         cy, cx = np.unravel_index(np.argmax(img), img.shape)
 
+        # check if we are really too close to the edge
+        dim = img.shape
+        lf = exclude_fraction
+        hf = 1 - exclude_fraction
+        if (cx <= lf*dim[-1]) or (cx >= hf*dim[-1]) or \
+           (cy <= lf*dim[0]) or (cy >= hf*dim[0]):
+            nimg = img.copy()
+            nimg[:, :int(lf*dim[-1])] = 0
+            nimg[:, int(hf*dim[-1]):] = 0
+            nimg[:int(lf*dim[0]), :] = 0
+            nimg[int(hf*dim[0]):, :] = 0
+
+            cy, cx = np.unravel_index(np.argmax(nimg), img.shape)
+
         # sub-image
-        sub = img[cy - box:cy + box, cx - box:cx + box]
+        sub = img[cy-box:cy+box, cx-box:cx+box]
 
         # fit peak with Gaussian + constant
         imax = np.unravel_index(np.argmax(sub), sub.shape)
@@ -612,35 +675,80 @@ def star_centers_from_PSF_cube(cube, wave, pixel, display=False, save_path=None)
         cx_final = cx - box + par[0].x_mean
         cy_final = cy - box + par[0].y_mean
 
-        img_center[idx, 0] = cx_final
-        img_center[idx, 1] = cy_final
+        img_centers[idx, 0] = cx_final
+        img_centers[idx, 1] = cy_final
 
-        if save_path or display:
-            fig = plt.figure(0, figsize=(8, 8))
+    # look for outliers and replace by a linear fit to all good ones
+    # Ticket #81
+    ibad = []
+    if nwave > 2:
+        c_med = np.median(img_centers, axis=0)
+        c_std = np.std(img_centers, axis=0)
+        bad = np.any(np.logical_or(img_centers < (c_med-3*c_std),
+                                   img_centers > (c_med+3*c_std)), axis=1)
+        ibad = np.where(bad)[0]
+        igood = np.where(np.logical_not(bad))[0]
+        if len(ibad) != 0:
+            print(f'   ==> found {len(ibad)} outliers. Will replace them with a linear fit.')
+
+            idx = np.arange(nwave)
+
+            # x
+            lin = np.polyfit(idx[igood], img_centers[igood, 0], 1)
+            pol = np.poly1d(lin)
+            img_centers[ibad, 0] = pol(idx[ibad])
+
+            # y
+            lin = np.polyfit(idx[igood], img_centers[igood, 1], 1)
+            pol = np.poly1d(lin)
+            img_centers[ibad, 1] = pol(idx[ibad])
+
+    #
+    # Generate summary plot
+    #
+
+    # multi-page PDF to save result
+    if save_path is not None:
+        pdf = PdfPages(save_path)
+
+        for idx, (cwave, img) in enumerate(zip(wave, cube)):
+            cx_final = img_centers[idx, 0]
+            cy_final = img_centers[idx, 1]
+
+            failed = (idx in ibad)
+            if failed:
+                mcolor = 'r'
+                bcolor = 'r'
+            else:
+                mcolor = 'b'
+                bcolor = 'w'
+
+            plt.figure('PSF center - imaging', figsize=(8.3, 8))
             plt.clf()
-            ax = fig.add_subplot(111)
 
-            ax.imshow(img / img.max(), aspect='equal', vmin=1e-6, vmax=1, norm=colors.LogNorm())
-            ax.plot([cx_final], [cy_final], marker='D', color='red')
-            ax.add_patch(patches.Rectangle((cx - box, cy - box), 2 * box, 2 * box, ec='white', fc='none'))
-            ax.set_title(r'Image #{0} - {1:.3f} $\mu$m'.format(idx + 1, wave))
+            plt.subplot(111)
+            plt.imshow(img/np.nanmax(img), aspect='equal', norm=colors.LogNorm(vmin=1e-6, vmax=1),
+                       interpolation='nearest', cmap=global_cmap)
+            plt.plot([cx_final], [cy_final], marker='D', color=mcolor)
+            plt.gca().add_patch(patches.Rectangle((cx-box, cy-box), 2*box, 2*box, ec=bcolor, fc='none'))
+            if failed:
+                plt.text(cx, cy+box, 'Fit failed', color='r', weight='bold', fontsize='x-small',
+                         ha='center', va='bottom')
+            plt.title(r'Image #{0} - {1:.0f} nm'.format(idx+1, cwave))
 
             ext = 1000 / pixel
-            ax.set_xlim(cx_final - ext, cx_final + ext)
-            ax.set_ylim(cy_final - ext, cy_final + ext)
+            plt.xlim(cx_final-ext, cx_final+ext)
+            plt.xlabel('x position [pix]')
+            plt.ylim(cy_final-ext, cy_final+ext)
+            plt.ylabel('y position [pix]')
 
-            plt.tight_layout()
+            plt.subplots_adjust(left=0.1, right=0.98, bottom=0.1, top=0.95)
 
-            if save_path:
-                pdf.savefig()
+            pdf.savefig()
 
-            if display:
-                plt.pause(1e-3)
-
-    if save_path:
         pdf.close()
 
-    return img_center
+    return img_centers
 
 
 def star_centers_from_waffle_cube(cube, wave, instrument, waffle_orientation,

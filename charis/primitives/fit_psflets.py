@@ -20,8 +20,6 @@ from charis.primitives import matutils
 from past.utils import old_div
 from scipy import interpolate, ndimage, signal, stats
 
-# from trap.embed_shell import ipsh
-
 log = logging.getLogger('main')
 
 
@@ -892,6 +890,8 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, flat=None, sig=0.
 
     loglam = np.log(lam)
 
+    psflets = psflets.astype('float64')
+    lampsflets = lampsflets.astype('float64')
     ########################################################################
     # x-locations of the centers of the microspectra.  The y locations
     # are integer pixels, and the wavelengths in PSFlet_tool.lam_indx
