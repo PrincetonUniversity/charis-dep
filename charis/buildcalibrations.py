@@ -124,12 +124,13 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
         readnoise = 6.
         for filename in infilelist:
             data = fits.getdata(filename)
-            if len(data.shape) == 3:
+            if data.ndim == 3 and data.shape[0] > 1:
                 data = np.sort(data.astype('float64'), axis=0)
-                data = np.mean(data[1:-1], axis=0) * mask
-                var = np.abs(data) * instrument.gain + readnoise**2
-                var[mask == 0] = 1e20
-                ivar = 1. / var
+                data = np.mean(data[1:-1], axis=0)
+            data = data[0] * mask
+            var = np.abs(data) * instrument.gain + readnoise**2
+            var[mask == 0] = 1e20
+            ivar = 1. / var
 
             inImage = Image(data=data, ivar=ivar,
                             instrument_name=instrument.instrument_name)
