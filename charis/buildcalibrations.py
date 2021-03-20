@@ -395,15 +395,19 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     out = fits.HDUList(fits.PrimaryHDU(None, header))
     out.writeto(os.path.join(outdir, 'cal_params.fits'), overwrite=True)
 
-    shutil.copy(os.path.join(calibdir, 'lensletflat.fits'),
-                os.path.join(outdir, 'lensletflat.fits'))
-    shutil.copy(os.path.join(calibdir, 'background_scaling_mask.fits'),
-                os.path.join(outdir, 'background_scaling_mask.fits'))
-    shutil.copy(os.path.join(calibdir, 'background.fits'),
-                os.path.join(outdir, 'background.fits'))
+    try:
+        shutil.copy(os.path.join(calibdir, 'lensletflat.fits'),
+                    os.path.join(outdir, 'lensletflat.fits'))
+        shutil.copy(os.path.join(calibdir, 'background_scaling_mask.fits'),
+                    os.path.join(outdir, 'background_scaling_mask.fits'))
 
-    for filename in ['mask.fits', 'pixelflat.fits']:
-        shutil.copy(os.path.join(calibdir, filename), os.path.join(outdir, filename))
+        for filename in ['mask.fits', 'pixelflat.fits']:
+            shutil.copy(os.path.join(calibdir, filename), os.path.join(outdir, filename))
+
+        shutil.copy(os.path.join(calibdir, 'background.fits'),
+                    os.path.join(outdir, 'background.fits'))
+    except FileNotFoundError:
+        print("Some static calibration files were not found in installation directory.")
 
     if verbose:
         print("Total time elapsed: %.0f seconds" % (time.time() - tstart))
