@@ -88,6 +88,10 @@ class SPHERE(object):
         'YJ': [987.72, 1123.71, 1309.37] * u.nanometer,
         'YH': [987.72, 1123.71, 1309.37, 1545.07] * u.nanometer}
 
+    __wavelengthpolyorder = {
+        'YJ': 2,
+        'YH': 3}
+
     # def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
     #     Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
     #     loglam_midpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
@@ -129,7 +133,7 @@ class SPHERE(object):
         self.pixel_scale = 0.00746 * u.arcsec / u.pixel
         self.gain = 1.8
         self.calibration_wavelength = self.__calibration_wavelength[observing_mode]
-        self.wavelengthpolyorder = 2
+        self.wavelengthpolyorder = self.__wavelengthpolyorder[observing_mode]
         self.offsets = np.arange(-5, 6)
         index_range = np.arange(-100, 101, dtype='float')
         self.lenslet_ix, self.lenslet_iy = np.meshgrid(index_range, index_range)
