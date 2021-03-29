@@ -20,8 +20,6 @@ import numpy as np
 from astropy.io import fits
 from astropy.stats import mad_std, sigma_clipped_stats
 from future import standard_library
-from trap.embed_shell import ipsh
-# from trap.plotting_tools import plot_scale
 
 standard_library.install_aliases()
 

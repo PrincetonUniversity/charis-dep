@@ -740,7 +740,6 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
 
             newval = _corrval(cen, x[_s:-_s, _s:-_s], y[_s:-_s, _s:-_s],
                               subfiltered, 0, trimfrac, basecoef=coef)
-
             if newval < bestval:
                 bestval = newval
                 bestcen = copy.deepcopy(cen)
