@@ -121,13 +121,18 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
                             instrument_name=instrument.instrument_name)
 
     elif instrument.instrument_name == 'SPHERE':
+        # NOTE: Actually only takes into account one file at the monent
+        # Has to be changed to appending routine and ensure same dimension
         readnoise = 6.
         for filename in infilelist:
             data = fits.getdata(filename)
             if data.ndim == 3 and data.shape[0] > 1:
                 data = np.sort(data.astype('float64'), axis=0)
-                data = np.mean(data[1:-1], axis=0)
-            data = data[0] * mask
+                data = np.mean(data[1:-1], axis=0) * mask
+            elif data.ndim == 3 and data.shape[0] == 1:
+                data = data[0] * mask
+            else:
+                data = data * mask
             var = np.abs(data) * instrument.gain + readnoise**2
             var[mask == 0] = 1e20
             ivar = 1. / var
