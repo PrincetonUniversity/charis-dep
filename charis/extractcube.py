@@ -182,6 +182,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
+        bpm = np.logical_not(maskarr.astype('bool')).astype('int')
         if flatfield:
             pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
             good_pixels = np.logical_and(pixelflat > 0.5, pixelflat < 1.5)
@@ -194,24 +195,36 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             nonlinear = np.zeros([data.shape[-2], data.shape[-1]]).astype('bool')
 
         if data.ndim == 3:
-            var = np.abs(data) * instrument.gain + readnoise**2
-            var[:, maskarr == 0] = 1e20
-            var[nonlinear] = 1e20
-            ivar = 1. / var
+            # var = np.abs(data) * instrument.gain + readnoise**2
+            # var[:, maskarr == 0] = 1e20
+            # var[nonlinear] = 1e20
+            # ivar = 1. / var
             # ivar = np.ones_like(data, dtype='float64')
 
             if read_idx is not None and read_idx != [1, None]:
-                data = data[read_idx] * maskarr
-                ivar = ivar[read_idx]
+                # data = data[read_idx] * maskarr
+                data = sph_ifs_fix_badpix(img=data[read_idx], bpm=bpm)
+                ivar = 1. / np.abs(data) * instrument.gain + readnoise**2
                 file_ending = '_DIT_{:03d}'.format(read_idx)
                 print(file_ending)
             else:
                 if len(data) > 1:
-                    data = np.mean(data, axis=0) * maskarr
-                    ivar = np.mean(ivar, axis=0)
+                    data = sph_ifs_fix_badpix(np.mean(data, axis=0), bpm)  # * maskarr
+                    ivar = 1 / np.abs(data) * instrument.gain + readnoise**2
                 else:
-                    data = data[0]
-                    ivar = ivar[0]
+                    data = sph_ifs_fix_badpix(data[0], bpm)
+                    # data_orig = data[0].copy()
+                    # ext = 10
+                    # # remove edges in bad pixel map
+                    # bpm[:ext+1, :] = 0
+                    # bpm[:, :ext+1] = 0
+                    # bpm[-ext-1:, :] = 0
+                    # bpm[:, -ext-1:] = 0
+                    #
+                    # data_orig[bpm.astype('bool')] = np.nan
+                    # fixed_img, para, TS = astrofix.Fix_Image(data_orig, "asnan", TS=~bpm.astype('bool'))  # max_clip=1)
+                    # new_fixed_img = astrofix.Interpolate(800, 0.7, data_orig, BP="asnan")
+                    ivar = 1. / np.abs(data) * instrument.gain + readnoise**2
                 file_ending = ''
         elif data.ndim == 2:
             # ivar = np.ones(data.shape, dtype='float64')
@@ -241,7 +254,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         if len(bg.shape) == 3:
             bg = np.median(bg, axis=0)
         if mask:
-            bg *= maskarr
+            # bg *= maskarr
+            bg = sph_ifs_fix_badpix(img=bg, bpm=bpm)
         # print("bg shape: {}".format(bg.shape))
 
         if instrument.instrument_name == 'SPHERE':
