@@ -232,8 +232,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             # ivar *= maskarr
             data = data * maskarr
             var = np.abs(data) * instrument.gain + readnoise**2
-            var[maskarr == 0] = 1e20
-            var[nonlinear] = 1e20
+            # var[maskarr == 0] = 1e20
+            # var[nonlinear] = 1e20
             ivar = 1. / var
             file_ending = ''
         else:
@@ -335,8 +335,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         lensletflat = fits.getdata(os.path.join(calibdir, 'lensletflat.fits')).astype('float64')
     else:
         lensletflat = None
-    header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
 
+    header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
     datacube = None
 
     if method == 'lstsq' or suppressrn or refine:
@@ -395,7 +395,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             corrnoise, coefs = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
                 instrument=instrument,
-                header=inImage.header, flat=lensletflat, refine=refine,
+                header=inImage.header, lensletflat=lensletflat, refine=refine,
                 suppressreadnoise=suppressrn, smoothandmask=smoothandmask,
                 minpct=minpct, fitbkgnd=fitbkgnd, maxcpus=maxcpus,
                 return_corrnoise=True)
@@ -417,11 +417,10 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             result = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
                 instrument=instrument,
-                header=inImage.header, flat=lensletflat, refine=refine,
+                header=inImage.header, lensletflat=lensletflat, refine=refine,
                 suppressreadnoise=suppressrn, smoothandmask=smoothandmask,
                 minpct=minpct, fitbkgnd=fitbkgnd, returnresid=saveresid,
                 maxcpus=maxcpus)
-
             if saveresid:
                 datacube, resid = result
                 resid.write(
@@ -501,7 +500,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                                              coefs_in=_coefs, psflets=_psflets,
                                              lampsflets=_lam_psflets,
                                              sig=sig, header=inImage.header,
-                                             flat=lensletflat,
+                                             lensletflat=lensletflat,
                                              smoothandmask=smoothandmask,
                                              maxcpus=maxcpus)
 
