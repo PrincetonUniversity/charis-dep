@@ -97,7 +97,6 @@ def _smoothandmask_hexgeometry(datacube, good, neighbour_indices, mask_negative=
 
     """
 
-    # ipsh()
     flat_data = flatten_cube(datacube.data)
     flat_ivar = flatten_cube(datacube.ivar)
 
@@ -495,7 +494,7 @@ def _interp_sig(sigarr, imshape, lenslet_ix, lenslet_iy):
 
 def fit_spectra(im, psflets, lam, x, y, good, instrument,
                 header=fits.PrimaryHDU().header,
-                flat=None, refine=False, smoothandmask=True, returnresid=False,
+                lensletflat=None, refine=False, smoothandmask=True, returnresid=False,
                 suppressreadnoise=False, return_corrnoise=False, minpct=70,
                 fitbkgnd=True, maxcpus=multiprocessing.cpu_count()):
     """
@@ -524,7 +523,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     header:  FITS header instance
         Ordered dictionary or FITS header class,
         to store some information about the reduction.
-    flat:    ndarray
+    lensletflat:    ndarray
         Lenslet flatfield.  Do not flatfield if this array is not given.  Default None.
     refine:  boolean
         Iterate solution to remove crosstalk? Approximately doubles runtime.  Default True.
@@ -576,8 +575,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
         isig = np.sqrt(im.ivar).astype(np.float64)
     else:
         isig = np.ones(im.data.shape)
-    if flat is not None:
-        lenslet_ok = (flat > 0).astype(np.float64)
+    if lensletflat is not None:
+        lenslet_ok = (lensletflat > 0).astype(np.float64)
 
     ###################################################################
     # Need to make copies of the data arrays because FITS is
@@ -650,7 +649,6 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     coefs = coefs.T.reshape(coefshape)
     cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
     cov = cov.T.reshape(coefshape)
-
     ###################################################################
     # Zero covariance = no data.  Set to infinity so that ivar = 0.
     ###################################################################
@@ -690,7 +688,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
             # psflet_indx = _tag_psflets(psflets[i].shape, x[i], y[i], good[i],
             #                           dx[i], dy[i])
             coefs_flat = np.reshape(coefs[i], -1)
-            if flat is not None:
+            if lensletflat is not None:
                 coefs_flat *= np.reshape(lenslet_ok, -1)
             data -= psflets[i] * coefs_flat[psflet_indx]
 
@@ -723,7 +721,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
                 if fitbkgnd and return_corrnoise:
                     if i >= len(psflets) - n_add:
                         bkgnd += psflets[i] * coefs_flat[psflet_indx]
-                if flat is not None:
+                if lensletflat is not None:
                     coefs_flat *= np.reshape(lenslet_ok, -1)
                 data -= psflets[i] * coefs_flat[psflet_indx]
 
@@ -762,7 +760,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
             A, b, size = matutils.allcutouts(data, isig, xint, yint, indx,
                                              psflets, dx=dx_cutout, maxproc=maxcpus)
             dcoefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
-            if flat is not None:
+            if lensletflat is not None:
                 coefs += dcoefs * lenslet_ok
             else:
                 coefs += dcoefs
@@ -801,15 +799,14 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
 
     datacube = Image(data=coefs, ivar=1. / cov, header=header)
 
-    if flat is not None:
-        datacube.data /= flat + 1e-10
-        datacube.ivar *= flat**2
-        badlenslets = np.logical_or(flat == 0., flat == 1.)
+    if lensletflat is not None:
+        datacube.data /= lensletflat + 1e-10
+        datacube.ivar *= lensletflat**2
+        badlenslets = np.logical_or(lensletflat == 0., lensletflat == 1.)
     else:
         badlenslets = np.zeros(datacube.data.shape[-2], datacube.data.shape[-1])
 
     if smoothandmask:
-        # ipsh()
         good = np.reshape(goodint, tuple(list(coefshape)[1:]))
         if instrument.instrument_name == 'CHARIS':
             datacube = _smoothandmask(
@@ -839,7 +836,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
         return datacube
 
 
-def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, flat=None, sig=0.7,
+def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None, sig=0.7,
                    coefs_in=None, psflets=None, lampsflets=None,
                    smoothandmask=True, header=fits.PrimaryHDU().header,
                    maxcpus=multiprocessing.cpu_count()):
@@ -863,7 +860,7 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, flat=None, sig=0.
         to interpolate the microspectra.
     delt_x:      int
         Odd, positive integer, the aperture width for extraction.  Default 7 (5 or 7 recommended).
-    flat:        2D ndarray
+    lensletflat:        2D ndarray
         2D floating point ndarray, lenslet flat. Default None (don't flat-field).
     sig:         float or 3D ndarray
         1D root variance of lenslet PSF. Default 0.7.  Setting sig >> delt_x is equivalent to aperture photometry.  If sig is an array to account for the wavelength- and lenslet-dependence, its dimensions should match PSFlet_tool.lenslet_ix.
@@ -955,9 +952,9 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, flat=None, sig=0.
 
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)
 
-    if flat is not None and instrument.instrument_name == 'CHARIS':
-        datacube.data /= flat + 1e-10
-        datacube.ivar *= flat**2
+    if lensletflat is not None and instrument.instrument_name == 'CHARIS':
+        datacube.data /= lensletflat + 1e-10
+        datacube.ivar *= lensletflat**2
 
     if smoothandmask:
         good = np.any(datacube.data != 0, axis=0)
