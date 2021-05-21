@@ -800,8 +800,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     datacube = Image(data=coefs, ivar=1. / cov, header=header)
 
     if lensletflat is not None:
-        datacube.data /= lensletflat + 1e-10
-        datacube.ivar *= lensletflat**2
+        # datacube.data /= lensletflat + 1e-10
+        # datacube.ivar *= lensletflat**2
         badlenslets = np.logical_or(lensletflat == 0., lensletflat == 1.)
     else:
         badlenslets = np.zeros(datacube.data.shape[-2], datacube.data.shape[-1])
@@ -887,8 +887,10 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
 
     loglam = np.log(lam)
 
-    psflets = psflets.astype('float64')
-    lampsflets = lampsflets.astype('float64')
+    if psflets is not None:
+        psflets = psflets.astype('float64')
+    if lampsflets is not None:
+        lampsflets = lampsflets.astype('float64')
     ########################################################################
     # x-locations of the centers of the microspectra.  The y locations
     # are integer pixels, and the wavelengths in PSFlet_tool.lam_indx
@@ -952,7 +954,7 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
 
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)
 
-    if lensletflat is not None and instrument.instrument_name == 'CHARIS':
+    if lensletflat is not None:
         datacube.data /= lensletflat + 1e-10
         datacube.ivar *= lensletflat**2
 
