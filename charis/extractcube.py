@@ -229,6 +229,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             # ivar = np.ones(data.shape, dtype='float64')
             # ivar *= maskarr
             data = sph_ifs_fix_badpix(data, bpm)
+            ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
             file_ending = ''
         else:
             raise ValueError("Data must be images or cubes.")
