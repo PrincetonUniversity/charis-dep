@@ -45,7 +45,7 @@ log = logging.getLogger('main')
 def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
             mask=True, fixbadpixels=False,
-            gain=2, nonlinear_threshold=25000, noisefac=0, saveramp=False, R=30,
+            gain=2, nonlinear_threshold=30000, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, crosstalk_scale=0.8,
             dc_xtalk_correction=False,
             linear_wavelength=False,
@@ -183,12 +183,12 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
-        bpm = np.logical_not(maskarr.astype('bool')).astype('int')
         if flatfield:
             pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
             good_pixels = np.logical_and(pixelflat > 0.5, pixelflat < 1.5)
             maskarr[~good_pixels] = 0
             # ivar = maskarr.astype('float64')
+        bpm = np.logical_not(maskarr.astype('bool')).astype('int')
 
         if nonlinear_threshold is not None:
             nonlinear = data > nonlinear_threshold
@@ -196,22 +196,18 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             nonlinear = np.zeros([data.shape[-2], data.shape[-1]]).astype('bool')
 
         if data.ndim == 3:
-            # var = np.abs(data) * instrument.gain + readnoise**2
-            # var[:, maskarr == 0] = 1e20
-            # var[nonlinear] = 1e20
-            # ivar = 1. / var
-            # ivar = np.ones_like(data, dtype='float64')
-
             if read_idx is not None and read_idx != [1, None]:
                 # data = data[read_idx] * maskarr
-                data = sph_ifs_fix_badpix(img=data[read_idx], bpm=bpm)
+                # data = sph_ifs_fix_badpix(img=data[read_idx], bpm=bpm)
+                data = data[read_idx]
                 ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
+                # ivar = 1 / (np.ones_like(data) * readnoise**2)
                 file_ending = '_DIT_{:03d}'.format(read_idx)
                 print(file_ending)
             else:
                 if len(data) > 1:
                     data = sph_ifs_fix_badpix(np.mean(data, axis=0), bpm)  # * maskarr
-                    ivar = 1 / (np.abs(data) * instrument.gain + readnoise**2)
+                    # ivar = 1 / (np.abs(data) * instrument.gain + readnoise**2)
                 else:
                     data = sph_ifs_fix_badpix(data[0], bpm)
                     # data_orig = data[0].copy()
@@ -226,15 +222,13 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                     # fixed_img, para, TS = astrofix.Fix_Image(data_orig, "asnan", TS=~bpm.astype('bool'))  # max_clip=1)
                     # new_fixed_img = astrofix.Interpolate(800, 0.7, data_orig, BP="asnan")
                     ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
+                    print('lol')
+                    # ivar = 1 / (np.ones_like(data) * readnoise**2)
                 file_ending = ''
         elif data.ndim == 2:
             # ivar = np.ones(data.shape, dtype='float64')
             # ivar *= maskarr
-            data = data * maskarr
-            var = np.abs(data) * instrument.gain + readnoise**2
-            # var[maskarr == 0] = 1e20
-            # var[nonlinear] = 1e20
-            ivar = 1. / var
+            data = sph_ifs_fix_badpix(data, bpm)
             file_ending = ''
         else:
             raise ValueError("Data must be images or cubes.")
@@ -243,7 +237,6 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                         instrument_name=instrument.instrument_name)
 
     if bgsub:
-        # try:
         if bgpath is None:
             hdulist = fits.open(os.path.join(calibdir, 'background.fits'))
         else:
@@ -254,9 +247,9 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         hdulist.close()
         if len(bg.shape) == 3:
             bg = np.median(bg, axis=0)
-        if mask:
+        # if mask:
             # bg *= maskarr
-            bg = sph_ifs_fix_badpix(img=bg, bpm=bpm)
+            # bg = sph_ifs_fix_badpix(img=bg, bpm=bpm)
         # print("bg shape: {}".format(bg.shape))
 
         if instrument.instrument_name == 'SPHERE':
@@ -291,23 +284,38 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         #     bgsub = False
         #     log.warn('No valid background image found in ' + calibdir)
 
-    # if flatfield:  # and instrument.instrument_name == 'CHARIS':
+    # if flatfield and instrument.instrument_name == 'SPHERE':
     #     pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
     #     # psflets[:, good_pixels] = psflets[:, good_pixels] * pixelflat[good_pixels]
-    #     inImage.data /= pixelflat + 1e-20
-    #     inImage.ivar *= pixelflat**2
+    #     good_pixel_mask = np.logical_not(bpm.astype('bool'))
+    #     inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / pixelflat[good_pixel_mask]
+        # inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+        # ivar = 1 / (np.abs(inImage.data) * instrument.gain + readnoise**2)
+        # ivar = 1 / (np.ones_like(inImage.data) * readnoise**2)
+        # inImage.ivar = ivar
+
+    inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+    inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
+
+    # data[bpm.astype('bool')] = np.nan
+    # import astrofix
+    # # fixed_img, para, TS = astrofix.Fix_Image(data, "asnan", TS=~bpm.astype('bool'))  # max_clip=1)
+    # new_fixed_img = astrofix.Interpolate(800, 0.7, data, BP="asnan")
+    # inImage.data = new_fixed_img
+    # inImage.ivar[]
+    # inImage.ivar *= sph_ifs_fix_badpix(img=pixelflat, bpm=bpm)**2
 
     if dc_xtalk_correction is True:
-        bpm = np.logical_not(
-            fits.getdata(os.path.join(calibdir, 'mask.fits')).astype('bool'))
+        # bpm = np.logical_not(
+        #     fits.getdata(os.path.join(calibdir, 'mask.fits')).astype('bool'))
         # if instrument.instrument_name == 'SPHERE' and flatfield:
         #     pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
         #     good_pixels = pixelflat > 0.
         #     inImage.data[good_pixels] /= pixelflat[good_pixels]
         #     inImage.ivar[good_pixels] *= pixelflat[good_pixels]**2
         #     print("Divide by flat for good pixels")
-        print('Fixing bad pixels')
-        inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+        # print('Fixing bad pixels')
+        # inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
 
         inImage.data, convolved_image = sph_ifs_correct_spectral_xtalk(
             inImage.data, mask=~(maskarr.astype('bool')))
@@ -333,8 +341,11 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
     if flatfield:
         lensletflat = fits.getdata(os.path.join(calibdir, 'lensletflat.fits')).astype('float64')
+        pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
+        good_pixel_mask = np.logical_not(bpm.astype('bool'))
     else:
         lensletflat = None
+        good_pixel_mask = np.ones_like(inImage.data).astype('bool')
 
     header['flatfld'] = (flatfield, 'Flatfield the detector and lenslet array?')
     datacube = None
@@ -380,11 +391,9 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         good = keyfile[3].data
         keyfile.close()
 
-        if flatfield:  # and instrument.instrument_name == 'CHARIS':
+        if flatfield:
             # Only apply flat field to pixels with non-anomalous flat field values
-            # good_pixels = maskarr != 0
-            # psflets[:, good_pixels] = psflets[:, good_pixels] * pixelflat[good_pixels]
-            psflets = psflets * pixelflat
+            psflets[:, good_pixel_mask] = psflets[:, good_pixel_mask] * pixelflat[good_pixel_mask]
 
         ############################################################
         # Do an initial least-squares fit to remove correlated read
@@ -482,11 +491,15 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         else:
             delt_x = 5
 
-        # if flatfield:  # and instrument.instrument_name == 'CHARIS':
-        #     pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
-        #     # psflets[:, good_pixels] = psflets[:, good_pixels] * pixelflat[good_pixels]
-        #     inImage.data /= pixelflat + 1e-20
-        #     inImage.ivar *= pixelflat**2
+        if flatfield:
+            if refine:
+                # revert flatfield correction for psflets?
+                psflets[:, good_pixel_mask] = psflets[:, good_pixel_mask] / pixelflat[good_pixel_mask]
+            inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / pixelflat[good_pixel_mask]
+            if instrument.instrument_name == 'SPHERE':
+                inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+                inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
+                inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
 
         # If we did the crosstalk correction, we need to add the model
         # spectra back in and do a modified optimal extraction.

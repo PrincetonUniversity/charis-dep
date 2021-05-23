@@ -115,7 +115,7 @@ def _smoothandmask_hexgeometry(datacube, good, neighbour_indices, mask_negative=
     mask_data = np.zeros_like(flat_data)
 
     mask_ivar[non_zero] = np.abs(
-        flat_ivar[non_zero] - smoothed_ivar[non_zero]) / surrounding_ivar_robust_std_dev[non_zero] > 20.
+        flat_ivar[non_zero] - smoothed_ivar[non_zero]) / surrounding_ivar_robust_std_dev[non_zero] > 15.
     mask_data[non_zero] = np.abs(
         flat_data[non_zero] - smoothed_data[non_zero]) / surrounding_data_robust_std_dev[non_zero] > 5.
 
