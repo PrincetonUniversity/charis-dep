@@ -761,6 +761,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
                                              psflets, dx=dx_cutout, maxproc=maxcpus)
             dcoefs = matutils.lstsq(A, b, indx, size, nlens, maxproc=maxcpus).T.reshape(coefshape)
             if lensletflat is not None:
+                # This is NOT the lenslet flat correction, it's a masking
                 coefs += dcoefs * lenslet_ok
             else:
                 coefs += dcoefs
@@ -800,8 +801,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     datacube = Image(data=coefs, ivar=1. / cov, header=header)
 
     if lensletflat is not None:
-        # datacube.data /= lensletflat + 1e-10
-        # datacube.ivar *= lensletflat**2
+        datacube.data /= lensletflat + 1e-10
+        datacube.ivar *= lensletflat**2
         badlenslets = np.logical_or(lensletflat == 0., lensletflat == 1.)
     else:
         badlenslets = np.zeros(datacube.data.shape[-2], datacube.data.shape[-1])

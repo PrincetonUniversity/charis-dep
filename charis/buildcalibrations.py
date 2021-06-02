@@ -68,8 +68,8 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     # Mean background count rate, weighted by inverse variance
     ###############################################################
 
-    print('Computing ramps from sequences of raw reads')
     if instrument.instrument_name == 'CHARIS':
+        print('Computing ramps from sequences of raw reads')
         num = 0.
         denom = 1e-100
         ibg = 1

@@ -402,7 +402,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         ############################################################
 
         if method != 'lstsq':
-            corrnoise, coefs = primitives.fit_spectra(
+            residuals, coefs = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
                 instrument=instrument,
                 header=inImage.header, lensletflat=lensletflat, refine=refine,
@@ -410,6 +410,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 minpct=minpct, fitbkgnd=fitbkgnd, maxcpus=maxcpus,
                 return_corrnoise=True)
             if suppressrn:
+                corrnoise = residuals
                 inImage.data -= corrnoise
             elif refine and not dc_xtalk_correction:
                 # This is to remove crosstalk: we remove the
@@ -421,7 +422,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 # from the coefficients will be added back in later.
                 if crosstalk_scale > 0:
                     coefs *= crosstalk_scale
-                    inImage.data += crosstalk_scale*(corrnoise - inImage.data)
+                    inImage.data += crosstalk_scale*(residuals - inImage.data)
                 print("Crosstalk scale: {}".format(crosstalk_scale))
         else:
             result = primitives.fit_spectra(
@@ -492,15 +493,15 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         else:
             delt_x = 5
 
-        if flatfield:
-            if refine:
-                # revert flatfield correction for psflets?
-                psflets[:, good_pixel_mask] = psflets[:, good_pixel_mask] / pixelflat[good_pixel_mask]
-            inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / pixelflat[good_pixel_mask]
-            if instrument.instrument_name == 'SPHERE':
-                inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
-                inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
-                inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
+        # if flatfield:
+        #     if refine:
+        #         # revert flatfield correction for psflets?
+        #         psflets[:, good_pixel_mask] = psflets[:, good_pixel_mask] / pixelflat[good_pixel_mask]
+        #     inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / pixelflat[good_pixel_mask]
+        #     if instrument.instrument_name == 'SPHERE':
+        #         inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+        #         inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
+        #         inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
 
         # If we did the crosstalk correction, we need to add the model
         # spectra back in and do a modified optimal extraction.
