@@ -293,7 +293,7 @@ def compute_times(frames_info, idx=None):
     frames_info['MJD END'] = mjd_end
 
 
-def compute_angles(frames_info):
+def compute_angles(frames_info, true_north=-1.75):
     '''
     Compute the various angles associated to frames: RA, DEC, parang,
     pupil offset, final derotation angle
@@ -394,11 +394,12 @@ def compute_angles(frames_info):
     #
     # Derotation angles
     #
-    # PA_on-sky = PA_detector + PARANGLE + True_North + PUP_OFFSET + INSTRUMENT_OFFSET
+    # PA_on-sky = PA_detector + PARANGLE + True_North + PUP_OFFSET + INSTRUMENT_OFFSET + TRUE_NORTH
     #  PUP_OFFSET = -135.99 +/- 0.11
     #  INSTRUMENT_OFFSET
     #   IFS = +100.48 +/- 0.10
     #   IRD =    0.00 +/- 0.00
+    #   TRUE_NORTH = -1.75 ± 0.08
     #
     instru = frames_info['SEQ ARM'].unique()
     if len(instru) != 1:
@@ -425,7 +426,7 @@ def compute_angles(frames_info):
     frames_info['PUPIL OFFSET'] = pupoff + instru_offset
 
     # final derotation value
-    frames_info['DEROT ANGLE'] = frames_info['PARANG'] + pupoff + instru_offset
+    frames_info['DEROT ANGLE'] = frames_info['PARANG'] + pupoff + instru_offset + true_north
 
 
 def compute_bad_pixel_map(bpm_files, dtype=np.uint8):
