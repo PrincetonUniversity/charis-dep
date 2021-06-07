@@ -20,8 +20,6 @@ from charis.primitives import matutils
 from past.utils import old_div
 from scipy import interpolate, ndimage, signal, stats
 
-from trap.embed_shell import ipsh
-
 log = logging.getLogger('main')
 
 
