@@ -20,6 +20,8 @@ from charis.primitives import matutils
 from past.utils import old_div
 from scipy import interpolate, ndimage, signal, stats
 
+from trap.embed_shell import ipsh
+
 log = logging.getLogger('main')
 
 
@@ -801,11 +803,11 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     datacube = Image(data=coefs, ivar=1. / cov, header=header)
 
     if lensletflat is not None:
-        datacube.data /= lensletflat + 1e-10
-        datacube.ivar *= lensletflat**2
         badlenslets = np.logical_or(lensletflat == 0., lensletflat == 1.)
+        datacube.data[:, ~badlenslets] /= lensletflat[~badlenslets]
+        datacube.ivar[:, ~badlenslets] *= lensletflat[~badlenslets]**2
     else:
-        badlenslets = np.zeros(datacube.data.shape[-2], datacube.data.shape[-1])
+        badlenslets = np.zeros([datacube.data.shape[-2], datacube.data.shape[-1]]).astype('bool')
 
     if smoothandmask:
         good = np.reshape(goodint, tuple(list(coefshape)[1:]))
@@ -956,14 +958,19 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)
 
     if lensletflat is not None:
-        datacube.data /= lensletflat + 1e-10
-        datacube.ivar *= lensletflat**2
+        badlenslets = np.logical_or(lensletflat == 0., lensletflat == 1.)
+        datacube.data[:, ~badlenslets] /= lensletflat[~badlenslets]
+        datacube.ivar[:, ~badlenslets] *= lensletflat[~badlenslets]**2
+    else:
+        badlenslets = np.zeros([datacube.data.shape[-2], datacube.data.shape[-1]]).astype('bool')
 
     if smoothandmask:
         good = np.any(datacube.data != 0, axis=0)
         if instrument.instrument_name == 'CHARIS':
             datacube = _smoothandmask(datacube, good)
         elif instrument.instrument_name == 'SPHERE':
+            datacube.ivar[:, badlenslets] = 0
+            good[badlenslets] = 0
             neighbour_indices_path = os.path.join(
                 os.path.split(
                     instrument.calibration_path)[0], 'neighbour_indices.json')
