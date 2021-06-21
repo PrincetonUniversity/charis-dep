@@ -17,7 +17,7 @@ import scipy.ndimage as ndimage
 from astropy.convolution import convolve
 from astropy.io import fits
 from astropy.modeling import fitting, models
-from astropy.modeling.physical_models import BlackBody
+
 from astropy.time import Time
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -43,6 +43,7 @@ def expected_spectrum(stellar_temperature, wavelength, transmission):
 
     """
 
+    from astropy.modeling.physical_models import BlackBody
     bb = BlackBody(temperature=stellar_temperature)
 
     spectrum = bb(wavelength)
