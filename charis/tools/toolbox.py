@@ -1,7 +1,6 @@
 """ Partially adapted from A. Vigan's VLTPF Pipeline
 Commit: f20dbcc on Feb 6 """
 from __future__ import print_function
-from trap.embed_shell import ipsh
 
 from builtins import range, zip
 from pdb import set_trace
