@@ -197,17 +197,13 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
         if data.ndim == 3:
             if read_idx is not None and read_idx != [1, None]:
-                # data = data[read_idx] * maskarr
-                # data = sph_ifs_fix_badpix(img=data[read_idx], bpm=bpm)
                 data = data[read_idx]
                 ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
-                # ivar = 1 / (np.ones_like(data) * readnoise**2)
                 file_ending = '_DIT_{:03d}'.format(read_idx)
                 print(file_ending)
             else:
                 if len(data) > 1:
                     data = sph_ifs_fix_badpix(np.mean(data, axis=0), bpm)  # * maskarr
-                    # ivar = 1 / (np.abs(data) * instrument.gain + readnoise**2)
                 else:
                     data = sph_ifs_fix_badpix(data[0], bpm)
                     # data_orig = data[0].copy()
@@ -222,12 +218,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                     # fixed_img, para, TS = astrofix.Fix_Image(data_orig, "asnan", TS=~bpm.astype('bool'))  # max_clip=1)
                     # new_fixed_img = astrofix.Interpolate(800, 0.7, data_orig, BP="asnan")
                     ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
-                    print('lol')
-                    # ivar = 1 / (np.ones_like(data) * readnoise**2)
                 file_ending = ''
         elif data.ndim == 2:
-            # ivar = np.ones(data.shape, dtype='float64')
-            # ivar *= maskarr
             data = sph_ifs_fix_badpix(data, bpm)
             ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
             file_ending = ''
@@ -248,10 +240,6 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         hdulist.close()
         if len(bg.shape) == 3:
             bg = np.median(bg, axis=0)
-        # if mask:
-            # bg *= maskarr
-            # bg = sph_ifs_fix_badpix(img=bg, bpm=bpm)
-        # print("bg shape: {}".format(bg.shape))
 
         if instrument.instrument_name == 'SPHERE':
             # Region to match background counts for SPHERE IFS
@@ -279,32 +267,9 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             bg *= norm
             print("Background subtracted")
         inImage.data -= bg
-        # inImage.data[inImage.data < 0.] = 1.
-        # fits.writeto('testtest.fits', inImage.data, overwrite=True)
-        # except:
-        #     bgsub = False
-        #     log.warn('No valid background image found in ' + calibdir)
-
-    # if flatfield and instrument.instrument_name == 'SPHERE':
-    #     pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
-    #     # psflets[:, good_pixels] = psflets[:, good_pixels] * pixelflat[good_pixels]
-    #     good_pixel_mask = np.logical_not(bpm.astype('bool'))
-    #     inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / pixelflat[good_pixel_mask]
-        # inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
-        # ivar = 1 / (np.abs(inImage.data) * instrument.gain + readnoise**2)
-        # ivar = 1 / (np.ones_like(inImage.data) * readnoise**2)
-        # inImage.ivar = ivar
 
     inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
     inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
-
-    # data[bpm.astype('bool')] = np.nan
-    # import astrofix
-    # # fixed_img, para, TS = astrofix.Fix_Image(data, "asnan", TS=~bpm.astype('bool'))  # max_clip=1)
-    # new_fixed_img = astrofix.Interpolate(800, 0.7, data, BP="asnan")
-    # inImage.data = new_fixed_img
-    # inImage.ivar[]
-    # inImage.ivar *= sph_ifs_fix_badpix(img=pixelflat, bpm=bpm)**2
 
     if dc_xtalk_correction is True:
         # bpm = np.logical_not(
@@ -384,9 +349,6 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         header.append(('fitshift', fitshift, 'Fit a subpixel shift in PSFlet locations?'), end=True)
         lam_midpts = keyfile[0].data
         lam_psflets = lam_midpts.copy()
-        # lam_midpts = fits.getdata(
-        #     '/home/samland/science/sphere_daten/51eri/IFS/new_DC_data_cubes/Sep26_YJ_nolsct_psfbin/ifs_convert_waffle_dc-IFS_SCIENCE_LAMBDA_INFO-lam.fits')
-        # lam_midpts = 1000. * lam_midpts.astype('float64')
         x = keyfile[1].data
         y = keyfile[2].data
         good = keyfile[3].data
@@ -471,12 +433,6 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 instrument.wavelength_range[0].value,
                 instrument.wavelength_range[1].value,
                 R)
-        # lam_midpts = np.linspace(950, 1650, 50)
-
-        # n = len(lam_midpts)
-        # lam1, lam2 = [lam[0], lam[-1]]
-        # n = int(np.log(lam2 * 1. / lam1) * R2 + 1.5)
-        # lam_midpts = np.exp(np.linspace(np.log(lam1), np.log(lam2), n))
 
         try:
             sig = fits.getdata(os.path.join(calibdir, 'PSFwidths.fits'))
