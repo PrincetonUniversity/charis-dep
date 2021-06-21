@@ -170,6 +170,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     maskarr = None
     if mask is True:
         maskarr = fits.getdata(os.path.join(calibdir, 'mask.fits'))
+        bpm = np.logical_not(maskarr.astype('bool')).astype('int')
 
     if instrument.instrument_name == 'CHARIS':
         inImage = utr.calcramp(filename=filename, mask=maskarr, read_idx=read_idx,
@@ -268,8 +269,9 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             print("Background subtracted")
         inImage.data -= bg
 
-    inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
-    inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
+    if instrument.instrument_name == 'SPHERE':
+        inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+        inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
 
     if dc_xtalk_correction is True:
         # bpm = np.logical_not(

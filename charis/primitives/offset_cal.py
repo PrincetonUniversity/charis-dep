@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 
-from __future__ import absolute_import
-from __future__ import division
-from builtins import range
-from past.utils import old_div
+from __future__ import absolute_import, division
+
 import multiprocessing
+from builtins import range
 
 import numpy as np
 from astropy.io import fits
+from past.utils import old_div
 from scipy import linalg, ndimage, signal
-
-from trap.embed_shell import ipsh
 
 from . import matutils
 
