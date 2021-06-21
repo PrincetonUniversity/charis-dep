@@ -18,7 +18,7 @@ import scipy.ndimage as ndimage
 from astropy.convolution import convolve
 from astropy.io import fits
 from astropy.modeling import fitting, models
-from astropy.modeling.models import BlackBody
+from astropy.modeling.physical_models import BlackBody
 from astropy.time import Time
 from matplotlib.backends.backend_pdf import PdfPages
 
