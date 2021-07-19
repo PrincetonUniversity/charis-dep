@@ -46,6 +46,7 @@ def header_dataframe(filename):
          ('INS4 DROT2 MODE', ('HIERARCH ESO INS4 DROT2 MODE', 'N/A')),
          ('INS4 DROT2 BEGIN', ('HIERARCH ESO INS4 DROT2 BEGIN', -10000)),
          ('INS4 DROT2 END', ('HIERARCH ESO INS4 DROT2 END', -10000)),
+         ('INS3 DROT2 BEGIN', ('HIERARCH ESO INS3 DROT2 BEGIN', -10000)),
          ('TEL GEOELEV', ('HIERARCH ESO TEL GEOELEV', -10000)),
          ('TEL GEOLAT', ('HIERARCH ESO TEL GEOLAT', -10000)),
          ('TEL GEOLON', ('HIERARCH ESO TEL GEOLON', -10000)),
@@ -88,8 +89,23 @@ def header_dataframe(filename):
     orig_hdr = fits.getheader(filename)
     header = orig_hdr.copy()
     for key in header_list.keys():
-        header[key] = get_headerval_with_exeption(
-            orig_hdr, header_list[key][0], header_list[key][1])
+        if key == 'HIERARCH ESO INS4 DROT2 BEGIN':
+            # in June 2021 ESO changed INS4 DROT2 BEGIN to INS4 DROT2 START
+            v_begin = header.get('HIERARCH ESO INS4 DROT2 BEGIN')
+            v_start = header.get('HIERARCH ESO INS4 DROT2 START')
+            header[key] = v_begin if v_begin else v_start
+            if v_begin is None:
+                header[key] = -10000
+        elif key == 'HIERARCH ESO INS4 DROT3 BEGIN':
+            # in June 2021 ESO changed INS4 DROT3 BEGIN to INS4 DROT3 START
+            v_begin = header.get('HIERARCH ESO INS3 DROT2 BEGIN')
+            v_start = header.get('HIERARCH ESO INS3 DROT2 START')
+            header[key] = v_begin if v_begin else v_start
+            if v_begin is None:
+                header[key] = -10000
+        else:
+            header[key] = get_headerval_with_exeption(
+                orig_hdr, header_list[key][0], header_list[key][1])
 
     header_table = collections.OrderedDict()
     for key in header_list.keys():
