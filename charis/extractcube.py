@@ -30,13 +30,14 @@ try:
     import utr
     from image import Image
     from image.image_geometry import resample_image_cube
-    from tools import sph_ifs_correct_spectral_xtalk
+    from tools import sph_ifs_correct_spectral_xtalk, sph_ifs_fix_badpix, fit_background
 except ImportError:
+    # Python 3
     import charis
     from charis import instruments, primitives, utr
     from charis.image import Image
     from charis.image.image_geometry import resample_image_cube
-    from charis.tools import sph_ifs_correct_spectral_xtalk, sph_ifs_fix_badpix
+    from charis.tools import sph_ifs_correct_spectral_xtalk, sph_ifs_fix_badpix, fit_background
 
 
 log = logging.getLogger('main')
@@ -45,7 +46,7 @@ log = logging.getLogger('main')
 def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
             mask=True, fixbadpixels=False,
-            gain=2, nonlinear_threshold=30000, noisefac=0, saveramp=False, R=30,
+            gain=2, nonlinear_threshold=40000, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, crosstalk_scale=0.8,
             dc_xtalk_correction=False,
             linear_wavelength=False,
@@ -169,7 +170,10 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
     maskarr = None
     if mask is True:
-        maskarr = fits.getdata(os.path.join(calibdir, 'mask.fits'))
+        maskarr = fits.getdata(
+            os.path.join(os.path.split(charis.__file__)[0],
+                         'calibrations/{}/combined_mask.fits'.format(instrument.instrument_name)))
+        # maskarr = fits.getdata(os.path.join(calibdir, 'mask.fits'))
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
 
     if instrument.instrument_name == 'CHARIS':
@@ -185,8 +189,10 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
         if flatfield:
-            pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
-            good_pixels = np.logical_and(pixelflat > 0.5, pixelflat < 1.5)
+            pixelflat = fits.getdata(
+                os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/pixelflat.fits'))
+            # pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
+            good_pixels = np.logical_and(pixelflat > 0.6, pixelflat < 1.4)
             maskarr[~good_pixels] = 0
             # ivar = maskarr.astype('float64')
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
@@ -231,43 +237,42 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                         instrument_name=instrument.instrument_name)
 
     if bgsub:
-        if bgpath is None:
-            hdulist = fits.open(os.path.join(calibdir, 'background.fits'))
-        else:
+        if bgpath is not None:
             hdulist = fits.open(bgpath)
-        bg = hdulist[0].data
-        if bg is None:
-            bg = hdulist[1].data
-        hdulist.close()
-        if len(bg.shape) == 3:
-            bg = np.median(bg, axis=0)
+            bg = hdulist[0].data
+            if bg is None:
+                bg = hdulist[1].data
+            hdulist.close()
+            if len(bg.shape) == 3:
+                bg = np.median(bg, axis=0)
 
         if instrument.instrument_name == 'SPHERE':
             # Region to match background counts for SPHERE IFS
-            if bg_scaling_without_mask:
-                norm = inImage.data[maskarr == 1] / bg[maskarr == 1]
-            else:
-                try:
-                    bgscalemask = fits.getdata(os.path.join(
-                        calibdir, 'background_scaling_mask.fits')).astype('bool')
+            bgscalemask = fits.getdata(
+                os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/background_scaling_mask.fits')).astype('bool')
+            if bgpath is not None:
+                if bg_scaling_without_mask:
+                    norm = inImage.data[maskarr == 1] / bg[maskarr == 1]
+                else:
                     norm = inImage.data[bgscalemask] / bg[bgscalemask]
-                except FileNotFoundError:
-                    print("Background scaling mask not found. Falling back on naive scheme.")
-                    i1, i2, j1, j2 = None, 120, None, 400
-                    indx = maskarr[i1:i2, j1:j2] == 1
-                    norm = inImage.data[i1:i2, j1:j2][indx]
-                    norm /= bg[i1:i2, j1:j2][indx]
 
-            norm = norm[np.isfinite(norm)].flatten()
-            _, norm, _ = sigma_clipped_stats(
-                norm, sigma=2., sigma_lower=None, sigma_upper=None,
-                maxiters=5, cenfunc='median', stdfunc='std',
-                std_ddof=0)
-            # # Trimmed mean to match count rates
-            # norm = np.mean(np.sort(norm)[len(norm)//4:-len(norm)//4])
-            bg *= norm
-            print("Background subtracted")
-        inImage.data -= bg
+                norm = norm[np.isfinite(norm)].flatten()
+                _, norm, _ = sigma_clipped_stats(
+                    norm, sigma=2., sigma_lower=None, sigma_upper=None,
+                    maxiters=5, cenfunc='median', stdfunc='std',
+                    std_ddof=0)
+                # # Trimmed mean to match count rates
+                # norm = np.mean(np.sort(norm)[len(norm)//4:-len(norm)//4])
+                bg *= norm
+                print("Background subtracted")
+            else:
+                print('Fitting bg')
+                components = fits.getdata(
+                    os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/background_template.fits'))
+                bg, bg_coef = fit_background(
+                    image=inImage.data, components=components, bgmask=bgscalemask, outlier_percentiles=[2, 98])
+                print("BG coefficients: {}".format(bg_coef))
+            inImage.data -= bg
 
     if instrument.instrument_name == 'SPHERE':
         inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
@@ -308,8 +313,14 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     header.append(('comment', ''), end=True)
 
     if flatfield:
-        lensletflat = fits.getdata(os.path.join(calibdir, 'lensletflat.fits')).astype('float64')
-        pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
+        lensletflat = fits.getdata(
+            os.path.join(
+                os.path.split(charis.__file__)[0],
+                'calibrations/{}/{}/lensletflat.fits'.format(
+                    instrument.instrument_name, instrument.observing_mode))).astype('float64')
+        pixelflat = fits.getdata(
+            os.path.join(os.path.split(charis.__file__)[0],
+                         'calibrations/{}/pixelflat.fits'.format(instrument.instrument_name)))
         good_pixel_mask = np.logical_not(bpm.astype('bool'))
     else:
         lensletflat = None
