@@ -30,10 +30,11 @@ try:
     from parallel import Consumer, Task
     from tools import expected_spectrum
 except ImportError:
+    import charis
     from charis import instruments, primitives, utr
     from charis.image import Image
     from charis.parallel import Consumer, Task
-    from charis.tools import expected_spectrum
+    from charis.tools import expected_spectrum, fit_background
 
 log = logging.getLogger('main')
 
@@ -44,7 +45,9 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     if calibdir is None:
         calibdir = instrument.calibration_path
     if mask is None:
-        mask = fits.getdata(os.path.join(calibdir, 'mask.fits'))
+        mask = fits.getdata(
+            os.path.join(os.path.split(charis.__file__)[0],
+                         'calibrations/{}/combined_mask.fits'.format(instrument.instrument_name)))
 
     hdr = fits.PrimaryHDU().header
     hdr.clear()
@@ -68,6 +71,7 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     # Mean background count rate, weighted by inverse variance
     ###############################################################
 
+    # NOTE: Handling of BG frames for CHARIS defunct, not used in further routines.
     if instrument.instrument_name == 'CHARIS':
         print('Computing ramps from sequences of raw reads')
         num = 0.
@@ -86,25 +90,6 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
             background.write('background.fits')
         else:
             hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
-
-    # elif instrument.instrument_name == 'SPHERE':
-    #     bgs = []
-    #     for idx, bgfile in enumerate(bgfiles):
-    #         bg = fits.getdata(bgfile)
-    #         if len(bg.shape) == 3:
-    #             bg = np.sort(bg.astype('float64'), axis=0)
-    #                 bgs.append(np.mean(bg[1:-1], axis=0) * mask)
-    #         hdr['bkgnd%03d' % (idx + 1)] = (re.sub('.*/', '', bgfile),
-    #                                     'Dark(s) used for background subtraction')
-    #     bg = np.mean(np.array(bgs), axis=0)
-    #     if len(bgiles) > 0:
-    #         inImage = Image(data=bg, ivar=mask.astype('float64'),
-    #                         instrument_name=instrument.instrument_name)
-    #         background.write('background.fits')
-    #     else:
-    #         hdr['bkgnd001'] = ('None', 'Dark(s) used for background subtraction')
-    # else:
-    #     raise ValueError('Instrument not defined.')
 
     ###############################################################
     # Monochromatic flatfield image
@@ -186,10 +171,28 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     if calibdir is None:
         calibdir = instrument.calibration_path
 
-    if mask is None:
-        mask = fits.getdata(os.path.join(calibdir, 'mask.fits'))
+    # NOTE: Mask not used further on.
+    # if mask is None:
+    #     if instrument.instrument_name == 'SPHERE':
+    #         mask = fits.getdata(
+    #             os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/combined_mask.fits'))
+    #     else:
+    #         mask = fits.getdata(os.path.join(calibdir, 'mask.fits'))
 
     tstart = time.time()
+    if instrument.instrument_name == 'SPHERE':
+        bgscalemask = fits.getdata(
+            os.path.join(
+                os.path.split(charis.__file__)[0],
+                'calibrations/SPHERE/background_scaling_mask.fits')).astype('bool')
+        components = fits.getdata(
+            os.path.join(
+                os.path.split(charis.__file__)[0],
+                'calibrations/SPHERE/background_template.fits'))
+        bg, bg_coef = fit_background(
+            image=inImage.data, components=components, bgmask=bgscalemask, outlier_percentiles=[2, 98])
+        inImage.data -= bg
+
     lower_wavelength_limit, upper_wavelength_limit = instrument.wavelength_range.value
     R = instrument.resolution
 
@@ -400,20 +403,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     out = fits.HDUList(fits.PrimaryHDU(None, header))
     out.writeto(os.path.join(outdir, 'cal_params.fits'), overwrite=True)
 
-    try:
-        shutil.copy(os.path.join(calibdir, 'lensletflat.fits'),
-                    os.path.join(outdir, 'lensletflat.fits'))
-        shutil.copy(os.path.join(calibdir, 'background_scaling_mask.fits'),
-                    os.path.join(outdir, 'background_scaling_mask.fits'))
-
-        for filename in ['mask.fits', 'pixelflat.fits']:
-            shutil.copy(os.path.join(calibdir, filename), os.path.join(outdir, filename))
-
-        shutil.copy(os.path.join(calibdir, 'background.fits'),
-                    os.path.join(outdir, 'background.fits'))
-    except FileNotFoundError:
-        print("Some static calibration files were not found in installation directory.")
-
     if verbose:
         print("Total time elapsed: %.0f seconds" % (time.time() - tstart))
+
     return None

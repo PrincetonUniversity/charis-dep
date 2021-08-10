@@ -458,20 +458,19 @@ def metadata_SPHERE(filename, dit_idx=None, header=None, clear=True, version=Non
 
     if dit_idx == [1, None]:
         dit_idx = 1
-    # try:
+    try:
+        compute_times(frames_info, idx=dit_idx)
+        compute_angles(frames_info)
 
-    compute_times(frames_info, idx=dit_idx)
-    compute_angles(frames_info)
-
-    header['PARANG START'] = (frames_info['PARANG START'][0], '')
-    header['PARANG'] = (frames_info['PARANG'][0], '')
-    header['PARANG END'] = (frames_info['PARANG END'][0], '')
-    header['PUPIL OFFSET'] = (frames_info['PUPIL OFFSET'][0], '')
-    header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
-    header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
-    header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
-    # except:
-    #     print('Unable to compute parallactic angle for {}'.format(filename))
+        header['PARANG START'] = (frames_info['PARANG START'][0], '')
+        header['PARANG'] = (frames_info['PARANG'][0], '')
+        header['PARANG END'] = (frames_info['PARANG END'][0], '')
+        header['PUPIL OFFSET'] = (frames_info['PUPIL OFFSET'][0], '')
+        header['DEROT ANGLE'] = (frames_info['DEROT ANGLE'][0], '')
+        header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
+        header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
+    except TypeError:
+        print('Unable to compute parallactic angle for {}'.format(filename))
 
     return header
 

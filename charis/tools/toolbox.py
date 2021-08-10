@@ -17,9 +17,9 @@ import scipy.ndimage as ndimage
 from astropy.convolution import convolve
 from astropy.io import fits
 from astropy.modeling import fitting, models
-
 from astropy.time import Time
 from matplotlib.backends.backend_pdf import PdfPages
+from scipy.stats import scoreatpercentile
 
 global_cmap = 'inferno'
 
@@ -214,6 +214,23 @@ def sph_ifs_fix_badpix(img, bpm):
     img_clean[mask] = img[mask]
 
     return img_clean
+
+
+def fit_background(image, components, bgmask, outlier_percentiles=[2, 98]):
+    arr = np.reshape(components, (components.shape[0], -1))
+    # Mask: background mask and PCA components are reliable
+    bgmask = np.logical_and(bgmask, components[1] != 0)
+    non_outliers = (image > scoreatpercentile(image[bgmask], outlier_percentiles[0])) \
+        * (image < scoreatpercentile(image[bgmask], outlier_percentiles[1]))
+    bgmask = np.logical_and(bgmask, non_outliers)
+    mask = np.reshape(bgmask, -1)
+
+    coef = np.linalg.lstsq((arr[:, mask]).T, np.reshape(image, -1)[mask], rcond=None)[0]
+
+    # This is the fit that we want
+    bgfit = np.sum(components*coef[:, np.newaxis, np.newaxis], axis=0)
+
+    return bgfit, coef
 
 
 def parallatic_angle(ha, dec, geolat):
