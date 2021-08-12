@@ -172,7 +172,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     if mask is True:
         maskarr = fits.getdata(
             os.path.join(os.path.split(charis.__file__)[0],
-                         'calibrations/{}/combined_mask.fits'.format(instrument.instrument_name)))
+                         'calibrations/{}/mask.fits'.format(instrument.instrument_name)))
         # maskarr = fits.getdata(os.path.join(calibdir, 'mask.fits'))
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
 

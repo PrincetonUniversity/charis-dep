@@ -47,7 +47,7 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     if mask is None:
         mask = fits.getdata(
             os.path.join(os.path.split(charis.__file__)[0],
-                         'calibrations/{}/combined_mask.fits'.format(instrument.instrument_name)))
+                         'calibrations/{}/mask.fits'.format(instrument.instrument_name)))
 
     hdr = fits.PrimaryHDU().header
     hdr.clear()
@@ -175,11 +175,12 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     # if mask is None:
     #     if instrument.instrument_name == 'SPHERE':
     #         mask = fits.getdata(
-    #             os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/combined_mask.fits'))
+    #             os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/mask.fits'))
     #     else:
     #         mask = fits.getdata(os.path.join(calibdir, 'mask.fits'))
 
     tstart = time.time()
+
     if instrument.instrument_name == 'SPHERE':
         bgscalemask = fits.getdata(
             os.path.join(
@@ -191,6 +192,7 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
                 'calibrations/SPHERE/background_template.fits'))
         bg, bg_coef = fit_background(
             image=inImage.data, components=components, bgmask=bgscalemask, outlier_percentiles=[2, 98])
+        print('Background coefficients: {}'.format(bg_coef))
         inImage.data -= bg
 
     lower_wavelength_limit, upper_wavelength_limit = instrument.wavelength_range.value
