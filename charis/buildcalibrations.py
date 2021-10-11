@@ -181,19 +181,19 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
 
     tstart = time.time()
 
-    if instrument.instrument_name == 'SPHERE':
-        bgscalemask = fits.getdata(
-            os.path.join(
-                os.path.split(charis.__file__)[0],
-                'calibrations/SPHERE/background_scaling_mask.fits')).astype('bool')
-        components = fits.getdata(
-            os.path.join(
-                os.path.split(charis.__file__)[0],
-                'calibrations/SPHERE/background_template.fits'))
-        bg, bg_coef = fit_background(
-            image=inImage.data, components=components, bgmask=bgscalemask, outlier_percentiles=[2, 98])
-        print('Background coefficients: {}'.format(bg_coef))
-        inImage.data -= bg
+    # if instrument.instrument_name == 'SPHERE':
+    #     bgscalemask = fits.getdata(
+    #         os.path.join(
+    #             os.path.split(charis.__file__)[0],
+    #             'calibrations/SPHERE/background_scaling_mask.fits')).astype('bool')
+    #     components = fits.getdata(
+    #         os.path.join(
+    #             os.path.split(charis.__file__)[0],
+    #             'calibrations/SPHERE/background_template.fits'))
+    #     bg, bg_coef = fit_background(
+    #         image=inImage.data, components=components, bgmask=bgscalemask, outlier_percentiles=[2, 98])
+    #     print('Background coefficients: {}'.format(bg_coef))
+    #     inImage.data -= bg
 
     lower_wavelength_limit, upper_wavelength_limit = instrument.wavelength_range.value
     R = instrument.resolution
