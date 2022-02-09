@@ -276,7 +276,8 @@ def compute_times(frames_info, idx=None):
     time_start = frames_info['DATE-OBS'].values
     time_end = frames_info['DET FRAM UTC'].values
     time_delta = (time_end - time_start) / frames_info['DET NDIT'].values.astype(np.int)
-    DIT = np.array(frames_info['DET SEQ1 DIT'].values.astype(np.float) * 1000, dtype='timedelta64[ms]')
+    DIT = np.array(frames_info['DET SEQ1 DIT'].values.astype(
+        np.float) * 1000, dtype='timedelta64[ms]')
 
     # calculate UTC time stamps
     if idx is None:
@@ -339,7 +340,7 @@ def compute_angles(frames_info, true_north=-1.75):
     ra_drot_s = ra_drot - ra_drot_h*1e4 - ra_drot_m*1e2
     ra_hour = coord.Angle((ra_drot_h, ra_drot_m, ra_drot_s), units.hour)
     ra_deg = ra_hour*15
-    frames_info['RA'] = ra_deg
+    frames_info['RA'] = ra_deg.value
 
     dec_drot = frames_info['INS4 DROT2 DEC'].values.astype(np.float)
     sign = np.sign(dec_drot)
@@ -349,7 +350,7 @@ def compute_angles(frames_info, true_north=-1.75):
     dec_drot_s = udec_drot - dec_drot_d * 1e4 - dec_drot_m * 1e2
     dec_drot_d *= sign
     dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
-    frames_info['DEC'] = dec
+    frames_info['DEC'] = dec.value
 
     geolon = coord.Angle(frames_info['TEL GEOLON'].values[0], units.degree)
     geolat = coord.Angle(frames_info['TEL GEOLAT'].values[0], units.degree)
@@ -362,8 +363,8 @@ def compute_angles(frames_info, true_north=-1.75):
     ha = lst - ra_hour
     pa = parallatic_angle(ha, dec[0], geolat)
     frames_info['PARANG'] = pa.value + pa_correction
-    frames_info['HOUR ANGLE'] = ha
-    frames_info['LST'] = lst
+    frames_info['HOUR ANGLE'] = ha.value
+    frames_info['LST'] = lst.value
 
     # Altitude and airmass
     # j2000 = coord.SkyCoord(ra=ra_hour, dec=dec, frame='icrs', obstime=utc)
@@ -378,16 +379,16 @@ def compute_angles(frames_info, true_north=-1.75):
     ha = lst - ra_hour
     pa = parallatic_angle(ha, dec[0], geolat)
     frames_info['PARANG START'] = pa.value + pa_correction
-    frames_info['HOUR ANGLE START'] = ha
-    frames_info['LST START'] = lst
+    frames_info['HOUR ANGLE START'] = ha.value
+    frames_info['LST START'] = lst.value
 
     utc = Time(frames_info['TIME END'].values.astype(str), scale='utc', location=location)
     lst = utc.sidereal_time('apparent')
     ha = lst - ra_hour
     pa = parallatic_angle(ha, dec[0], geolat)
     frames_info['PARANG END'] = pa.value + pa_correction
-    frames_info['HOUR ANGLE END'] = ha
-    frames_info['LST END'] = lst
+    frames_info['HOUR ANGLE END'] = ha.value
+    frames_info['LST END'] = lst.value
 
     # calculate parallactic angles
     # utc = Time(frames_info['TIME START'].values.astype(str), scale='utc', location=(geolon, geolat, geoelev))
@@ -416,7 +417,7 @@ def compute_angles(frames_info, true_north=-1.75):
     #  INSTRUMENT_OFFSET
     #   IFS = +100.48 +/- 0.10
     #   IRD =    0.00 +/- 0.00
-    #   TRUE_NORTH = -1.75 ± 0.08
+    #   TRUE_NORTH = -1.75 +/- 0.08
     #
     instru = frames_info['SEQ ARM'].unique()
     if len(instru) != 1:
@@ -539,7 +540,8 @@ def collapse_frames_info(finfo, fname, collapse_type, coadd_value=2):
         NDIT = len(finfo)
         NDIT_new = NDIT // coadd_value
 
-        index = pd.MultiIndex.from_arrays([np.full(NDIT_new, fname), np.arange(NDIT_new)], names=['FILE', 'IMG'])
+        index = pd.MultiIndex.from_arrays(
+            [np.full(NDIT_new, fname), np.arange(NDIT_new)], names=['FILE', 'IMG'])
         nfinfo = pd.DataFrame(columns=finfo.columns, index=index)
 
         for f in range(NDIT_new):
@@ -706,8 +708,10 @@ def star_centers_from_PSF_img_cube(cube, wave, pixel, exclude_fraction=0.1, box_
                                    img_centers > (c_med+3*c_std)), axis=1)
         ibad = np.where(bad)[0]
         igood = np.where(np.logical_not(bad))[0]
-        if len(ibad) != 0:
-            print(f'   ==> found {len(ibad)} outliers. Will replace them with a linear fit.')
+        nbad = len(ibad)
+
+        if nbad != 0:
+            print('   ==> found {} outliers. Will replace them with a linear fit.'.format(nbad))
 
             idx = np.arange(nwave)
 
@@ -911,7 +915,8 @@ def star_centers_from_waffle_cube(cube, wave, instrument, waffle_orientation,
             # plot sattelite spots and fit
             if save_path or display:
                 ax.plot([cx_final], [cy_final], marker='D', color=col[s])
-                ax.add_patch(patches.Rectangle((cx - box, cy - box), 2 * box, 2 * box, ec='white', fc='none'))
+                ax.add_patch(patches.Rectangle((cx - box, cy - box),
+                             2 * box, 2 * box, ec='white', fc='none'))
 
                 axs = fig.add_axes((0.17 + s * 0.2, 0.17, 0.1, 0.1))
                 axs.imshow(sub, aspect='equal', vmin=0, vmax=sub.max())
