@@ -60,9 +60,10 @@ def _smoothandmask(datacube, good):
     narrowwindow /= np.sum(narrowwindow)
 
     for i in range(cube.shape[0]):
+        # Identify bad
         ivar_smooth = signal.convolve2d(ivar[i], widewindow, mode='same')
-        ivar[i] *= ivar[i] > ivar_smooth / 10.
-
+        ivar[i] *= ivar[i] > ivar_smooth / 10.  # replace outliers with 0
+        # Replace with ivar weighted values
         mask = signal.convolve2d(cube[i] * ivar[i], narrowwindow, mode='same')
         mask /= signal.convolve2d(ivar[i], narrowwindow, mode='same') + 1e-100
         indx = np.where(np.all([ivar[i] == 0, good], axis=0))
@@ -71,7 +72,8 @@ def _smoothandmask(datacube, good):
     return datacube
 
 
-def _smoothandmask_hexgeometry(datacube, good, neighbour_indices, mask_negative=False):
+def _smoothandmask_hexgeometry(datacube, good, neighbour_indices,
+                               ivar_threshold=10, data_threshold=5):
     """
     Set bad spectral measurements to an inverse variance of zero. The
     threshold for effectively discarding data is 20 robust standard deviations
@@ -99,32 +101,56 @@ def _smoothandmask_hexgeometry(datacube, good, neighbour_indices, mask_negative=
 
     flat_data = flatten_cube(datacube.data)
     flat_ivar = flatten_cube(datacube.ivar)
+    # flat_good = good.reshape(-1)
+    neighbour_indices = np.array(neighbour_indices)
 
-    if mask_negative:
-        less_than_zero = flat_data < 0.
-    else:
-        less_than_zero = np.zeros_like(flat_data).astype('bool')
+    flat_data[flat_data == 0.] = np.nan
+    flat_ivar[flat_ivar == 0.] = np.nan
 
-    smoothed_data = median_filter_hex_cube(flat_data, neighbour_indices)
+    # 1st iteration
+    smoothed_data = median_filter_hex_cube(
+        flat_data, neighbour_indices)
     smoothed_ivar = median_filter_hex_cube(flat_ivar, neighbour_indices)
-    surrounding_data_robust_std_dev = mad_std_hex_cube(flat_data, neighbour_indices)
-    surrounding_ivar_robust_std_dev = mad_std_hex_cube(flat_ivar, neighbour_indices)
+    surrounding_data_robust_std_dev = mad_std_hex_cube(
+        flat_data, neighbour_indices)
+    surrounding_ivar_robust_std_dev = mad_std_hex_cube(
+        flat_ivar, neighbour_indices)
 
-    non_zero = surrounding_data_robust_std_dev > 0
-    mask_ivar = np.zeros_like(flat_ivar)
-    mask_data = np.zeros_like(flat_data)
+    mask_nan = ~np.logical_and(np.isfinite(flat_ivar), np.isfinite(flat_data))
+    mask_ivar = np.abs(
+        flat_ivar - smoothed_ivar) / (surrounding_ivar_robust_std_dev + 1e-100) > ivar_threshold
+    mask_data = np.abs(
+        flat_data - smoothed_data) / (surrounding_data_robust_std_dev + 1e-100) > data_threshold
 
-    mask_ivar[non_zero] = np.abs(
-        flat_ivar[non_zero] - smoothed_ivar[non_zero]) / surrounding_ivar_robust_std_dev[non_zero] > 15.
-    mask_data[non_zero] = np.abs(
-        flat_data[non_zero] - smoothed_data[non_zero]) / surrounding_data_robust_std_dev[non_zero] > 5.
+    mask = np.logical_or.reduce([mask_ivar, mask_data, mask_nan])
 
-    mask = np.logical_or.reduce([mask_data, mask_ivar, less_than_zero])
+    # Remove bad extractions from smoothing and median
+    flat_ivar[mask] = np.nan
+    flat_data[mask] = np.nan
 
+    # 2st iteration
+    smoothed_data = median_filter_hex_cube(
+        flat_data, neighbour_indices)
+    smoothed_ivar = median_filter_hex_cube(flat_ivar, neighbour_indices)
+    surrounding_data_robust_std_dev = mad_std_hex_cube(
+        flat_data, neighbour_indices)
+    surrounding_ivar_robust_std_dev = mad_std_hex_cube(
+        flat_ivar, neighbour_indices)
+
+    mask_nan = ~np.logical_and(np.isfinite(flat_ivar), np.isfinite(flat_data))
+
+    mask_ivar = np.abs(
+        flat_ivar - smoothed_ivar) / (surrounding_ivar_robust_std_dev + 1e-100) > ivar_threshold
+    mask_ivar = np.logical_or(~np.isfinite(flat_ivar), mask_ivar)
+    mask_data = np.abs(
+        flat_data - smoothed_data) / (surrounding_data_robust_std_dev + 1e-100) > data_threshold
+    mask_data = np.logical_or(~np.isfinite(flat_data), mask_data)
+
+    mask = np.logical_or.reduce([mask_ivar, mask_data, mask_nan])
+
+    # Replace values
     flat_ivar[mask] = 0.
     flat_data[mask] = smoothed_data[mask]
-    if mask_negative:
-        flat_data[less_than_zero] = 0.
 
     data = deflatten_cube(flat_data)
     ivar = deflatten_cube(flat_ivar)
@@ -636,7 +662,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     # Factor of 5 or so speedup on a 16 core machine.
     ###################################################################
 
-    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, dx=dx_cutout, maxproc=maxcpus)
+    A, b, size = matutils.allcutouts(data, isig, xint, yint, indx,
+                                     psflets, dx=dx_cutout, maxproc=maxcpus)
     nlens = xint.shape[1]
 
     ###################################################################
@@ -704,7 +731,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
             data[:] = im.data - corrnoise
             im.ivar = _recalc_ivar(data, im.ivar)
             isig = np.sqrt(im.ivar)
-            A, b, size = matutils.allcutouts(data, isig, xint, yint, indx, psflets, dx=dx_cutout, maxproc=maxcpus)
+            A, b, size = matutils.allcutouts(
+                data, isig, xint, yint, indx, psflets, dx=dx_cutout, maxproc=maxcpus)
             coefs, cov = matutils.lstsq(A, b, indx, size, nlens, returncov=1, maxproc=maxcpus)
             coefs = coefs.T.reshape(coefshape)
             cov = cov[:, np.arange(cov.shape[1]), np.arange(cov.shape[1])]
@@ -736,7 +764,8 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
                 if fitbkgnd:
                     A, b, size = matutils.allcutouts(data, isig, xint, yint, indx,
                                                      psflets, dx=dx_cutout, maxproc=maxcpus)
-                    coefs, cov = matutils.lstsq(A, b, indx, size, nlens, returncov=1, maxproc=maxcpus)
+                    coefs, cov = matutils.lstsq(A, b, indx, size, nlens,
+                                                returncov=1, maxproc=maxcpus)
                     coefs = coefs.T.reshape(coefshape)
                     for i in range(len(psflets) - n_add, len(psflets)):
                         coefs_flat = np.reshape(coefs[i], -1)
@@ -956,7 +985,10 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)
 
     if lensletflat is not None:
-        badlenslets = np.logical_or(lensletflat == 0., lensletflat == 1.)
+        badlenslets = np.logical_or.reduce([
+            lensletflat == 0.,
+            lensletflat == 1.,
+            lensletflat < 0.7])
         datacube.data[:, ~badlenslets] /= lensletflat[~badlenslets]
         datacube.ivar[:, ~badlenslets] *= lensletflat[~badlenslets]**2
     else:
@@ -967,8 +999,8 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
         if instrument.instrument_name == 'CHARIS':
             datacube = _smoothandmask(datacube, good)
         elif instrument.instrument_name == 'SPHERE':
-            datacube.ivar[:, badlenslets] = 0
-            good[badlenslets] = 0
+            datacube.ivar[:, badlenslets] = 0.
+            good[badlenslets] = 0.
             neighbour_indices_path = os.path.join(
                 os.path.split(
                     instrument.calibration_path)[0], 'neighbour_indices.json')

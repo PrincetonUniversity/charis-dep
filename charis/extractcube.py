@@ -20,7 +20,6 @@ import numpy as np
 from astropy.io import fits
 from astropy.stats import mad_std, sigma_clipped_stats
 from future import standard_library
-
 standard_library.install_aliases()
 
 
@@ -45,7 +44,7 @@ log = logging.getLogger('main')
 
 def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
-            mask=True, fixbadpixels=False,
+            mask=True,
             gain=2, nonlinear_threshold=40000, noisefac=0, saveramp=False, R=30,
             method='lstsq', refine=True, crosstalk_scale=0.8,
             dc_xtalk_correction=False,
@@ -173,7 +172,6 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         maskarr = fits.getdata(
             os.path.join(os.path.split(charis.__file__)[0],
                          'calibrations/{}/mask.fits'.format(instrument.instrument_name)))
-        # maskarr = fits.getdata(os.path.join(calibdir, 'mask.fits'))
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
 
     if instrument.instrument_name == 'CHARIS':
@@ -191,10 +189,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         if flatfield:
             pixelflat = fits.getdata(
                 os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/pixelflat.fits'))
-            # pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
-            good_pixels = np.logical_and(pixelflat > 0.6, pixelflat < 1.4)
+            good_pixels = np.logical_and(pixelflat > 0.9, pixelflat < 1.1)
             maskarr[~good_pixels] = 0
-            # ivar = maskarr.astype('float64')
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
 
         if nonlinear_threshold is not None:
@@ -210,7 +206,11 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 print(file_ending)
             else:
                 if len(data) > 1:
-                    data = sph_ifs_fix_badpix(np.mean(data, axis=0), bpm)  # * maskarr
+                    for idx, frame in enumerate(data):
+                        data[idx] = sph_ifs_fix_badpix(frame, bpm)  # * maskarr
+                    # ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
+                    ivar = 1 / np.std(data, axis=0)**2
+                    data = np.mean(data, axis=0)  # * maskarr
                 else:
                     data = sph_ifs_fix_badpix(data[0], bpm)
                     # data_orig = data[0].copy()
@@ -261,8 +261,6 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                     norm, sigma=2., sigma_lower=None, sigma_upper=None,
                     maxiters=5, cenfunc='median', stdfunc='std',
                     std_ddof=0)
-                # # Trimmed mean to match count rates
-                # norm = np.mean(np.sort(norm)[len(norm)//4:-len(norm)//4])
                 bg *= norm
                 print("Background subtracted")
             else:
@@ -277,8 +275,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     if instrument.instrument_name == 'SPHERE':
         inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
         inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
-
-    if dc_xtalk_correction is True:
+        inImage.ivar[bpm.astype('bool')] = 0  # inImage.ivar[bpm.astype('bool')] * 1e-20
+    if dc_xtalk_correction:
         # bpm = np.logical_not(
         #     fits.getdata(os.path.join(calibdir, 'mask.fits')).astype('bool'))
         # if instrument.instrument_name == 'SPHERE' and flatfield:
@@ -288,7 +286,6 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         #     inImage.ivar[good_pixels] *= pixelflat[good_pixels]**2
         #     print("Divide by flat for good pixels")
         # print('Fixing bad pixels')
-        # inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
 
         inImage.data, convolved_image = sph_ifs_correct_spectral_xtalk(
             inImage.data, mask=~(maskarr.astype('bool')))
@@ -299,7 +296,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
-        inImage.write(re.sub('.fits', '_ramp.fits', os.path.join(outdir, os.path.basename(filename))))
+        inImage.write(re.sub('.fits', '_ramp.fits', os.path.join(
+            outdir, os.path.basename(filename))))
 
     ################################################################
     # Read in necessary calibration files and extract the data cube.
@@ -351,7 +349,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 dx = inImage.data.shape[0]
                 if instrument.instrument_name == 'CHARIS':
                     dx = int(dx / 16)
-                psflets = primitives.calc_offset(psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
+                psflets = primitives.calc_offset(
+                    psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
             except:
                 if verbose:
                     print('Fit shift failed. Continuing without fitting shift.')
@@ -462,15 +461,18 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         else:
             delt_x = 5
 
-        # if flatfield:
-        #     if refine:
-        #         # revert flatfield correction for psflets?
-        #         psflets[:, good_pixel_mask] = psflets[:, good_pixel_mask] / pixelflat[good_pixel_mask]
-        #     inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / pixelflat[good_pixel_mask]
-        #     if instrument.instrument_name == 'SPHERE':
-        #         inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
-        #         inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
-        #         inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
+        if flatfield:
+            # if refine:
+            #     # revert flatfield correction for psflets?
+            #     psflets[:, good_pixel_mask] = psflets[:,
+            #                                           good_pixel_mask] / pixelflat[good_pixel_mask]
+            inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / \
+                pixelflat[good_pixel_mask]
+            if instrument.instrument_name == 'SPHERE':
+                inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+                inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
+                inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
+                inImage.ivar[bpm.astype('bool')] = 0  # inImage.ivar[bpm.astype('bool')] / 1.2
 
         # If we did the crosstalk correction, we need to add the model
         # spectra back in and do a modified optimal extraction.
@@ -517,8 +519,10 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         with open(clip_info_file) as json_data:
             clip_infos = json.load(json_data)
         datacube_resampled = copy.copy(datacube)
-        datacube_resampled.data = resample_image_cube(datacube.data, clip_infos, hexagon_size=1 / np.sqrt(3))
-        datacube_resampled.ivar = resample_image_cube(datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
+        datacube_resampled.data = resample_image_cube(
+            datacube.data, clip_infos, hexagon_size=1 / np.sqrt(3))
+        datacube_resampled.ivar = resample_image_cube(
+            datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
 
         datacube.write(
             re.sub('.fits', '_cube' + file_ending + '.fits',

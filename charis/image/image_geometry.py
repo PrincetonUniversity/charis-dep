@@ -15,6 +15,7 @@ between arbitrary polygons.
 import os
 import json
 import numpy as np
+import bottleneck as bn
 from astropy.io import fits
 from matplotlib import pyplot as plt
 
@@ -30,7 +31,8 @@ except:
 
 Point = collections.namedtuple("Point", ["x", "y"])
 _Hex = collections.namedtuple("Hex", ["q", "r", "s"])
-Orientation = collections.namedtuple("Orientation", ["f0", "f1", "f2", "f3", "b0", "b1", "b2", "b3", "start_angle"])
+Orientation = collections.namedtuple(
+    "Orientation", ["f0", "f1", "f2", "f3", "b0", "b1", "b2", "b3", "start_angle"])
 Layout = collections.namedtuple("Layout", ["orientation", "size", "origin"])
 Layout_square = collections.namedtuple("Layout_square", ["size", "origin"])
 
@@ -447,24 +449,23 @@ def median_filter_hex_image(flat_image, index_list):
     smooth_image = np.zeros_like(flat_image)
     for pix_index, value in enumerate(flat_image):
         neighbour_mask = index_list[pix_index]
-        median_value = np.median(flat_image[neighbour_mask])
+        median_value = bn.nanmedian(flat_image[neighbour_mask])
         smooth_image[pix_index] = median_value
     return smooth_image
 
 
 def median_filter_hex_cube(flat_cube, index_list):
     smooth_cube = np.zeros_like(flat_cube)
-
     for pix_index, neighbour_mask in enumerate(index_list):
-        smooth_cube[:, pix_index] = np.median(flat_cube[:, neighbour_mask], axis=1)
+        smooth_cube[:, pix_index] = bn.nanmedian(flat_cube[:, neighbour_mask], axis=1)
     return smooth_cube
 
 
 def mad_std_hex_cube(flat_cube, index_list):
     surrounding_robust_std_dev = np.zeros_like(flat_cube)
-
     for pix_index, neighbour_mask in enumerate(index_list):
-        surrounding_robust_std_dev[:, pix_index] = mad_std(flat_cube[:, neighbour_mask], axis=1)
+        surrounding_robust_std_dev[:, pix_index] = mad_std(
+            flat_cube[:, neighbour_mask], axis=1, ignore_nan=True)
     return surrounding_robust_std_dev
 
 

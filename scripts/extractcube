@@ -66,10 +66,10 @@ if __name__ == "__main__":
         mask = Config.getboolean('Calib', 'mask')
     except:
         mask = True
-    try:
-        fixbadpixels = Config.getboolean('Calib', 'fixbadpixels')
-    except:
-        fixbadpixels = False
+    # try:
+    #     fixbadpixels = Config.getboolean('Calib', 'fixbadpixels')
+    # except:
+    #     fixbadpixels = False
     try:
         flatfield = Config.getboolean('Calib', 'flatfield')
     except:
@@ -105,7 +105,8 @@ if __name__ == "__main__":
     try:
         minpct = Config.getint('Extract', 'minpct')
         minpct = max(minpct, 0)
-        minpct = min(minpct, 90)  # Don't allow more than 90% of the pixels to be used in estimating the read noise.
+        # Don't allow more than 90% of the pixels to be used in estimating the read noise.
+        minpct = min(minpct, 90)
     except:
         minpct = 60
     try:
@@ -138,7 +139,7 @@ if __name__ == "__main__":
     for filename in filenames:
         _ = extractcube.getcube(
             filename=filename, read_idx=read_idx, bgsub=bgsub,
-            bgpath=None, mask=mask, fixbadpixels=fixbadpixels,
+            bgpath=None, mask=mask,
             gain=gain, noisefac=noisefac,
             saveramp=saveramp, refine=refine,
             crosstalk_scale=crosstalk_scale,
