@@ -1,13 +1,13 @@
-Software package charis, designed to build calibration files for the CHARIS integral-field spectrograph for the Subaru telescope and to extract data cubes from sequences of raw reads.
+Software package charis, designed to build calibration files and extract data cubes from raw data for the CHARIS integral-field spectrograph for the Subaru telescope and the SPHERE IFS at the VLT
 
 
 Requirements:
-Python 2.7
+Python >3.5
 Cython with a C compiler and OpenMP
 
 
 Dependencies:
-numpy, scipy, astropy
+numpy, scipy, astropy, pandas, tqdm, future, cython, bokeh
 
 
 Documentation page:
@@ -20,7 +20,7 @@ Your computer should have at least ~2 GB of RAM to extract data cubes, and at le
 Installation:
 The easy way to install is to use the setup.py in this directory with
 python setup.py install
-I strongly recommend that you first install the anaconda Python 2.7 from here if you are not already using anaconda:
+We recommend that you first install the newest anaconda Python 3.9 if you are not already using anaconda:
 https://www.continuum.io/downloads
 
 ** CAUTIONARY NOTE: the method below may or may not work with the latest versions of Anaconda and Xcode; it may break either the pipeline or numpy/scipy by linking incompatible libraries.  I recommend not following these instructions.  The setup script as invoked above will attempt to install with openMP support, but will default to an installation without openMP support. **
@@ -39,10 +39,10 @@ Quick-start tutorial, basic usage with sample files:
 (note: sample files of the M5 globular cluster are currently hosted at http://web.physics.ucsb.edu/~tbrandt/charis_sample_data/)
 ** NOTE: file hosting location changed December 2017 **
 
-Example: 
+Example:
 CRSA00000001.fits is a 1550-nm monochromatic flat taken in broadband/lowres mode
 CRSA00000002.fits through CRSA00000005.fits are broadband/lowres darks
-CRSA10000000.fits is a science frame in broadband/lowres mode 
+CRSA10000000.fits is a science frame in broadband/lowres mode
 
 First, we must build the calibration files.  Create a directory where they will live, make this the current working directory, and run
 buildcal /path/to/CRSA00000001.fits 1550 lowres /path/to/CRSA0000000[2-5].fits
@@ -62,4 +62,3 @@ The arguments are simply
 1. The raw file(s) to extract into cubes
 2. The configuration file
 The extracted cubes will be written to the current working directory.  The first HDU is simply the header with some basic information, the second HDU is the cube, the third HDU is the inverse variance on the cube, and the fourth HDU has no data but saves the original header on HDU0 of the raw reads.
-

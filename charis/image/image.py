@@ -104,7 +104,8 @@ class Image(object):
                                                                    1) + ") have different shapes in file " + filename)
                     self.ivar = None
                 else:
-                    log.info("Read inverse variance from HDU " + str(i_data + 1) + " of " + filename)
+                    log.info("Read inverse variance from HDU " +
+                             str(i_data + 1) + " of " + filename)
             elif loadbadpixmap:
                 self.ivar = fits.open('calibrations/mask.fits')[0].data
             else:
@@ -141,11 +142,11 @@ class Image(object):
             hdr.append((key, self.header[i], self.header.comments[i]), end=True)
 
         out = fits.HDUList(fits.PrimaryHDU(None, hdr))
-        out.append(fits.PrimaryHDU(self.data.astype(np.float32), hdr))
+        out.append(fits.PrimaryHDU(self.data.astype('float32'), hdr))
         if self.ivar is not None:
-            out.append(fits.PrimaryHDU(self.ivar.astype(np.float32), hdr))
+            out.append(fits.PrimaryHDU(self.ivar.astype('float32'), hdr))
         if self.chisq is not None:
-            out.append(fits.PrimaryHDU(self.chisq.astype(np.float32), hdr))
+            out.append(fits.PrimaryHDU(self.chisq.astype('float32'), hdr))
         if self.flags is not None:
             out.append(fits.PrimaryHDU(self.flags), hdr)
         # if self.extraheader is not None:
