@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import division
 from builtins import range
 from past.utils import old_div
 from astropy.io import fits
@@ -57,7 +56,8 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
             ############################################################
 
             k = 0
-            subim = np.zeros((old_div(20000, nsubarr**2), upsample * (npix + 1), upsample * (npix + 1)))
+            subim = np.zeros((old_div(20000, nsubarr**2), upsample *
+                             (npix + 1), upsample * (npix + 1)))
 
             ############################################################
             # Now put the PSFlets in.  The pixel of index
@@ -132,7 +132,8 @@ def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):
                         _j1 = max(j - upsample // 4, 0)
                         _j2 = min(j + upsample // 4 + 1, subim.shape[2] - 1)
 
-                        data = subim2[:k, _i1:_i2, _j1:_j2][np.where(subim2[:k, _i1:_i2, _j1:_j2] != 0)]
+                        data = subim2[:k, _i1:_i2, _j1:_j2][np.where(
+                            subim2[:k, _i1:_i2, _j1:_j2] != 0)]
                         if data.shape[0] > 10:
                             data = np.sort(data)[3:-3]
                             std = np.std(data) + 1e-10

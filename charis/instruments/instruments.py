@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import os
 # from abc import ABCMeta, abstractmethod, abstractproperty
 from builtins import input, object
@@ -32,7 +30,8 @@ class CHARIS(object):
 
     def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
         Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
-        loglam_endpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
+        loglam_endpts = np.linspace(np.log(lower_wavelength_limit),
+                                    np.log(upper_wavelength_limit), Nspec)
         loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2.
         lam_endpts = np.exp(loglam_endpts)
         lam_midpts = np.exp(loglam_midpts)
@@ -109,7 +108,8 @@ class SPHERE(object):
 
     def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
         Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)
-        loglam_endpts = np.linspace(np.log(lower_wavelength_limit), np.log(upper_wavelength_limit), Nspec)
+        loglam_endpts = np.linspace(np.log(lower_wavelength_limit),
+                                    np.log(upper_wavelength_limit), Nspec)
         loglam_midpts = (loglam_endpts[1:] + loglam_endpts[:-1]) / 2.
         lam_endpts = np.exp(loglam_endpts)
         lam_midpts = np.exp(loglam_midpts)

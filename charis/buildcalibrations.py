@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import absolute_import, print_function
-
 import copy
 import glob
 import logging
@@ -13,28 +11,20 @@ import shutil
 import sys
 import time
 from builtins import input, range, str
-from pdb import set_trace
 
 import numpy as np
-import pkg_resources
 from astropy import units as u
 from astropy.io import fits
 from scipy import interpolate, ndimage
 from tqdm import tqdm
 
-try:
-    import instruments
-    import primitives
-    import utr
-    from image import Image
-    from parallel import Consumer, Task
-    from tools import expected_spectrum
-except ImportError:
-    import charis
-    from charis import instruments, primitives, utr
-    from charis.image import Image
-    from charis.parallel import Consumer, Task
-    from charis.tools import expected_spectrum, fit_background
+import charis
+from charis import instruments
+from charis import primitives
+from charis import utr
+from charis.image import Image
+from charis.parallel import Consumer, Task
+from charis.tools import expected_spectrum, fit_background
 
 log = logging.getLogger('main')
 
@@ -63,7 +53,8 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     except:
         hdr['cal_date'] = ('unavailable', 'MJD date of calibration image')
 
-    hdr['cal_band'] = (instrument.observing_mode, 'Band/mode of calibration image (J/H/K/Broadband)')
+    hdr['cal_band'] = (instrument.observing_mode,
+                       'Band/mode of calibration image (J/H/K/Broadband)')
     if instrument.instrument_name == 'CHARIS':
         hdr['cal_lam'] = (calibration_wavelength.value[0], 'Wavelength of calibration image (nm)')
 
@@ -218,7 +209,8 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
         oldcoef += [psftool.monochrome_coef(cal_lam, lam, allcoef, order=order).tolist()]
     if verbose:
         print('Generating new wavelength solution')
-    _, _, _, newcoef = primitives.locatePSFlets(inImage, instrument, polyorder=3, coef=oldcoef, fitorder=1)
+    _, _, _, newcoef = primitives.locatePSFlets(
+        inImage, instrument, polyorder=3, coef=oldcoef, fitorder=1)
 
     psftool.geninterparray(lam, allcoef, order=order)
     dcoef = np.asarray(newcoef[0]) - oldcoef[0]
@@ -386,7 +378,8 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     buffer_size = 8
     for i in range(Nspec):
         _x, _y = psftool.return_locations(instrument.lam_midpts[i], allcoef, lenslet_ix, lenslet_iy)
-        _good = (_x > buffer_size) * (_x < npix_x - buffer_size) * (_y > buffer_size) * (_y < npix_y - buffer_size)
+        _good = (_x > buffer_size) * (_x < npix_x - buffer_size) * \
+            (_y > buffer_size) * (_y < npix_y - buffer_size)
         xpos += [_x]
         ypos += [_y]
         good += [_good]

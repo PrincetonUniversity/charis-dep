@@ -525,12 +525,14 @@ def addWCS(header, xpix, ypix, xpixscale=old_div(-0.015, 3600.), ypixscale=old_d
         header.append(('CRPIX1', xpix, 'Reference X pixel'), end=True)
         header.append(('CRPIX2', ypix, 'Reference Y pixel'), end=True)
         header.append(('EQUINOX', 2000, 'Equinox of coordinates'), end=True)
-        header.append(('TOT_ROT', -1 * (header['PARANG'] + extrarot), 'Total rotation angle (degrees)'), end=True)
+        header.append(('TOT_ROT', -1 * (header['PARANG'] + extrarot),
+                      'Total rotation angle (degrees)'), end=True)
 
         angle = np.pi * (header['TOT_ROT']) / 180.
         header.append(('CD1_1', np.cos(angle) * xpixscale, 'Rotation matrix coefficient'), end=True)
         header.append(('CD1_2', np.sin(angle) * xpixscale, 'Rotation matrix coefficient'), end=True)
-        header.append(('CD2_1', -np.sin(angle) * ypixscale, 'Rotation matrix coefficient'), end=True)
+        header.append(('CD2_1', -np.sin(angle) * ypixscale,
+                      'Rotation matrix coefficient'), end=True)
         header.append(('CD2_2', np.cos(angle) * ypixscale, 'Rotation matrix coefficient'), end=True)
     except:
         return

@@ -4,8 +4,11 @@
 # A provisional routine for actually producing and returning data cubes.
 #########################################################################
 
-from __future__ import print_function
-
+import charis
+from charis import instruments, primitives, utr
+from charis.image import Image
+from charis.image.image_geometry import resample_image_cube
+from charis.tools import sph_ifs_correct_spectral_xtalk, sph_ifs_fix_badpix, fit_background
 import copy
 import glob
 import json
@@ -13,30 +16,12 @@ import logging
 import multiprocessing
 import os
 import re
-from pdb import set_trace
 
-import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 from astropy.stats import mad_std, sigma_clipped_stats
 from future import standard_library
 standard_library.install_aliases()
-
-
-try:
-    import instruments
-    import primitives
-    import utr
-    from image import Image
-    from image.image_geometry import resample_image_cube
-    from tools import sph_ifs_correct_spectral_xtalk, sph_ifs_fix_badpix, fit_background
-except ImportError:
-    # Python 3
-    import charis
-    from charis import instruments, primitives, utr
-    from charis.image import Image
-    from charis.image.image_geometry import resample_image_cube
-    from charis.tools import sph_ifs_correct_spectral_xtalk, sph_ifs_fix_badpix, fit_background
 
 
 log = logging.getLogger('main')
@@ -168,7 +153,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     ################################################################
 
     maskarr = None
-    if mask is True:
+    if mask:
         maskarr = fits.getdata(
             os.path.join(os.path.split(charis.__file__)[0],
                          'calibrations/{}/mask.fits'.format(instrument.instrument_name)))
@@ -469,9 +454,9 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / \
                 pixelflat[good_pixel_mask]
             if instrument.instrument_name == 'SPHERE':
-                inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+                # inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
                 inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
-                inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
+                # inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
                 inImage.ivar[bpm.astype('bool')] = 0  # inImage.ivar[bpm.astype('bool')] / 1.2
 
         # If we did the crosstalk correction, we need to add the model

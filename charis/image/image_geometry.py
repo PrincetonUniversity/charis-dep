@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-
-from __future__ import print_function, absolute_import
-
 """
 Utilities for remapping hexagonal grid output to rectilinear (fishnet)
 grid. Partially based on http://www.redblobgames.com/grids/hexagons/
@@ -17,17 +14,13 @@ import json
 import numpy as np
 import bottleneck as bn
 from astropy.io import fits
-from matplotlib import pyplot as plt
 
 from astropy.stats import sigma_clip, mad_std
 from tqdm import tqdm
 import collections
 import math
 from itertools import product
-try:
-    from sutherland_hodgman import clip, area
-except:
-    from .sutherland_hodgman import clip, area
+from .sutherland_hodgman import clip, area
 
 Point = collections.namedtuple("Point", ["x", "y"])
 _Hex = collections.namedtuple("Hex", ["q", "r", "s"])

@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import absolute_import
-from __future__ import division
 from past.utils import old_div
 import logging
 import multiprocessing
@@ -12,14 +10,9 @@ import numpy as np
 from astropy.io import fits
 
 from . import fitramp
-
-try:
-    from image import Image
-except:
-    from charis.image import Image
+from charis import image  # .image import Image
 
 log = logging.getLogger('main')
-from pdb import set_trace
 
 
 def getreads(filename, header=fits.PrimaryHDU().header, read_idx=[1, None]):
@@ -163,4 +156,4 @@ def calcramp(filename, mask=None, gain=2., noisefac=0,
     header['fitdecay'] = (fitexpdecay, 'Fit exponential decay of ref. volt. in read 1?')
     header['nonlin'] = (fitnonlin, 'Fit nonlinear pixel response?')
 
-    return Image(data=data, ivar=ivar, header=header)
+    return image.Image(data=data, ivar=ivar, header=header)

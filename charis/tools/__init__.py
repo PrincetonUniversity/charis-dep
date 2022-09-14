@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+# from __future__ import absolute_import
 from .charisLogger import addFitsStyleHandler
 from .charisLogger import getLogger
 from .charisLogger import setUpLogger

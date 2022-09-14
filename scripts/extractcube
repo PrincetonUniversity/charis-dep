@@ -4,7 +4,6 @@
 # A provisional routine for actually producing and returning data cubes.
 #########################################################################
 
-from __future__ import print_function
 from charis import extractcube
 import numpy as np
 from builtins import range
@@ -43,28 +42,28 @@ if __name__ == "__main__":
     read_0 = Config.getint('Ramp', 'read_0')
     try:
         read_1 = Config.getint('Ramp', 'read_f')
-    except:
+    except Exception:
         read_1 = None
     read_idx = [read_0, read_1]
     try:
         gain = Config.getfloat('Ramp', 'gain')
-    except:
+    except Exception:
         gain = 2
     try:
         noisefac = Config.getfloat('Ramp', 'noisefac')
-    except:
+    except Exception:
         noisefac = 0
     try:
         saveramp = Config.getboolean('Ramp', 'saveramp')
-    except:
+    except Exception:
         saveramp = True
     try:
         bgsub = Config.getboolean('Calib', 'bgsub')
-    except:
+    except Exception:
         bgsub = True
     try:
         mask = Config.getboolean('Calib', 'mask')
-    except:
+    except Exception:
         mask = True
     # try:
     #     fixbadpixels = Config.getboolean('Calib', 'fixbadpixels')
@@ -72,11 +71,11 @@ if __name__ == "__main__":
     #     fixbadpixels = False
     try:
         flatfield = Config.getboolean('Calib', 'flatfield')
-    except:
+    except Exception:
         flatfield = True
     try:
         fitshift = Config.getboolean('Calib', 'fitshift')
-    except:
+    except Exception:
         fitshift = True
 
     calibdir = Config.get('Calib', 'calibdir')
@@ -84,38 +83,38 @@ if __name__ == "__main__":
     method = Config.get('Extract', 'method')
     try:
         refine = Config.getboolean('Extract', 'refine')
-    except:
+    except Exception:
         refine = True
     try:
         crosstalk_scale = Config.getfloat('Extract', 'crosstalkscale')
-    except:
+    except Exception:
         crosstalk_scale = 1.0
     try:
         dc_xtalk_correction = Config.getboolean('Extract', 'dcxtalkcorrection')
-    except:
+    except Exception:
         dc_xtalk_correction = False
     try:
         linear_wavelength = Config.getboolean('Extract', 'linearwavelength')
-    except:
+    except Exception:
         linear_wavelength = False
     try:
         suppressrn = Config.getboolean('Extract', 'suppressrn')
-    except:
+    except Exception:
         suppressrn = True
     try:
         minpct = Config.getint('Extract', 'minpct')
         minpct = max(minpct, 0)
         # Don't allow more than 90% of the pixels to be used in estimating the read noise.
         minpct = min(minpct, 90)
-    except:
+    except Exception:
         minpct = 60
     try:
         fitbkgnd = Config.getboolean('Extract', 'fitbkgnd')
-    except:
+    except Exception:
         fitbkgnd = True
     try:
         saveresid = Config.getboolean('Extract', 'saveresid')
-    except:
+    except Exception:
         saveresid = False
 
     ################################################################
@@ -128,12 +127,12 @@ if __name__ == "__main__":
             maxcpus = multiprocessing.cpu_count() + maxcpus
         maxcpus = min(maxcpus, multiprocessing.cpu_count())
         maxcpus = max(maxcpus, 1)
-    except:
+    except Exception:
         maxcpus = multiprocessing.cpu_count()
 
     try:
         smoothandmask = Config.getboolean('Extract', 'smoothandmask')
-    except:
+    except Exception:
         smoothandmask = True
 
     for filename in filenames:

@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
 from builtins import range
 from builtins import object
 from past.utils import old_div
@@ -93,7 +90,8 @@ class PSFLets(object):
 
         '''
         if not os.path.isdir(outdir):
-            raise IOError("Attempting to save pixel solution to directory " + outdir + ".  Directory does not exist.")
+            raise IOError("Attempting to save pixel solution to directory " +
+                          outdir + ".  Directory does not exist.")
         outfile = re.sub('//', '/', outdir + '/PSFloc.fits')
         out = fits.HDUList(fits.PrimaryHDU(self.lenslet_ix))
         out.append(fits.PrimaryHDU(self.lenslet_iy))
@@ -223,7 +221,8 @@ class PSFLets(object):
     def monochrome_coef(self, lam, alllam=None, allcoef=None, order=3):
         if self.interp_arr is None:
             if alllam is None or allcoef is None:
-                raise ValueError("Interpolation array has not been computed.  Must call monochrome_coef with arrays.")
+                raise ValueError(
+                    "Interpolation array has not been computed.  Must call monochrome_coef with arrays.")
             self.geninterparray(alllam, allcoef, order=order)
 
         coef = np.zeros(self.interp_arr[0].shape)
@@ -729,7 +728,8 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
     bestval = 0
     subshape = xdim * 3 // 8
     _s = x.shape[0] * 3 // 8
-    subfiltered = ndimage.interpolation.spline_filter(unfiltered[subshape:-subshape, subshape:-subshape])
+    subfiltered = ndimage.interpolation.spline_filter(
+        unfiltered[subshape:-subshape, subshape:-subshape])
     for ix in ix_arr:
         for iy in iy_arr:
             if coef is None:
@@ -793,7 +793,8 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
             coef_opt[i] = res.x
 
     if not res.success:
-        log.info("Optimizing PSFlet location transformation coefficients may have failed for frame " + inImage.filename)
+        log.info(
+            "Optimizing PSFlet location transformation coefficients may have failed for frame " + inImage.filename)
 
     if len(coef) == 1:
         _x, _y = _transform(x, y, polyorder, [0, 0], coef_opt[0])

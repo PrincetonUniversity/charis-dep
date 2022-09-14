@@ -1,16 +1,11 @@
 """ Partially adapted from A. Vigan's VLTPF Pipeline
 Commit: f20dbcc on Feb 6 """
-from __future__ import print_function
+# from __future__ import print_function
 
 from builtins import range, zip
-from pdb import set_trace
 
 import astropy.coordinates as coord
-import astropy.units as units
-import matplotlib
-import matplotlib.colors as colors
-import matplotlib.patches as patches
-import matplotlib.pyplot as plt
+from astropy import units as u
 import numpy as np
 import pandas as pd
 import scipy.ndimage as ndimage
@@ -18,7 +13,6 @@ from astropy.convolution import convolve
 from astropy.io import fits
 from astropy.modeling import fitting, models
 from astropy.time import Time
-from matplotlib.backends.backend_pdf import PdfPages
 from scipy.stats import scoreatpercentile
 
 global_cmap = 'inferno'
@@ -257,7 +251,7 @@ def parallatic_angle(ha, dec, geolat):
                      np.cos(dec) * np.tan(geolat) - np.sin(dec) * np.cos(ha))
 
     if (dec >= geolat):
-        pa[ha < 0] += 360 * units.degree
+        pa[ha < 0] += 360 * u.degree
 
     return np.degrees(pa)
 
@@ -288,8 +282,8 @@ def compute_times(frames_info, idx=None):
     ts_end = time_start + time_delta * idx + DIT
 
     # calculate mjd
-    geolon = coord.Angle(frames_info['TEL GEOLON'].values[0], units.degree)
-    geolat = coord.Angle(frames_info['TEL GEOLAT'].values[0], units.degree)
+    geolon = coord.Angle(frames_info['TEL GEOLON'].values[0], u.degree)
+    geolat = coord.Angle(frames_info['TEL GEOLAT'].values[0], u.degree)
     geoelev = frames_info['TEL GEOELEV'].values[0]
 
     utc = Time(ts_start.astype(str), scale='utc', location=(geolon, geolat, geoelev))
@@ -338,7 +332,7 @@ def compute_angles(frames_info, true_north=-1.75):
     ra_drot_h = np.floor(ra_drot / 1e4)
     ra_drot_m = np.floor((ra_drot - ra_drot_h * 1e4)/1e2)
     ra_drot_s = ra_drot - ra_drot_h*1e4 - ra_drot_m*1e2
-    ra_hour = coord.Angle((ra_drot_h, ra_drot_m, ra_drot_s), units.hour)
+    ra_hour = coord.Angle((ra_drot_h, ra_drot_m, ra_drot_s), u.hour)
     ra_deg = ra_hour*15
     frames_info['RA'] = ra_deg.value
 
@@ -349,11 +343,11 @@ def compute_angles(frames_info, true_north=-1.75):
     dec_drot_m = np.floor((udec_drot - dec_drot_d * 1e4) / 1e2)
     dec_drot_s = udec_drot - dec_drot_d * 1e4 - dec_drot_m * 1e2
     dec_drot_d *= sign
-    dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
+    dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), u.degree)
     frames_info['DEC'] = dec.value
 
-    geolon = coord.Angle(frames_info['TEL GEOLON'].values[0], units.degree)
-    geolat = coord.Angle(frames_info['TEL GEOLAT'].values[0], units.degree)
+    geolon = coord.Angle(frames_info['TEL GEOLON'].values[0], u.degree)
+    geolat = coord.Angle(frames_info['TEL GEOLAT'].values[0], u.degree)
     geoelev = frames_info['TEL GEOELEV'].values[0]
 
     location = (geolon, geolat, geoelev)

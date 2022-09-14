@@ -4,21 +4,17 @@ import sys
 
 import numpy as np
 from astropy.io import fits
-from bokeh.io import curdoc, output_file, show
+from bokeh.io import curdoc, output_file  # , show
 from bokeh.layouts import column, gridplot, row, widgetbox
 from bokeh.models import LinearColorMapper  # , LogTicker, ColorBar
-from bokeh.models import ColumnDataSource, HoverTool, LayoutDOM
+from bokeh.models import ColumnDataSource, HoverTool, LayoutDOM, Range1d, LinearAxis
 from bokeh.models.widgets import Panel, Slider, Tabs
-from bokeh.plotting import figure
-from bokeh.transform import linear_cmap
+from bokeh.plotting import figure, show
+from bokeh.transform import linear_cmap, log_cmap
+from bokeh import palettes
 from bokeh.util.hex import axial_to_cartesian, hexbin
 
-try:
-    from image.hex import cartesian_to_axial
-except ImportError:
-    from charis.image.hex import cartesian_to_axial
-
-from pdb import set_trace
+from charis.image.hex import cartesian_to_axial
 
 import pandas as pd
 from astropy.visualization import (AsymmetricPercentileInterval,
@@ -53,7 +49,8 @@ def plot_slice(x, y, cells, image_data):
     norm = ImageNormalize(image_data, interval=ZScaleInterval())
     plt.figure()
     plt.gca().set_aspect('equal')
-    plt.tripcolor(x[::-1], y, cells, facecolors=image_data, cmap='inferno', norm=norm)  # cmap='cubehelix_r')
+    plt.tripcolor(x[::-1], y, cells, facecolors=image_data,
+                  cmap='inferno', norm=norm)  # cmap='cubehelix_r')
     plt.show()
 
 
@@ -63,13 +60,16 @@ def flatten_cube(image_cube):
     return image_cube.reshape(number_of_frames, number_of_pixels)
 
 
-output_file("hexplot.html")
+# output_file("hexplot.html")
 TOOLS = "pan,wheel_zoom,box_zoom,reset,save,box_select,lasso_select"
+normalize = True
 
+# filename = '/home/samland/science/charis_paper/2017/optext/CENTER/SPHER.2017-09-28T07:51:32.456_cube_DIT_000.fits'
 filename = sys.argv[1]
 hdu_list = fits.open(filename)
 # image_cube = hdu_list[1].data
 image_cube = fits.getdata(filename)
+image_cube[~np.isfinite(image_cube)] = 0.
 
 if image_cube.ndim == 2:
     image_cube = np.expand_dims(image_cube, axis=0)
@@ -96,7 +96,7 @@ try:
     _, _, variance_cube = crop_hex_cube(variance_cube, i1=16, i2=-16, j1=16, j2=-16)
     variance_cube = flatten_cube(variance_cube)
     variance_cube = variance_cube[:, ~mask]
-    norm_variance = ImageNormalize(variance_cube[3], interval=ZScaleInterval())
+    # norm_variance = ImageNormalize(variance_cube[3], interval=ZScaleInterval())
 except:
     variance_cube = None
 hdu_list.close()
@@ -108,17 +108,32 @@ q, r = cartesian_to_axial(
     centers[:, 0], centers[:, 1], size=1 / np.sqrt(3), orientation="pointytop", aspect_scale=1)
 # df = pd.DataFrame(
 # data=dict(q=q, r=r, counts=image_slice.flatten(), x=centers[:, 0], y=centers[:, 1]))
+
+if normalize:
+    norm_factor = np.max(image_cube[0, :])
+else:
+    norm_factor = 1.
+
 if variance_cube is None:
-    source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :],
+    source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :] / norm_factor,
                                         variance=np.zeros_like(image_cube[0, :]), x=centers[:, 0], y=centers[:, 1]))
 else:
-    source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :],
+    source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :] / norm_factor,
                                         variance=variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
 # source2 = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube2[0, :],
 #                                      variance=variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
 
-left = figure(tools=TOOLS, title="SPHERE IFS Counts", match_aspect=True,
-              background_fill_color='#440154')
+left = figure(tools=TOOLS, match_aspect=True,
+              background_fill_color='#ffffff',
+              x_range=Range1d(172 - 110, 172 + 110),
+              y_range=Range1d(146 - 110, 146 + 110))
+
+# left.add_layout(LinearAxis(), 'above')
+# left.add_layout(LinearAxis(), 'right')
+# left.xaxis.axis_label_text_font_size = "25pt"
+left.xaxis.major_label_text_font_size = "25pt"
+# left.yaxis.axis_label_text_font_size = "25pt"
+left.yaxis.major_label_text_font_size = "25pt"
 left.grid.visible = False
 # left.sizing_mode = 'scale_width'
 
@@ -135,10 +150,14 @@ norm_counts = ImageNormalize(image_cube[0], interval=ZScaleInterval())
 
 # mask_drh = image_cube_drh[10] != 0.
 # norm_drh = ImageNormalize(image_cube_drh[10][mask_drh], interval=ZScaleInterval())
+# cmap = 'Inferno256'
+# cmap = 'Viridis256'
+cmap = palettes.Viridis256[::-1]
 
 a = left.hex_tile(
     q='q', r='r', line_color=None, source=source,
-    fill_color=linear_cmap('counts', 'Inferno256', norm_counts.vmin, norm_counts.vmax),
+    fill_color=linear_cmap('counts', cmap, norm_counts.vmin, norm_counts.vmax),
+    # fill_color=log_cmap('counts', cmap, 0.005, 1),
     hover_color="pink", hover_alpha=0.8)
 
 # b = right.hex_tile(
@@ -159,7 +178,13 @@ if N > 1:
     # slider2 = Slider(start=0, end=(N - 1), value=0, step=1, title="Wavelength")
 
     def update(attr, old, new):
-        source.data['counts'] = image_cube[int(slider.value), :]
+        if normalize:
+            norm_factor = np.max(image_cube[int(slider.value), :])
+        else:
+            norm_factor = 1.
+
+        source.data['counts'] = image_cube[int(
+            slider.value), :] / norm_factor
         norm_counts = ImageNormalize(image_cube[int(slider.value)], interval=ZScaleInterval())
 
         # source.data['variance'] = variance_cube[int(slider.value), :]
@@ -168,7 +193,8 @@ if N > 1:
         # source2.data['counts'] = image_cube2[int(slider.value), :]
         # norm_counts2 = ImageNormalize(image_cube2[slider_value], interval=ZScaleInterval())
 
-        a.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts.vmin, norm_counts.vmax)
+        a.glyph.fill_color = linear_cmap('counts', cmap, norm_counts.vmin, norm_counts.vmax)
+        # a.glyph.fill_color = log_cmap('counts', cmap, 0.005, 1)
         # b.glyph.fill_color = linear_cmap('variance', 'Inferno256', norm_variance.vmin, norm_variance.vmax)
         # b.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts2.vmin, norm_counts2.vmax)
 
@@ -201,11 +227,13 @@ left.add_tools(hover)
 #               [slider, slider2]], plot_width=750, plot_height=750)
 if N > 1:
     p = gridplot([[left, None],
-                  [slider, None]], plot_width=750, plot_height=750)
+                  [slider, None]], width=750, height=750)
 else:
     p = left
+
 # p = layout(t([left, slider])
 # p.sizing_mode = 'scale_width'
+# p.show()
 curdoc().add_root(p)
 
 '''
