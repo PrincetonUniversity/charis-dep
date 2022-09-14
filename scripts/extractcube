@@ -15,10 +15,6 @@ import multiprocessing
 import glob
 import configparser
 
-from future import standard_library
-
-standard_library.install_aliases()
-
 
 if __name__ == "__main__":
 
@@ -34,7 +30,7 @@ if __name__ == "__main__":
         filenames += glob.glob(sys.argv[i])
 
     if len(filenames) == 0:
-        raise ValueError("No matching CHARIS files found by extractcube.")
+        raise ValueError("No matching data files found by extractcube.")
 
     Config = configparser.ConfigParser()
     Config.read(sys.argv[len(sys.argv) - 1])
@@ -135,12 +131,20 @@ if __name__ == "__main__":
     except Exception:
         smoothandmask = True
 
+    try:
+        individual_dits = Config.getboolean('Extract', 'individual_dits')
+    except Exception:
+        individual_dits = False
+
     for filename in filenames:
         _ = extractcube.getcube(
-            filename=filename, read_idx=read_idx, bgsub=bgsub,
+            filename=filename, read_idx=read_idx,
+            bgsub=bgsub,
             bgpath=None, mask=mask,
             gain=gain, noisefac=noisefac,
-            saveramp=saveramp, refine=refine,
+            saveramp=saveramp,
+            individual_dits=individual_dits,
+            refine=refine,
             crosstalk_scale=crosstalk_scale,
             dc_xtalk_correction=dc_xtalk_correction,
             linear_wavelength=linear_wavelength,

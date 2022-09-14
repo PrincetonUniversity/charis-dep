@@ -31,6 +31,8 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
             mask=True,
             gain=2, nonlinear_threshold=40000, noisefac=0, saveramp=False, R=30,
+            individual_dits=False,
+            dit=None,
             method='lstsq', refine=True, crosstalk_scale=0.8,
             dc_xtalk_correction=False,
             linear_wavelength=False,
@@ -130,7 +132,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     if instrument.instrument_name == 'CHARIS':
         header = utr.metadata(filename, version=version)
     elif instrument.instrument_name == 'SPHERE':
-        header = utr.metadata_SPHERE(filename, dit_idx=read_idx, version=version)
+        header = utr.metadata_SPHERE(filename, dit_idx=dit, version=version)
     else:
         raise ValueError("Only CHARIS and SPHERE instruments implemented.")
 
@@ -184,39 +186,24 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
             nonlinear = np.zeros([data.shape[-2], data.shape[-1]]).astype('bool')
 
         if data.ndim == 3:
-            if read_idx is not None and read_idx != [1, None]:
-                data = data[read_idx]
-                ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
-                file_ending = '_DIT_{:03d}'.format(read_idx)
-                print(file_ending)
-            else:
-                if len(data) > 1:
-                    for idx, frame in enumerate(data):
-                        data[idx] = sph_ifs_fix_badpix(frame, bpm)  # * maskarr
-                    # ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
-                    ivar = 1 / np.std(data, axis=0)**2
-                    data = np.mean(data, axis=0)  # * maskarr
-                else:
-                    data = sph_ifs_fix_badpix(data[0], bpm)
-                    # data_orig = data[0].copy()
-                    # ext = 10
-                    # # remove edges in bad pixel map
-                    # bpm[:ext+1, :] = 0
-                    # bpm[:, :ext+1] = 0
-                    # bpm[-ext-1:, :] = 0
-                    # bpm[:, -ext-1:] = 0
-                    #
-                    # data_orig[bpm.astype('bool')] = np.nan
-                    # fixed_img, para, TS = astrofix.Fix_Image(data_orig, "asnan", TS=~bpm.astype('bool'))  # max_clip=1)
-                    # new_fixed_img = astrofix.Interpolate(800, 0.7, data_orig, BP="asnan")
-                    ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
+            if not individual_dits:  # read_idx is not None and read_idx != [1, None]:
+                ndit = len(data)
+                data = np.mean(data, axis=0)
                 file_ending = ''
-        elif data.ndim == 2:
-            data = sph_ifs_fix_badpix(data, bpm)
-            ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
-            file_ending = ''
-        else:
-            raise ValueError("Data must be images or cubes.")
+            else:
+                ndit = 1
+                data = data[dit]
+                #ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
+                file_ending = '_DIT_{:03d}'.format(read_idx)
+                # print(file_ending)
+            ivar = 1. / (abs(data)*gain * ndit + (data*noisefac)**2 + readnoise**2 * ndit)
+
+        # elif data.ndim == 2:
+        #     # data = sph_ifs_fix_badpix(data, bpm)
+        #     ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
+        #     file_ending = ''
+        # else:
+        #     raise ValueError("Data must be images or cubes.")
 
         inImage = Image(data=data, ivar=ivar, header=header,
                         instrument_name=instrument.instrument_name)
