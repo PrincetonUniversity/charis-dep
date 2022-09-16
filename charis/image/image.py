@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from builtins import str
 from builtins import object
 import logging
@@ -110,7 +108,7 @@ class Image(object):
                 self.ivar = fits.open('calibrations/mask.fits')[0].data
             else:
                 self.ivar = None
-        except:
+        except Exception:
             log.error("Unable to read data and header from " + filename)
             self.data = None
             self.header = None
@@ -154,7 +152,7 @@ class Image(object):
         #        extra_hdr = fits.PrimaryHDU(None, self.extraheader)
         #        extra_hdr.verify('fix')
         #        out.append(extra_hdr)
-        #    except:
+        #    except Exception:
         #        log.warn("Failed to attach extra header.")
 
         # try:
@@ -162,5 +160,5 @@ class Image(object):
         out.writeto(filename, overwrite=overwrite)
         log.info("Writing data to " + filename)
 
-        # except:
+        # except Exception:
         #    log.error("Unable to write FITS file " + filename)

@@ -69,7 +69,7 @@ class PSFLets(object):
             self.lenslet_iy = hdulist[1].data
             self.lam_indx = hdulist[2].data
             self.nlam = hdulist[3].data.astype(int)
-        except:
+        except Exception:
             raise RuntimeError("File " + infile +
                                " does not appear to contain a CHARIS wavelength solution in the appropriate format.")
         self.nlam_max = np.amax(self.nlam)
@@ -99,7 +99,7 @@ class PSFLets(object):
         out.append(fits.PrimaryHDU(self.nlam.astype(int)))
         try:
             out.writeto(outfile, overwrite=True)
-        except:
+        except Exception:
             raise
 
     def geninterparray(self, lam, allcoef, order=3):
@@ -353,7 +353,7 @@ class PSFLets(object):
                 if pix_y[-1] < pix_y[0]:
                     try:
                         tck_y = interpolate.splrep(pix_y[::-1], interp_lam[::-1], k=1, s=0)
-                    except:
+                    except Exception:
                         print((pix_x, pix_y))
                         raise
                 else:
@@ -416,7 +416,7 @@ def _initcoef(order, scale=15.02, phi=np.arctan2(1.926, -1), x0=0, y0=0):
         else:
             if order < 1 or order > 5:
                 raise ValueError("Polynomial order must be >0, <=5")
-    except:
+    except Exception:
         raise ValueError("Polynomial order must be integer")
 
     n = (order + 1) * (order + 2)
@@ -513,7 +513,7 @@ def _transform(x, y, order, coef, basecoef=None):
         if not len(coef) == (order + 1) * (order + 2):
 
             pass  # raise ValueError("Number of coefficients incorrect for polynomial order.")
-    except:
+    except Exception:
         raise AttributeError("order must be integer, coef should be a list.")
 
     # n**2 + 3*n + 2 = (n + 1.5)**2 - 0.25
@@ -715,7 +715,7 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
         if not isinstance(coef, list):
             try:
                 coef = coef.tolist()
-            except:
+            except Exception:
                 raise TypeError("Coef in locatePSFlets must be of a format convertible to a list.")
         if isinstance(coef[0], list):
             nlam = len(coef)

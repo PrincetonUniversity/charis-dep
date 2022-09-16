@@ -20,19 +20,15 @@ import re
 import numpy as np
 from astropy.io import fits
 from astropy.stats import mad_std, sigma_clipped_stats
-from future import standard_library
-standard_library.install_aliases()
-
 
 log = logging.getLogger('main')
 
 
-def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
+def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
             mask=True,
             gain=2, nonlinear_threshold=40000, noisefac=0, saveramp=False, R=30,
             individual_dits=False,
-            dit=None,
             method='lstsq', refine=True, crosstalk_scale=0.8,
             dc_xtalk_correction=False,
             linear_wavelength=False,
@@ -120,10 +116,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
     # extract a cube.
     ################################################################
 
-    try:
-        version = charis.__version__
-    except:
-        version = None
+    version = charis.__version__
 
     header = fits.getheader(filename)
     instrument, _, _ = instruments.instrument_from_data(
@@ -145,7 +138,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
         header.append(('comment', ''), end=True)
         for key in calhead:
             header.append((key, calhead[key], calhead.comments[key]), end=True)
-    except:
+    except Exception:
         log.warn('Unable to append calibration parameters to FITS header.')
 
     ################################################################
@@ -194,7 +187,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                 ndit = 1
                 data = data[dit]
                 #ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
-                file_ending = '_DIT_{:03d}'.format(read_idx)
+                file_ending = '_DIT_{:03d}'.format(dit)
                 # print(file_ending)
             ivar = 1. / (abs(data)*gain * ndit + (data*noisefac)**2 + readnoise**2 * ndit)
 
@@ -323,7 +316,7 @@ def getcube(read_idx=[1, None], filename=None, calibdir='calibrations/20160408/'
                     dx = int(dx / 16)
                 psflets = primitives.calc_offset(
                     psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
-            except:
+            except Exception:
                 if verbose:
                     print('Fit shift failed. Continuing without fitting shift.')
                 fitshift = False

@@ -4,7 +4,7 @@
 # A provisional routine for actually producing and returning data cubes.
 #########################################################################
 
-from charis import extractcube
+from charis import extractcube, instruments
 import numpy as np
 from builtins import range
 import time
@@ -14,6 +14,8 @@ import os
 import multiprocessing
 import glob
 import configparser
+
+from astropy.io import fits
 
 
 if __name__ == "__main__":
@@ -137,33 +139,54 @@ if __name__ == "__main__":
         individual_dits = False
 
     for filename in filenames:
-        _ = extractcube.getcube(
-            filename=filename, read_idx=read_idx,
-            bgsub=bgsub,
-            bgpath=None, mask=mask,
-            gain=gain, noisefac=noisefac,
-            saveramp=saveramp,
-            individual_dits=individual_dits,
-            refine=refine,
-            crosstalk_scale=crosstalk_scale,
-            dc_xtalk_correction=dc_xtalk_correction,
-            linear_wavelength=linear_wavelength,
-            maxcpus=maxcpus,
-            calibdir=calibdir, R=R, method=method,
-            smoothandmask=smoothandmask, flatfield=flatfield,
-            fitshift=fitshift, suppressrn=suppressrn,
-            minpct=minpct, fitbkgnd=fitbkgnd,
-            saveresid=saveresid)
+        header = fits.getheader(filename)
+        ndit = header['NAXIS3']
+        instrument, _, _ = instruments.instrument_from_data(
+            header, calibration=False, interactive=False)
+        name = instrument.instrument_name
 
-    # for filename in filenames:
-    #     for read_idx in range(ndit):
-    #         _ = extractcube.getcube(
-    #             filename=filename, read_idx=read_idx, bgsub=bgsub,
-    #             bgpath=None,
-    #             mask=mask, gain=gain, noisefac=noisefac,
-    #             saveramp=saveramp, refine=refine, maxcpus=maxcpus,
-    #             calibdir=calibdir, R=R, method=method,
-    #             smoothandmask=smoothandmask, flatfield=flatfield,
-    #             fitshift=fitshift, suppressrn=suppressrn,
-    #             minpct=minpct, fitbkgnd=fitbkgnd,
-    #             saveresid=saveresid)
+        if name == 'SPHERE' and individual_dits:
+            for dit in range(ndit):
+                _ = extractcube.getcube(
+                    dit=dit,
+                    filename=filename,
+                    read_idx=read_idx,
+                    bgsub=bgsub,
+                    bgpath=None,
+                    mask=mask,
+                    gain=gain,
+                    noisefac=noisefac,
+                    saveramp=saveramp,
+                    individual_dits=individual_dits,
+                    refine=refine,
+                    crosstalk_scale=crosstalk_scale,
+                    dc_xtalk_correction=dc_xtalk_correction,
+                    linear_wavelength=linear_wavelength,
+                    maxcpus=maxcpus,
+                    calibdir=calibdir, R=R, method=method,
+                    smoothandmask=smoothandmask, flatfield=flatfield,
+                    fitshift=fitshift, suppressrn=suppressrn,
+                    minpct=minpct, fitbkgnd=fitbkgnd,
+                    saveresid=saveresid)
+
+        else:
+            _ = extractcube.getcube(
+                filename=filename,
+                read_idx=read_idx,
+                bgsub=bgsub,
+                bgpath=None,
+                mask=mask,
+                gain=gain,
+                noisefac=noisefac,
+                saveramp=saveramp,
+                individual_dits=individual_dits,
+                refine=refine,
+                crosstalk_scale=crosstalk_scale,
+                dc_xtalk_correction=dc_xtalk_correction,
+                linear_wavelength=linear_wavelength,
+                maxcpus=maxcpus,
+                calibdir=calibdir, R=R, method=method,
+                smoothandmask=smoothandmask, flatfield=flatfield,
+                fitshift=fitshift, suppressrn=suppressrn,
+                minpct=minpct, fitbkgnd=fitbkgnd,
+                saveresid=saveresid)

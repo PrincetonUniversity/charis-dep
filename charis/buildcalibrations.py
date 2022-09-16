@@ -50,7 +50,7 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     try:
         hdr['cal_date'] = (fits.getheader(infilelist[0])['mjd'],
                            'MJD date of calibration image')
-    except:
+    except Exception:
         hdr['cal_date'] = ('unavailable', 'MJD date of calibration image')
 
     hdr['cal_band'] = (instrument.observing_mode,

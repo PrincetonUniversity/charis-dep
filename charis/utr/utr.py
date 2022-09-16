@@ -12,6 +12,8 @@ from astropy.io import fits
 from . import fitramp
 from charis import image  # .image import Image
 
+from pdb import set_trace
+
 log = logging.getLogger('main')
 
 

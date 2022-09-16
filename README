@@ -2,7 +2,7 @@ Software package charis, designed to build calibration files and extract data cu
 
 
 Requirements:
-Python >3.5
+Python >3.7
 Cython with a C compiler and OpenMP
 
 
