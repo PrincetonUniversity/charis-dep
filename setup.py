@@ -43,7 +43,7 @@ def setup_charis(ext_modules):
                            "calibrations/**/**/*.dat"]},
         python_requires='>=3.7',
         install_requires=['numpy', 'scipy', 'astropy',
-                          'pandas', 'tqdm', 'future',
+                          'pandas', 'tqdm', 'future', 'matplotlib',
                           'bokeh', 'bottleneck', 'psutil'],
         scripts=['scripts/buildcal', 'scripts/extractcube', 'scripts/hexplot'],
         cmdclass={'build_ext': build_ext},

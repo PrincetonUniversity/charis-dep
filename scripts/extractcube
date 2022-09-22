@@ -140,12 +140,12 @@ if __name__ == "__main__":
 
     for filename in filenames:
         header = fits.getheader(filename)
-        ndit = header['NAXIS3']
         instrument, _, _ = instruments.instrument_from_data(
             header, calibration=False, interactive=False)
         name = instrument.instrument_name
 
         if name == 'SPHERE' and individual_dits:
+            ndit = header['NAXIS3']
             for dit in range(ndit):
                 _ = extractcube.getcube(
                     dit=dit,

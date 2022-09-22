@@ -62,7 +62,7 @@ def flatten_cube(image_cube):
 
 # output_file("hexplot.html")
 TOOLS = "pan,wheel_zoom,box_zoom,reset,save,box_select,lasso_select"
-normalize = True
+normalize = False
 
 # filename = '/home/samland/science/charis_paper/2017/optext/CENTER/SPHER.2017-09-28T07:51:32.456_cube_DIT_000.fits'
 filename = sys.argv[1]
@@ -90,15 +90,15 @@ centers = centers[~mask]
 image_cube = image_cube[:, ~mask]
 
 try:
-    variance_cube = hdu_list[2].data
-    if variance_cube.ndim == 2:
-        variance_cube = np.expand_dims(variance_cube, axis=0)
-    _, _, variance_cube = crop_hex_cube(variance_cube, i1=16, i2=-16, j1=16, j2=-16)
-    variance_cube = flatten_cube(variance_cube)
-    variance_cube = variance_cube[:, ~mask]
-    # norm_variance = ImageNormalize(variance_cube[3], interval=ZScaleInterval())
+    inv_variance_cube = hdu_list[2].data
+    if inv_variance_cube.ndim == 2:
+        inv_variance_cube = np.expand_dims(inv_variance_cube, axis=0)
+    _, _, inv_variance_cube = crop_hex_cube(inv_variance_cube, i1=16, i2=-16, j1=16, j2=-16)
+    inv_variance_cube = flatten_cube(inv_variance_cube)
+    inv_variance_cube = inv_variance_cube[:, ~mask]
+    # norm_inv_variance = ImageNormalize(inv_variance_cube[3], interval=ZScaleInterval())
 except:
-    variance_cube = None
+    inv_variance_cube = None
 hdu_list.close()
 
 
@@ -114,14 +114,14 @@ if normalize:
 else:
     norm_factor = 1.
 
-if variance_cube is None:
+if inv_variance_cube is None:
     source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :] / norm_factor,
-                                        variance=np.zeros_like(image_cube[0, :]), x=centers[:, 0], y=centers[:, 1]))
+                                        inv_variance=np.zeros_like(image_cube[0, :]), x=centers[:, 0], y=centers[:, 1]))
 else:
     source = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube[0, :] / norm_factor,
-                                        variance=variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
+                                        inv_variance=inv_variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
 # source2 = ColumnDataSource(data=dict(q=q, r=r, counts=image_cube2[0, :],
-#                                      variance=variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
+#                                      inv_variance=inv_variance_cube[0, :], x=centers[:, 0], y=centers[:, 1]))
 
 left = figure(tools=TOOLS, match_aspect=True,
               background_fill_color='#ffffff',
@@ -137,7 +137,7 @@ left.yaxis.major_label_text_font_size = "25pt"
 left.grid.visible = False
 # left.sizing_mode = 'scale_width'
 
-# right = figure(tools=TOOLS, title="SPHERE IFS Variance", match_aspect=True,
+# right = figure(tools=TOOLS, title="SPHERE IFS inv_variance", match_aspect=True,
 #                x_range=left.x_range, y_range=left.y_range, background_fill_color='#440154')
 # right = figure(tools=TOOLS, title="SPHERE DRH", match_aspect=True,
 #                background_fill_color='#440154')
@@ -162,7 +162,7 @@ a = left.hex_tile(
 
 # b = right.hex_tile(
 #     q='q', r='r', line_color=None, source=source,
-#     fill_color=linear_cmap('variance', 'Inferno256', norm_variance.vmin, norm_variance.vmax),
+#     fill_color=linear_cmap('inv_variance', 'Inferno256', norm_inv_variance.vmin, norm_inv_variance.vmax),
 #     hover_color="pink", hover_alpha=0.8)
 
 # b = right.hex_tile(
@@ -187,15 +187,15 @@ if N > 1:
             slider.value), :] / norm_factor
         norm_counts = ImageNormalize(image_cube[int(slider.value)], interval=ZScaleInterval())
 
-        # source.data['variance'] = variance_cube[int(slider.value), :]
-        # norm_variance = ImageNormalize(variance_cube[slider_value], interval=ZScaleInterval())
+        # source.data['inv_variance'] = inv_variance_cube[int(slider.value), :]
+        # norm_inv_variance = ImageNormalize(inv_variance_cube[slider_value], interval=ZScaleInterval())
 
         # source2.data['counts'] = image_cube2[int(slider.value), :]
         # norm_counts2 = ImageNormalize(image_cube2[slider_value], interval=ZScaleInterval())
 
         a.glyph.fill_color = linear_cmap('counts', cmap, norm_counts.vmin, norm_counts.vmax)
         # a.glyph.fill_color = log_cmap('counts', cmap, 0.005, 1)
-        # b.glyph.fill_color = linear_cmap('variance', 'Inferno256', norm_variance.vmin, norm_variance.vmax)
+        # b.glyph.fill_color = linear_cmap('inv_variance', 'Inferno256', norm_inv_variance.vmin, norm_inv_variance.vmax)
         # b.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts2.vmin, norm_counts2.vmax)
 
     # def update2(attr, old, new):
@@ -203,11 +203,11 @@ if N > 1:
     #     source2.data['counts'] = image_cube2[int(slider.value), :]
     #     norm_counts2 = ImageNormalize(image_cube2[slider_value], interval=ZScaleInterval())
     #
-    #     # source.data['variance'] = variance_cube[int(slider.value), :]
-    #     # norm_variance = ImageNormalize(variance_cube[slider_value], interval=ZScaleInterval())
+    #     # source.data['inv_variance'] = inv_variance_cube[int(slider.value), :]
+    #     # norm_inv_variance = ImageNormalize(inv_variance_cube[slider_value], interval=ZScaleInterval())
     #
     #     # a.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts.vmin, norm_counts.vmax)
-    #     # b.glyph.fill_color = linear_cmap('variance', 'Inferno256', norm_variance.vmin, norm_variance.vmax)
+    #     # b.glyph.fill_color = linear_cmap('inv_variance', 'Inferno256', norm_inv_variance.vmin, norm_inv_variance.vmax)
     #     b.glyph.fill_color = linear_cmap('counts', 'Inferno256', norm_counts2.vmin, norm_counts2.vmax)
 
     slider.on_change('value', update)
@@ -215,7 +215,7 @@ if N > 1:
 
 hover = HoverTool(tooltips=[
     ("count", "@counts"),
-    ("variance", "@variance"),
+    ("inverse variance", "@inv_variance"),
     # ("(q,r)", "(@q, @r)"),
     ("(x,y)", "(@x, @y)")],
     mode="mouse", point_policy="follow_mouse", renderers=[a])  # , b])

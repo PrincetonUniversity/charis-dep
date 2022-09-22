@@ -27,7 +27,8 @@ log = logging.getLogger('main')
 def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
             mask=True,
-            gain=2, nonlinear_threshold=40000, noisefac=0, saveramp=False, R=30,
+            gain=2, nonlinear_threshold=40000, noisefac=0,
+            saveramp=False, R=30,
             individual_dits=False,
             method='lstsq', refine=True, crosstalk_scale=0.8,
             dc_xtalk_correction=False,
@@ -309,16 +310,23 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
         if fitshift:
             try:
                 psflets = np.load(os.path.join(calibdir, 'polychromefullR%d.npy' % (R2)))
-                offsets = instrument.offsets
-                # Unless this is CHARIS, default to a single offset image-wide
-                dx = inImage.data.shape[0]
-                if instrument.instrument_name == 'CHARIS':
-                    dx = int(dx / 16)
+            except FileNotFoundError:
+                if verbose:
+                    print("Oversampled PSFlets for fitshift not found, reverting to not shifting.")
+                fitshift = False
+        if fitshift:
+            offsets = instrument.offsets
+            # Unless this is CHARIS, default to a single offset image-wide
+            dx = inImage.data.shape[0]
+            if instrument.instrument_name == 'CHARIS':
+                dx = int(dx / 16)
+            try:
                 psflets = primitives.calc_offset(
                     psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
-            except Exception:
+            except Exception as e:
                 if verbose:
                     print('Fit shift failed. Continuing without fitting shift.')
+                    print(e)
                 fitshift = False
         if not fitshift:
             psflets = fits.getdata(os.path.join(calibdir, 'polychromeR%d.fits' % (R2)))
@@ -374,7 +382,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
             if saveresid:
                 datacube, resid = result
                 resid.write(
-                    re.sub('.fits', '_resid' + file_ending + '.fits',
+                    re.sub('.fits', '_residuals' + file_ending + '.fits',
                            os.path.join(outdir, os.path.basename(filename))))
                 # mask_resid = inImage.data > 0.
                 # relative_resid = resid.data.copy()
