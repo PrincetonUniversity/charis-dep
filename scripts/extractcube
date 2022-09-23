@@ -141,7 +141,7 @@ if __name__ == "__main__":
     for filename in filenames:
         header = fits.getheader(filename)
         instrument, _, _ = instruments.instrument_from_data(
-            header, calibration=False, interactive=False)
+            header, calibration=False, interactive=False, verbose=False)
         name = instrument.instrument_name
 
         if name == 'SPHERE' and individual_dits:

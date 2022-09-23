@@ -1,16 +1,48 @@
-Software package charis, designed to build calibration files and extract data cubes from raw data for the CHARIS integral-field spectrograph for the Subaru telescope and the SPHERE IFS at the VLT
+charis
+====
+Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs
+-------------------------------------------------------------------------------------------
+
+The charis pipeline is capable of extracting spectral data cubes from both the Subaru/CHARIS as well as the SPHERE/IFS integral field spectrographs for high-contrast imaging.
+
+For a detailed description of the pipeline please refer to `Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_. For a description of the pipeline's adaption to SPHERE/IFS please refer to Samland et al. 2022.
 
 
-Requirements:
+Requirements
+------------
 Python >3.7
 Cython with a C compiler and OpenMP
 
 
-Dependencies:
-numpy, scipy, astropy, pandas, tqdm, future, cython, bokeh
+Dependencies
+------------
+The charis pipeline requires the following packages in a reasonably up-to-date version
+to function:
+
+- numpy, scipy, astropy, pandas, tqdm, matplotlib, cython, bokeh
+- bottleneck, psutil
 
 
-Documentation page:
+Contributing
+------------
+
+Please open a new issue or new pull request for bugs, feedback, or new features you would like to see.   If there is an issue you would like to work on, please leave a comment and we will be happy to assist.   New contributions and contributors are very welcome!
+
+New to github or open source projects?  If you are unsure about where to start or haven't used github before, please feel free to email `@t-brandt`_ or `@m-samland`_.
+
+Feedback and feature requests?  Is there something missing you would like to see?  Please open an issue or send an email to `@t-brandt`_ or `@m-samland`_.
+
+
+Acknowledgements
+----------------
+
+If you have made use of the charis pipeline in your research, please cite:
+`Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_
+Samland et al. 2022
+
+
+Documentation
+-------------
 http://princetonuniversity.github.io/charis-dep/
 
 
@@ -20,7 +52,7 @@ Your computer should have at least ~2 GB of RAM to extract data cubes, and at le
 Installation:
 The easy way to install is to use the setup.py in this directory with
 python setup.py install
-We recommend that you first install the newest anaconda Python 3.9 if you are not already using anaconda:
+We recommend that you first install the newest anaconda Python if you are not already using anaconda:
 https://www.continuum.io/downloads
 
 ** CAUTIONARY NOTE: the method below may or may not work with the latest versions of Anaconda and Xcode; it may break either the pipeline or numpy/scipy by linking incompatible libraries.  I recommend not following these instructions.  The setup script as invoked above will attempt to install with openMP support, but will default to an installation without openMP support. **

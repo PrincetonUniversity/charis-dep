@@ -166,15 +166,16 @@ class SPHERE(object):
         return "{} {}".format(self.instrument_name, self.observing_mode)
 
 
-def instrument_from_data(header, calibration=True, interactive=False):
+def instrument_from_data(header, calibration=True, interactive=False, verbose=False):
     correct_header = True
 
     if 'CHARIS' in header['INSTRUME']:
         if 'Y_FLTNAM' in header and 'OBJECT' in header:
             observing_mode = header['Y_FLTNAM']
             instrument = CHARIS(observing_mode)
-            print("Instrument: {}".format(instrument.instrument_name))
-            print("Mode: {}".format(instrument.observing_mode))
+            if verbose:
+                print("Instrument: {}".format(instrument.instrument_name))
+                print("Mode: {}".format(instrument.observing_mode))
 
             if calibration:
                 if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:

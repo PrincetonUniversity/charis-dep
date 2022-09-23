@@ -190,7 +190,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
                 #ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
                 file_ending = '_DIT_{:03d}'.format(dit)
                 # print(file_ending)
-            ivar = 1. / (abs(data)*gain * ndit + (data*noisefac)**2 + readnoise**2 * ndit)
+            ivar = 1. / (abs(data) * gain * ndit + (data * noisefac)**2 + readnoise**2 * ndit)
 
         # elif data.ndim == 2:
         #     # data = sph_ifs_fix_badpix(data, bpm)
