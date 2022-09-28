@@ -138,6 +138,11 @@ if __name__ == "__main__":
     except Exception:
         individual_dits = False
 
+    try:
+        verbose = Config.getboolean('Extract', 'verbose')
+    except Exception:
+        verbose = False
+
     for filename in filenames:
         header = fits.getheader(filename)
         instrument, _, _ = instruments.instrument_from_data(
@@ -163,11 +168,17 @@ if __name__ == "__main__":
                     dc_xtalk_correction=dc_xtalk_correction,
                     linear_wavelength=linear_wavelength,
                     maxcpus=maxcpus,
-                    calibdir=calibdir, R=R, method=method,
-                    smoothandmask=smoothandmask, flatfield=flatfield,
-                    fitshift=fitshift, suppressrn=suppressrn,
-                    minpct=minpct, fitbkgnd=fitbkgnd,
-                    saveresid=saveresid)
+                    calibdir=calibdir,
+                    R=R,
+                    method=method,
+                    smoothandmask=smoothandmask,
+                    flatfield=flatfield,
+                    fitshift=fitshift,
+                    suppressrn=suppressrn,
+                    minpct=minpct,
+                    fitbkgnd=fitbkgnd,
+                    saveresid=saveresid,
+                    verbose=verbose)
 
         else:
             _ = extractcube.getcube(
@@ -185,8 +196,14 @@ if __name__ == "__main__":
                 dc_xtalk_correction=dc_xtalk_correction,
                 linear_wavelength=linear_wavelength,
                 maxcpus=maxcpus,
-                calibdir=calibdir, R=R, method=method,
-                smoothandmask=smoothandmask, flatfield=flatfield,
-                fitshift=fitshift, suppressrn=suppressrn,
-                minpct=minpct, fitbkgnd=fitbkgnd,
-                saveresid=saveresid)
+                calibdir=calibdir,
+                R=R,
+                method=method,
+                smoothandmask=smoothandmask,
+                flatfield=flatfield,
+                fitshift=fitshift,
+                suppressrn=suppressrn,
+                minpct=minpct,
+                fitbkgnd=fitbkgnd,
+                saveresid=saveresid,
+                verbose=verbose)

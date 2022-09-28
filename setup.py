@@ -27,6 +27,9 @@ ext_modules_noopenMP += [Extension("charis.utr.fitramp",
                                    ['charis/utr/fitramp.pyx'],
                                    )]
 
+with open("README.rst", "r") as fh:
+    long_description = fh.read()
+
 
 def setup_charis(ext_modules):
     setup(

@@ -180,24 +180,18 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
             nonlinear = np.zeros([data.shape[-2], data.shape[-1]]).astype('bool')
 
         if data.ndim == 3:
-            if not individual_dits:  # read_idx is not None and read_idx != [1, None]:
+            if not individual_dits:
                 ndit = len(data)
                 data = np.mean(data, axis=0)
                 file_ending = ''
             else:
                 ndit = 1
                 data = data[dit]
-                #ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
                 file_ending = '_DIT_{:03d}'.format(dit)
-                # print(file_ending)
-            ivar = 1. / (abs(data) * gain * ndit + (data * noisefac)**2 + readnoise**2 * ndit)
-
-        # elif data.ndim == 2:
-        #     # data = sph_ifs_fix_badpix(data, bpm)
-        #     ivar = 1. / (np.abs(data) * instrument.gain + readnoise**2)
-        #     file_ending = ''
-        # else:
-        #     raise ValueError("Data must be images or cubes.")
+        elif data.ndim == 2:
+            file_ending = ''
+            ndit = 1
+        ivar = 1. / (abs(data) * gain * ndit + (data * noisefac)**2 + readnoise**2 * ndit)
 
         inImage = Image(data=data, ivar=ivar, header=header,
                         instrument_name=instrument.instrument_name)

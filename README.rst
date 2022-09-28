@@ -37,8 +37,9 @@ Acknowledgements
 ----------------
 
 If you have made use of the charis pipeline in your research, please cite:
-`Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_
-Samland et al. 2022
+
+- `Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_
+- Samland et al. 2022
 
 
 Documentation
