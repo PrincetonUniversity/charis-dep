@@ -256,8 +256,11 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
-        inImage.write(re.sub('.fits', '_ramp.fits', os.path.join(
+        inImage.write(re.sub('.fits', f'_ramp{file_ending}.fits', os.path.join(
             outdir, os.path.basename(filename))))
+        if instrument.instrument_name == 'SPHERE':
+            fits.writeto(re.sub('.fits', f'_bg{file_ending}.fits', os.path.join(
+                outdir, os.path.basename(filename))), bg, overwrite=True)
 
     ################################################################
     # Read in necessary calibration files and extract the data cube.
@@ -436,9 +439,9 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
             inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / \
                 pixelflat[good_pixel_mask]
             if instrument.instrument_name == 'SPHERE':
-                # inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+                inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
                 inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
-                # inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
+                inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
                 inImage.ivar[bpm.astype('bool')] = 0  # inImage.ivar[bpm.astype('bool')] / 1.2
 
         # If we did the crosstalk correction, we need to add the model
