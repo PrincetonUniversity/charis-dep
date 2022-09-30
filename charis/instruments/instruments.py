@@ -186,7 +186,7 @@ def instrument_from_data(header, calibration=True, interactive=False, verbose=Fa
             if calibration:
                 if header['OBJECT'] in ['1200nm', '1550nm', '2346nm']:
                     calibration_wavelength = [int(header['OBJECT'].split('n')[0])] * u.nanometer
-                    print(("     Wavelength detected: ", calibration_wavelength))
+                    print(f"Wavelength detected: {calibration_wavelength}")
                 else:
                     print("Invalid wavelength keyword")
                     correct_header = False

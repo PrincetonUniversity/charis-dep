@@ -25,10 +25,10 @@ if __name__ == "__main__":
     bgimages = []
     for i in range(2, len(sys.argv)):
         bgfiles += glob.glob(sys.argv[i])
-    print(bgfiles)
+    print(f"Background files: {bgfiles}")
     header = fits.open(infile)[0].header
     instrument, calibration_wavelength, correct_header = \
-        instruments.instrument_from_data(header, interactive=True)
+        instruments.instrument_from_data(header, interactive=True, verbose=True)
 
     print("\n" + "*" * 60)
     print("Oversample PSFlet templates to enable fitting a subpixel offset in cube")
