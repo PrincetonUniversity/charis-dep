@@ -16,17 +16,19 @@ class CHARIS(object):
     """
 
     __valid_observing_modes = ['J', 'H', 'K',
-                               'Broadband']
+                               'Broadband', 'ND']
 
     __wavelength_range = {'J': [1155., 1340.] * u.nanometer,
                           'H': [1470., 1800.] * u.nanometer,
                           'K': [2005., 2380.] * u.nanometer,
-                          'Broadband': [1140., 2410.] * u.nanometer}
+                          'Broadband': [1140., 2410.] * u.nanometer,
+                          'ND': [1140., 2410.] * u.nanometer}
 
     __resolution = {'J': 100,
                     'H': 100,
                     'K': 100,
-                    'Broadband': 30}
+                    'Broadband': 30,
+                    'ND': 30}
 
     def wavelengths(self, lower_wavelength_limit, upper_wavelength_limit, R):
         Nspec = int(np.log(upper_wavelength_limit * 1. / lower_wavelength_limit) * R + 1.5)

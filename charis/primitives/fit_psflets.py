@@ -15,6 +15,7 @@ from charis.image.image_geometry import (deflatten_cube, flatten_cube,
                                          mad_std_hex_cube,
                                          median_filter_hex_cube)
 from charis.primitives import matutils
+from past.utils import old_div
 from scipy import interpolate, ndimage, signal, stats
 
 log = logging.getLogger('main')
@@ -222,7 +223,7 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
     if maskval is not None:
         norm = np.sum(np.isfinite(arr_sorted), axis=axis)
         arr_sorted[np.where(np.isinf(arr_sorted))] = 0
-        return (np.sum(arr_sorted, axis=axis) / (norm + 1e-100))
+        return old_div(np.sum(arr_sorted, axis=axis), (norm + 1e-100))
     else:
         return np.mean(arr_sorted, axis=axis)
 
@@ -251,7 +252,7 @@ def _get_corrnoise(resid, ivar, minpct=70):
     var_ratios = np.zeros((resid.shape[0], resid.shape[1]))
     for i in range(0, resid.shape[1] // dx):
         ivar_ref = np.median(ivar[:4, i * dx:(i + 1) * dx])
-        var_ratios[:, i * dx:(i + 1) * dx] = (ivar[:, i * dx:(i + 1) * dx] / ivar_ref)
+        var_ratios[:, i * dx:(i + 1) * dx] = old_div(ivar[:, i * dx:(i + 1) * dx], ivar_ref)
 
     ##################################################################
     # Default threshold: the variance is equal parts read noise and
@@ -259,7 +260,7 @@ def _get_corrnoise(resid, ivar, minpct=70):
     # to ensure a reasonable average.
     ##################################################################
 
-    thresh = min((1 / np.sqrt(2)), stats.scoreatpercentile(var_ratios, 100 - minpct))
+    thresh = min(old_div(1, np.sqrt(2)), stats.scoreatpercentile(var_ratios, 100 - minpct))
 
     for i in range(resid.shape[1] // dx):
         ivar_ref = np.median(ivar[:4, i * dx:(i + 1) * dx])
@@ -303,12 +304,12 @@ def _recalc_ivar(data, ivar):
     """
 
     dx = 64
-    var = (1 / (ivar + 1e-100))
+    var = old_div(1, (ivar + 1e-100))
     for i in range(32):
         rdnoise_old = np.sqrt(np.median(var[:4, i * dx:(i + 1) * dx]))
         rdnoise_new = np.std(np.sort(data[:4, i * dx:(i + 1) * dx])[1:-1])
         var[:, i * dx:(i + 1) * dx] += 0.5 * (rdnoise_new**2 - rdnoise_old**2)
-    return ((1 / var)) * (ivar > 0)
+    return (old_div(1, var)) * (ivar > 0)
 
 
 def _add_row(arr, n=1, dtype=None):
@@ -325,7 +326,7 @@ def _add_row(arr, n=1, dtype=None):
     else:
         outarr = np.zeros(tuple(newshape), dtype)
     outarr[:-n] = arr
-    meanval = (arr[0] + arr[-1]) / 2
+    meanval = old_div((arr[0] + arr[-1]), 2)
     for i in range(1, n + 1):
         outarr[-i] = meanval
     return outarr
@@ -363,7 +364,7 @@ def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     try:
         if not subim.shape == psflets[0].shape:
             raise ValueError("subim must be the same shape as each psflet.")
-    except Exception:
+    except:
         raise ValueError("subim must be the same shape as each psflet.")
 
     if mode == 'lstsq':
@@ -373,7 +374,7 @@ def _fit_cutout(subim, psflets, bounds, x=None, y=None, mode='lstsq'):
     elif mode == 'ext':
         coef = np.zeros(psflets.shape[0])
         for i in range(psflets.shape[0]):
-            coef[i] = np.sum(psflets[i] * subim) / np.sum(psflets[i])
+            coef[i] = old_div(np.sum(psflets[i] * subim), np.sum(psflets[i]))
     elif mode == 'apphot':
         coef = np.zeros((subim.shape[0]))
         for i in range(subim.shape[0]):
@@ -634,7 +635,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
         psflets[-n_add:] = 0
         psflets[-1, 4:-4, 4:-4] = 1
         if n_add == 2:
-            psflets[-2, 4:-4, 4:-4] += (_x[4:-4, 4:-4] / 64).astype(int) % 2 == 0
+            psflets[-2, 4:-4, 4:-4] += (old_div(_x[4:-4, 4:-4], 64)).astype(int) % 2 == 0
 
         xint = _add_row(xint, n=n_add)
         yint = _add_row(yint, n=n_add)
@@ -821,7 +822,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     header['CTYPE3'] = 'AWAV-LOG'
     header['CUNIT3'] = 'nm'
     header['CRVAL3'] = lam[0]
-    header['CDELT3'] = np.log(lam[1] / lam[0]) * lam[0]
+    header['CDELT3'] = np.log(old_div(lam[1], lam[0])) * lam[0]
     header['CRPIX3'] = 1
 
     datacube = Image(data=coefs, ivar=1. / cov, header=header)
