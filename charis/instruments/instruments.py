@@ -56,12 +56,16 @@ class CHARIS(object):
 
         longitude, latitude = [-155.4760187, 19.825504] * u.degree
         self.location = EarthLocation(longitude, latitude)
+
+        if self.observing_mode == 'ND':
+            observing_mode = 'Broadband'
         self.calibration_path = \
             os.path.join(
                 pkg_resources.resource_filename('charis', 'calibrations'),
                 'CHARIS', observing_mode)
+
         self.transmission = np.loadtxt(os.path.join(
-            self.calibration_path, self.observing_mode + '_tottrans.dat'))
+            self.calibration_path, observing_mode + '_tottrans.dat'))
 
         self.lam_midpts, self.lam_endpts = \
             self.wavelengths(self.wavelength_range[0].value,
@@ -197,8 +201,8 @@ def instrument_from_data(header, calibration=True, interactive=False, verbose=Fa
             print("This can happen for files taken before Apr 1st, 2017. Please enter them manually.")
             print("*" * 60)
             while True:
-                observing_mode = input("     Band? [J/H/K/Broadband]: ")
-                if observing_mode in ["J", "H", "K", "Broadband"]:
+                observing_mode = input("     Band? [J/H/K/Broadband/ND]: ")
+                if observing_mode in ["J", "H", "K", "Broadband", "ND"]:
                     break
                 else:
                     print("Invalid input.")
