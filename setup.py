@@ -64,5 +64,6 @@ def setup_charis(ext_modules):
 
 try:
     setup_charis(ext_modules_openMP)
-except Exception:
+except:
+    print("Falling back on installation without openMP.")
     setup_charis(ext_modules_noopenMP)
