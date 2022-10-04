@@ -276,9 +276,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
     if flatfield:
         lensletflat = fits.getdata(
             os.path.join(
-                os.path.split(charis.__file__)[0],
-                'calibrations/{}/{}/lensletflat.fits'.format(
-                    instrument.instrument_name, instrument.observing_mode))).astype('float64')
+                instrument.calibration_path, 'lensletflat.fits')).astype('float64')
         pixelflat = fits.getdata(
             os.path.join(os.path.split(charis.__file__)[0],
                          'calibrations/{}/pixelflat.fits'.format(instrument.instrument_name)))
