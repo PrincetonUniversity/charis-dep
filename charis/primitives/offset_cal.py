@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 import multiprocessing
+from builtins import range
 
 import numpy as np
 from astropy.io import fits
+from past.utils import old_div
 from scipy import linalg, ndimage, signal
 
-import matutils
+from . import matutils
 
 
 def calc_offset(psflets, image, offsets, dx=64,
@@ -58,8 +60,8 @@ def calc_offset(psflets, image, offsets, dx=64,
     outarr = np.zeros((psflets.shape[0], ny, nx))
 
     for i in range(0, nx, dx):
-
-        corrvals_all = matutils.crosscorr(psflets, image.data, image.ivar,
+        corrvals_all = matutils.crosscorr(psflets, image.data.astype('float64'),
+                                          image.ivar.astype('float64'),
                                           offsets, maxproc=maxcpus,
                                           m1=i, m2=i + dx)
 
@@ -83,7 +85,7 @@ def calc_offset(psflets, image, offsets, dx=64,
             arr[:, 2] = offsets[imin:imax]**2
             coef = linalg.lstsq(arr, corrvals)[0]
 
-            shift = -coef[1] / (2 * coef[2])
+            shift = old_div(-coef[1], (2 * coef[2]))
             shiftarr[j // dx, i // dx] = shift
 
     #####################################################################
@@ -97,7 +99,7 @@ def calc_offset(psflets, image, offsets, dx=64,
         shiftarr[1:-1, 0] = signal.medfilt(shiftarr[:, 0], 3)[1:-1]
         shiftarr[1:-1, -1] = signal.medfilt(shiftarr[:, -1], 3)[1:-1]
 
-    x = (1. * np.arange(ny)) / dx - 0.5
+    x = old_div((1. * np.arange(ny)), dx) - 0.5
     x *= x > 0
     x[np.where(x > shiftarr.shape[0] - 1)] = shiftarr.shape[0] - 1
     x, y = np.meshgrid(x, x)

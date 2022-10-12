@@ -1,1 +1,1 @@
-from par_utils import Task, Consumer
+from .par_utils import Task, Consumer

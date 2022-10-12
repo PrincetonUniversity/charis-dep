@@ -220,7 +220,7 @@ def getLogger(name='generalLoggerName', lvl=20, addFH=True, addSH=True):
         if verbose:
             print(repr(log_dict))
             print('found a log by the name already exists so returning it')
-    except:
+    except Exception:
         if verbose:
             print('No logger object found so creating one with the name ' + name)
         log = setUpLogger(name, lvl, addFH, addSH)

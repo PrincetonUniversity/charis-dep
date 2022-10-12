@@ -2,7 +2,7 @@
 
 import glob
 
-from setuptools import setup, Extension
+from setuptools import setup, find_packages, Extension
 from Cython.Distutils import build_ext
 
 ext_modules_openMP = []
@@ -27,45 +27,36 @@ ext_modules_noopenMP += [Extension("charis.utr.fitramp",
                                    ['charis/utr/fitramp.pyx'],
                                    )]
 
+with open("README.rst", "r") as fh:
+    long_description = fh.read()
+
 
 def setup_charis(ext_modules):
     setup(
         name='charis',
         version='1.0.1',
-        description='The Data Reduction Pipeline for the CHARIS Integral-Field Spectrograph',
-        author='Timothy Brandt, Maxime Rizzo',
+        description='Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs',
+        author='Timothy Brandt, Maxime Rizzo, Matthias Samland',
         author_email='timothy.d.brandt@gmail.com',
-        packages={'charis', 'charis.primitives', 'charis.utr', 'charis.image',
-                    'charis.parallel'},
-        package_dir={'charis': 'charis', 'charis.primitives': 'charis/primitives',
-                     'charis.image': 'charis/image', 'charis.utr': 'charis/utr',
-                     'charis.parallel': 'charis/parallel'},
-        data_files=[('charis/calibrations/lowres', glob.glob('charis/calibrations/lowres/hires_psflets*') +
-                     ['charis/calibrations/lowres/lensletflat.fits',
-                      'charis/calibrations/lowres/lowres_tottrans.dat',
-                      'charis/calibrations/lowres/lamsol.dat',
-                      'charis/calibrations/lowres/mask.fits',
-                      'charis/calibrations/lowres/pixelflat.fits']),
-                    ('charis/calibrations/highres_J', glob.glob('charis/calibrations/highres_J/hires_psflets*') +
-                     ['charis/calibrations/highres_J/lensletflat.fits',
-                      'charis/calibrations/highres_J/J_tottrans.dat',
-                      'charis/calibrations/highres_J/lamsol.dat',
-                      'charis/calibrations/lowres/mask.fits',
-                      'charis/calibrations/lowres/pixelflat.fits']),
-                    ('charis/calibrations/highres_H', glob.glob('charis/calibrations/highres_H/hires_psflets*') +
-                     ['charis/calibrations/highres_H/lensletflat.fits',
-                      'charis/calibrations/highres_H/H_tottrans.dat',
-                      'charis/calibrations/highres_H/lamsol.dat',
-                      'charis/calibrations/lowres/mask.fits',
-                      'charis/calibrations/lowres/pixelflat.fits']),
-                    ('charis/calibrations/highres_K', glob.glob('charis/calibrations/highres_K/hires_psflets*') +
-                     ['charis/calibrations/highres_K/lensletflat.fits',
-                      'charis/calibrations/highres_K/K_tottrans.dat',
-                      'charis/calibrations/highres_K/lamsol.dat',
-                      'charis/calibrations/lowres/mask.fits',
-                      'charis/calibrations/lowres/pixelflat.fits'])],
-        install_requires=['numpy', 'scipy', 'astropy', 'cython>=0.x'],
-        scripts=['scripts/buildcal', 'scripts/extractcube'],
+        url="https://github.com/PrincetonUniversity/charis-dep",
+        long_description=long_description,
+        long_description_content_type="text/x-rst",
+        classifiers=[
+            "Programming Language :: Python :: 3",
+            "License :: OSI Approved :: BSD License",
+            "Operating System :: OS Independent",
+            "Intended Audience :: Science/Research",
+        ],
+        packages=find_packages(),
+        package_data={"": ["calibrations/**/*.fits",
+                           "calibrations/**/*.json",
+                           "calibrations/**/**/*.fits",
+                           "calibrations/**/**/*.dat"]},
+        python_requires='>=3.7',
+        install_requires=['numpy', 'scipy', 'astropy',
+                          'pandas', 'tqdm', 'future', 'matplotlib',
+                          'bokeh', 'bottleneck', 'psutil'],
+        scripts=['scripts/buildcal', 'scripts/extractcube', 'scripts/hexplot'],
         cmdclass={'build_ext': build_ext},
         ext_modules=ext_modules
     )
@@ -74,4 +65,5 @@ def setup_charis(ext_modules):
 try:
     setup_charis(ext_modules_openMP)
 except:
+    print("Falling back on installation without openMP.")
     setup_charis(ext_modules_noopenMP)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from past.utils import old_div
 import logging
 import multiprocessing
 import re
@@ -8,12 +9,10 @@ import time
 import numpy as np
 from astropy.io import fits
 
-import fitramp
+from . import fitramp
+from charis import image  # .image import Image
 
-try:
-    from image import Image
-except:
-    from charis.image import Image
+from pdb import set_trace
 
 log = logging.getLogger('main')
 
@@ -51,10 +50,13 @@ def getreads(filename, header=fits.PrimaryHDU().header, read_idx=[1, None]):
 
     hdulist = fits.open(filename)
     shape = hdulist[1].data.shape
-    if read_idx[1] > read_idx[0]:
-        idx1 = read_idx[1] + 1
+
+    if read_idx[1] is not None:
+        if read_idx[1] > read_idx[0]:
+            idx1 = read_idx[1] + 1
     else:
         idx1 = read_idx[1]
+
     reads = np.zeros((len(hdulist[read_idx[0]:idx1]), shape[0], shape[1]),
                      np.float32)
 
@@ -148,7 +150,7 @@ def calcramp(filename, mask=None, gain=2., noisefac=0,
                                   returnivar=True)
 
     if noisefac > 0:
-        ivar[:] = 1. / (1. / (ivar + 1e-100) + (noisefac * data)**2)
+        ivar[:] = old_div(1., (old_div(1., (ivar + 1e-100)) + (noisefac * data)**2))
 
     header.append(('gain', gain, 'Assumed detector gain for Poisson variance'), end=True)
     header['noisefac'] = (noisefac, 'Added noise (as fraction of abs(ct rate))')
@@ -156,4 +158,4 @@ def calcramp(filename, mask=None, gain=2., noisefac=0,
     header['fitdecay'] = (fitexpdecay, 'Fit exponential decay of ref. volt. in read 1?')
     header['nonlin'] = (fitnonlin, 'Fit nonlinear pixel response?')
 
-    return Image(data=data, ivar=ivar, header=header)
+    return image.Image(data=data, ivar=ivar, header=header)

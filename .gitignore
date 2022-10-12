@@ -5,6 +5,7 @@
 *~
 \#*
 .*.swp
+*.dropbox.attr
 
 # C extensions
 *.so

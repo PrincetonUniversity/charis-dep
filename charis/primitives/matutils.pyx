@@ -755,9 +755,168 @@ def optext(double [:, :] im, double [:, :] ivar,
                             num = num + w1*im[iy, ix]
                             denom = denom + w1*w1
 
-                    coefs_num[i, j, n - k - 1] = num/wtot
-                    coefs_denom[i, j, n - k - 1] = denom/(wtot*wtot)
-                    lamref[i, n - k - 1] = loglamindx[i, j, k]
+                    if loglamindx[i, j, 1] > loglamindx[i, j, 0]:
+                        coefs_num[i, j, k] = num/wtot
+                        coefs_denom[i, j, k] = denom/(wtot*wtot)
+                        lamref[i, k] = loglamindx[i, j, k]
+                    else:
+                        coefs_num[i, j, n - k - 1] = num/wtot
+                        coefs_denom[i, j, n - k - 1] = denom/(wtot*wtot)
+                        lamref[i, n - k - 1] = loglamindx[i, j, k]
+
+                i2 = 1
+                for k in range(nref):
+                    while lamref[i, i2] < refloglam[k]:
+                        i2 = i2 + 1
+                        if i2 == n - 1:
+                            break
+
+                    i1 = i2 - 1
+                    w1 = lamref[i, i2] - refloglam[k]
+                    w2 = refloglam[k] - lamref[i, i1]
+                    wtot = w1 + w2
+                    w1 = w1/wtot
+                    w2 = w2/wtot
+                    
+                    num = coefs_num[i, j, i1]*w1 + coefs_num[i, j, i2]*w2
+                    denom = coefs_denom[i, j, i1]*w1 + coefs_denom[i, j, i2]*w2
+                    coefs[k, i, j] = num/(denom + 1e-300)
+                    ivar_tot[k, i, j] = denom
+                    
+    return coefs_np, ivar_tot_np 
+
+
+@cython.wraparound(False)
+@cython.boundscheck(False)
+
+def optext_hybrid(double [:, :] im, double [:, :] ivar, 
+                  double [:, :, :] xindx, double[:, :, :] yindx,
+                  double [:, :, :] sig, double [:, :, :] coefs_fit,
+                  double [:, :, :] psflets,
+                  double [:] loglam_fit, int nlam_fit,
+                  double [:, :, :] loglamindx, int [:, :] nlam,
+                  double [:] refloglam, int nmax, 
+                  int delt_x=7, int maxproc=4):
+    """
+    """
+
+    cdef int i, j, k, kp, n, nx, ny, ix, iy, xdim, ydim, nref, i1, i2
+    cdef int ilam1, ilam2
+    cdef bint lam_increasing
+    cdef double x, dx, num, denom, w1, w2, wtot, sigval, val, dval, weight
+
+    cdef extern from "math.h" nogil:
+        double exp(double _x)
+
+    ####################################################################
+    # Relevant dimensions and limits for loops
+    ####################################################################
+
+    xdim = im.shape[1]
+    ydim = im.shape[0]
+    nref = refloglam.shape[0]
+
+    nx = xindx.shape[0]
+    ny = xindx.shape[1]
+
+    ####################################################################
+    # Allocate arrays and create memory views.  Only coefs and ivar_tot 
+    # will be returned; coefs_num and coefs_denom are internal.
+    ####################################################################
+
+    coefs_num_np = np.zeros((nx, ny, nmax))
+    cdef double [:, :, :] coefs_num = coefs_num_np
+    coefs_denom_np = np.zeros((nx, ny, nmax))
+    cdef double [:, :, :] coefs_denom = coefs_denom_np
+
+    coefs_np = np.zeros((nref, nx, ny))
+    cdef double [:, :, :] coefs = coefs_np
+    ivar_tot_np = np.zeros((nref, nx, ny))
+    cdef double [:, :, :] ivar_tot = ivar_tot_np
+
+    lamref_np = np.zeros((nx, nmax))
+    cdef double [:, :] lamref = lamref_np
+
+    with nogil, parallel(num_threads=maxproc):
+        for i in prange(nx, schedule='dynamic'):
+            for j in range(ny):
+                n = nlam[i, j] - 1
+                if (xindx[i, j, 0] < 10 or xindx[i, j, n] < 10 or
+                    xindx[i, j, 0] > xdim - 10 or xindx[i, j, n] > xdim - 10 or
+                    yindx[i, j, 0] < 10 or yindx[i, j, n] < 10 or
+                    yindx[i, j, 0] > ydim - 10 or yindx[i, j, n] > ydim - 10):
+                    continue
+
+                lam_increasing = loglamindx[i, j, 1] > loglamindx[i, j, 0]
+                
+                for k in range(n):
+                    num = 0
+                    denom = 0
+                    x = xindx[i, j, k]
+                    i1 = (int)(x + 1 - delt_x/2.)
+                    wtot = 0
+
+                    ilam1 = 0
+                    ilam2 = nlam_fit
+
+                    for kp in range(nlam_fit):
+                        if k > 5:
+                            if lam_increasing:
+                                if loglam_fit[kp] < loglamindx[i, j, k - 5]:
+                                    ilam1 = kp + 1
+                            else:
+                                if loglam_fit[kp] > loglamindx[i, j, k - 5]:
+                                    ilam2 = kp
+                        if k < n - 5:                            
+                            if lam_increasing:
+                                if loglam_fit[kp] > loglamindx[i, j, k + 5]:
+                                    ilam2 = kp
+                            else:
+                                if loglam_fit[kp] < loglamindx[i, j, k + 5]:
+                                    ilam1 = kp + 1
+
+                    # want to go up/down by five pixels.  Need to
+                    # translate this from wavelength.
+
+                    for ix in range(i1, i1 + delt_x):
+                        dx = x - ix
+                        sigval = sig[i, j, k]
+
+                        iy = (int)(yindx[i, j, k])
+
+                        val = im[iy, ix]
+                        weight = 0
+
+                        for kp in range(ilam1, ilam2):
+                            val = val + coefs_fit[kp, i, j]*psflets[kp, iy, ix]
+                            weight = weight + psflets[kp, iy, ix]/(ilam2 - ilam1)           
+                        # This does something closer to optimal
+                        # extraction: take the actual mean profile of
+                        # the PSFlets.
+                        if weight > 0:
+                            w1 = weight
+                            num = num + w1*val*ivar[iy, ix]
+                            denom = denom + w1*w1*ivar[iy, ix]
+                        elif sigval < 10:
+                            w1 = exp(-dx*dx/(2.*sigval*sigval))/sigval
+                            num = num + w1*val*ivar[iy, ix]
+                            denom = denom + w1*w1*ivar[iy, ix]
+                        else:
+                            w1 = exp(-dx*dx/(2.*sigval*sigval))/sigval
+                            num = num + w1*val
+                            denom = denom + w1*w1
+
+                        wtot = wtot + w1
+
+                    wtot = wtot + 1e-300
+                    if lam_increasing:
+                        coefs_num[i, j, k] = num/wtot
+                        coefs_denom[i, j, k] = denom/(wtot*wtot)
+                        lamref[i, k] = loglamindx[i, j, k]
+                    else:
+                        coefs_num[i, j, n - k - 1] = num/wtot
+                        coefs_denom[i, j, n - k - 1] = denom/(wtot*wtot)
+                        lamref[i, n - k - 1] = loglamindx[i, j, k]
 
                 i2 = 1
                 for k in range(nref):
