@@ -118,6 +118,12 @@ def header_dataframe(filename):
 
     return frames_info, header_table
 
+from astropy.utils import iers    #importing iers to pull The International Earth Rotation and Reference Systems Service data for WCS/PA determination
+iers.Conf.iers_auto_url.set('https://datacenter.iers.org/data/9/finals2000A.all') #force astropy to point here
+
+#possible work-around of ssl certificate problems with iers
+#import ssl
+#ssl._create_default_https_context = ssl._create_unverified_context  
 
 def _fetch(key, filename, comment=None, newkey=None):
     """

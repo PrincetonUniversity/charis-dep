@@ -549,7 +549,7 @@ def _transform(x, y, order, coef, basecoef=None):
                 _y += basecoef[i] * x**ix * y**iy
                 i += 1
 
-        return [_x, _y]
+    return [_x, _y]
 
 
 def _corrval(coef, x, y, filtered, order, trimfrac=0.1, basecoef=None):
