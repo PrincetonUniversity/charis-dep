@@ -34,7 +34,7 @@ with open("README.rst", "r") as fh:
 def setup_charis(ext_modules):
     setup(
         name='charis',
-        version='1.0.1',
+        version='2.0.0',
         description='Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs',
         author='Timothy Brandt, Maxime Rizzo, Matthias Samland',
         author_email='timothy.d.brandt@gmail.com',
