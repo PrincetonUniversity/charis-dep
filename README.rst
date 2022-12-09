@@ -5,7 +5,7 @@ Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs
 
 The charis pipeline is capable of extracting spectral data cubes from both the Subaru/CHARIS as well as the SPHERE/IFS integral field spectrographs for high-contrast imaging.
 
-For a detailed description of the pipeline please refer to `Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_. For a description of the pipeline's adaption to SPHERE/IFS please refer to Samland et al. 2022.
+For a detailed description of the pipeline please refer to `Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_. For a description of the pipeline's adaption to SPHERE/IFS please refer to `Samland et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022arXiv221006390S/abstract>`_.
 
 
 Requirements
@@ -36,10 +36,10 @@ Feedback and feature requests?  Is there something missing you would like to see
 Acknowledgements
 ----------------
 
-If you have made use of the charis pipeline in your research, please cite:
+If you have made use of the pipeline in your research, please cite:
 
 - `Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_
-- Samland et al. 2022
+- `Samland et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022arXiv221006390S/abstract>`_
 
 
 Documentation
