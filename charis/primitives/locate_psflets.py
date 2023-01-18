@@ -99,7 +99,7 @@ class PSFLets(object):
         out.append(fits.PrimaryHDU(self.nlam.astype(int)))
         try:
             out.writeto(outfile, overwrite=True)
-        except:
+        except Exception:
             raise
 
     def geninterparray(self, lam, allcoef, order=3):
@@ -339,7 +339,7 @@ class PSFLets(object):
 
         x = np.zeros(tuple(list(lenslet_ix.shape) + [1000]))
         y = np.zeros(x.shape)
-        nlam = np.zeros(lenslet_ix.shape, np.int)
+        nlam = np.zeros(lenslet_ix.shape, int)
         lam_out = np.zeros(y.shape)
         good = np.zeros(lenslet_ix.shape)
 
@@ -683,7 +683,7 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
         unfiltered = signal.convolve2d(inImage.data * inImage.ivar, gaussian, mode='same')
         unfiltered /= signal.convolve2d(inImage.ivar, gaussian, mode='same') + 1e-10
 
-    filtered = ndimage.interpolation.spline_filter(unfiltered)
+    filtered = ndimage.spline_filter(unfiltered)
 
     #############################################################
     # x, y: Grid of lenslet IDs, Lenslet (0, 0) is the center.
@@ -728,7 +728,7 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
     bestval = 0
     subshape = xdim * 3 // 8
     _s = x.shape[0] * 3 // 8
-    subfiltered = ndimage.interpolation.spline_filter(
+    subfiltered = ndimage.spline_filter(
         unfiltered[subshape:-subshape, subshape:-subshape])
     for ix in ix_arr:
         for iy in iy_arr:
