@@ -24,7 +24,7 @@ from astropy.stats import mad_std, sigma_clipped_stats
 log = logging.getLogger('main')
 
 
-def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/20160408/',
+def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
             mask=True,
             gain=2, nonlinear_threshold=40000, noisefac=0,
@@ -38,46 +38,48 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
             minpct=70, fitbkgnd=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count(),
             instrument=None, resample=True,
-            outdir="./", verbose=True):
+            outdir="./",
+            static_calibdir=None,
+            verbose=True):
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
 
     Inputs:
     1. filename: name of the file containing the up-the-ramp reads.
                  Should include the full path/to/file.
+    2. calibdir: name of the directory containing the calibration files.
+
     Optional inputs:
     1. read_idx: list of two numbers, the first and last reads to use in
                  the up-the-ramp combination.  Default [2, None], i.e.,
                  discard the first read and use all of the rest.
-    2. calibdir: name of the directory containing the calibration files.
-                 Default calibrations/20160408/
-    3. bgsub:    Subtract the file background.fits in calibdir?  Default
+    2. bgsub:    Subtract the file background.fits in calibdir?  Default
                  True.
-    4. mask:     Apply the bad pixel mask mask.fits in the directory
+    3. mask:     Apply the bad pixel mask mask.fits in the directory
                  calibdir?  Strongly recommended.  Default True.
-    5. gain:     Detector gain, used to compute shot noise.  Default 2.
-    6. noisefac: Extra factor of noise to account for imperfect lenslet
+    4. gain:     Detector gain, used to compute shot noise.  Default 2.
+    5. noisefac: Extra factor of noise to account for imperfect lenslet
                  models:
                  variance = readnoise + shotnoise + noisefac*countrate
                  Default zero, values of around 0.05 should give
                  reduced chi squared values of around 1 in the fit.
-    7. R:        integer, approximate resolution lam/delta(lam) of the
+    6. R:        integer, approximate resolution lam/delta(lam) of the
                  extracted data cube.  Resolutions higher than ~25 or 30
                  are comparable to or finer than the pixel sampling and
                  are not recommended--there is very strong covariance.
                  Default 30.
-    8. method:   string, method used to extract data cube.  Should be
+    7. method:   string, method used to extract data cube.  Should be
                  either 'lstsq' for a least-squares extraction or
                  'optext' for a quasi-optimal extraction.  Default
                  'lstsq'
-    9. refine:   Fit the data cube twice to account for nearest neighbor
+    8. refine:   Fit the data cube twice to account for nearest neighbor
                  crosstalk?  Approximately doubles runtime.  This option
                  also enables read noise suppression (below).  Default
                  True
-    10. suppress_rn: Remove correlated read noise between channels using
+    9. suppress_rn: Remove correlated read noise between channels using
                  the residuals of the 50% least illuminated pixels?
                  Default True.
-    11. fitshift: Fit a subpixel shift in the psflet locations across
+    10. fitshift: Fit a subpixel shift in the psflet locations across
                  the detector?  Recommended except for quicklook.  Cost
                  is modest compared to cube extraction
 
@@ -121,7 +123,8 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
 
     header = fits.getheader(filename)
     instrument, _, _ = instruments.instrument_from_data(
-        header, calibration=False, interactive=False)
+        header, calibration=False, static_calibdir=static_calibdir,
+        interactive=False)
 
     if instrument.instrument_name == 'CHARIS':
         header = utr.metadata(filename, version=version)
@@ -148,11 +151,13 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
     # background and apply a bad pixel mask.
     ################################################################
 
+    calibration_path_instrument = instrument.calibration_path_instrument
+    calibration_path_mode = instrument.calibration_path_mode
+
     maskarr = None
     if mask:
         maskarr = fits.getdata(
-            os.path.join(os.path.split(charis.__file__)[0],
-                         'calibrations/{}/mask.fits'.format(instrument.instrument_name)))
+            os.path.join(calibration_path_instrument, 'mask.fits'))
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
 
     if instrument.instrument_name == 'CHARIS':
@@ -169,7 +174,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
             maskarr = np.ones((data.shape[-2], data.shape[-2]))
         if flatfield:
             pixelflat = fits.getdata(
-                os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/pixelflat.fits'))
+                os.path.join(calibration_path_instrument, 'pixelflat.fits'))
             good_pixels = np.logical_and(pixelflat > 0.9, pixelflat < 1.1)
             maskarr[~good_pixels] = 0
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
@@ -209,7 +214,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
         if instrument.instrument_name == 'SPHERE':
             # Region to match background counts for SPHERE IFS
             bgscalemask = fits.getdata(
-                os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/background_scaling_mask.fits')).astype('bool')
+                os.path.join(calibration_path_instrument, 'background_scaling_mask.fits')).astype('bool')
             if bgpath is not None:
                 if bg_scaling_without_mask:
                     norm = inImage.data[maskarr == 1] / bg[maskarr == 1]
@@ -226,7 +231,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
             else:
                 print('Fitting bg')
                 components = fits.getdata(
-                    os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/background_template.fits'))
+                    os.path.join(calibration_path_instrument, 'background_template.fits'))
                 bg, bg_coef = fit_background(
                     image=inImage.data, components=components, bgmask=bgscalemask, outlier_percentiles=[2, 98])
                 print("BG coefficients: {}".format(bg_coef))
@@ -276,10 +281,9 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
     if flatfield:
         lensletflat = fits.getdata(
             os.path.join(
-                instrument.calibration_path, 'lensletflat.fits')).astype('float64')
+                calibration_path_mode, 'lensletflat.fits')).astype('float64')
         pixelflat = fits.getdata(
-            os.path.join(os.path.split(charis.__file__)[0],
-                         'calibrations/{}/pixelflat.fits'.format(instrument.instrument_name)))
+            os.path.join(calibration_path_instrument, 'pixelflat.fits'))
         good_pixel_mask = np.logical_not(bpm.astype('bool'))
     else:
         lensletflat = None
@@ -482,8 +486,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir='calibrations/
 
     if instrument.instrument_name == 'SPHERE' and resample:
         clip_info_file = os.path.join(
-            os.path.split(instrument.calibration_path)[0],
-            'hexagon_mapping_calibration.json')
+            calibration_path_instrument, 'hexagon_mapping_calibration.json')
         with open(clip_info_file) as json_data:
             clip_infos = json.load(json_data)
         datacube_resampled = copy.copy(datacube)

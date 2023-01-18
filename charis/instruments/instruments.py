@@ -40,7 +40,7 @@ class CHARIS(object):
 
         return lam_midpts, lam_endpts
 
-    def __init__(self, observing_mode):
+    def __init__(self, observing_mode, static_calibdir=None):
         self.instrument_name = 'CHARIS'
         if observing_mode in self.__valid_observing_modes:
             self.observing_mode = observing_mode
@@ -59,13 +59,19 @@ class CHARIS(object):
 
         if self.observing_mode == 'ND':
             observing_mode = 'Broadband'
-        self.calibration_path = \
+
+        if static_calibdir is None:
+            static_calibdir = pkg_resources.resource_filename('charis', 'calibrations')
+
+        self.calibration_path_instrument = \
             os.path.join(
-                pkg_resources.resource_filename('charis', 'calibrations'),
-                'CHARIS', observing_mode)
+                static_calibdir, 'CHARIS')
+
+        self.calibration_path_mode = os.path.join(
+            self.calibration_path_instrument, self.observing_mode)
 
         self.transmission = np.loadtxt(os.path.join(
-            self.calibration_path, observing_mode + '_tottrans.dat'))
+            self.calibration_path_mode, self.observing_mode + '_tottrans.dat'))
 
         self.lam_midpts, self.lam_endpts = \
             self.wavelengths(self.wavelength_range[0].value,
@@ -129,7 +135,7 @@ class SPHERE(object):
     #
     #     return lam_midpts, lam_endpts
 
-    def __init__(self, observing_mode):
+    def __init__(self, observing_mode, static_calibdir=None):
         self.instrument_name = 'SPHERE'
         if observing_mode in self.__valid_observing_modes:
             self.observing_mode = observing_mode
@@ -156,12 +162,19 @@ class SPHERE(object):
 
         longitude, latitude = [-70.4045, -24.6268] * u.degree
         self.location = EarthLocation(longitude, latitude)
-        self.calibration_path = \
+
+        if static_calibdir is None:
+            static_calibdir = pkg_resources.resource_filename('charis', 'calibrations')
+
+        self.calibration_path_instrument = \
             os.path.join(
-                pkg_resources.resource_filename('charis', 'calibrations'),
-                'SPHERE', observing_mode)
+                static_calibdir, 'SPHERE')
+
+        self.calibration_path_mode = os.path.join(
+            self.calibration_path_instrument, self.observing_mode)
+
         self.transmission = np.loadtxt(os.path.join(
-            self.calibration_path, self.observing_mode + '_tottrans.dat'))
+            self.calibration_path_mode, self.observing_mode + '_tottrans.dat'))
 
         self.lam_midpts, self.lam_endpts = \
             self.wavelengths(self.wavelength_range[0].value,
@@ -172,13 +185,15 @@ class SPHERE(object):
         return "{} {}".format(self.instrument_name, self.observing_mode)
 
 
-def instrument_from_data(header, calibration=True, interactive=False, verbose=False):
+def instrument_from_data(
+        header, calibration=True, interactive=False, static_calibdir=None,
+        verbose=False):
     correct_header = True
 
     if 'CHARIS' in header['INSTRUME']:
         if 'Y_FLTNAM' in header and 'OBJECT' in header:
             observing_mode = header['Y_FLTNAM']
-            instrument = CHARIS(observing_mode)
+            instrument = CHARIS(observing_mode, static_calibdir)
             if verbose:
                 print("Instrument: {}".format(instrument.instrument_name))
                 print("Mode: {}".format(instrument.observing_mode))
@@ -223,7 +238,7 @@ def instrument_from_data(header, calibration=True, interactive=False, verbose=Fa
                 observing_mode = 'YH'
         else:
             raise ValueError("Data is not for IFS")
-        instrument = SPHERE(observing_mode)
+        instrument = SPHERE(observing_mode, static_calibdir=static_calibdir)
         calibration_wavelength = instrument.calibration_wavelength
 
     else:

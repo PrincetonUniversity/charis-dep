@@ -30,14 +30,12 @@ log = logging.getLogger('main')
 
 
 def read_in_file(infile, instrument, calibration_wavelength=None,
-                 ncpus=1, mask=None, calibdir=None, bgfiles=[],
+                 ncpus=1, mask=None, bgfiles=[],
                  outdir="./"):
-    if calibdir is None:
-        calibdir = instrument.calibration_path
+
     if mask is None:
         mask = fits.getdata(
-            os.path.join(os.path.split(charis.__file__)[0],
-                         'calibrations/{}/mask.fits'.format(instrument.instrument_name)))
+            os.path.join(instrument.calibration_path_instrument, 'mask.fits'))
 
     hdr = fits.PrimaryHDU().header
     hdr.clear()
@@ -119,7 +117,7 @@ def read_in_file(infile, instrument, calibration_wavelength=None,
     return inImage, hdr
 
 
-def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
+def buildcalibrations(inImage, instrument, inLam, mask=None,
                       order=None, upsample=True, header=None,
                       ncpus=multiprocessing.cpu_count(),
                       nlam=10, outdir="./",
@@ -135,8 +133,6 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     2. instrument: instrument object
     3. inLam:    wavelength in nm of inImage
     4. mask:     bad pixel mask, =0 for bad pixels
-    5. calibdir:    directory where master calibration files live
-                 default: None, use instrument class info
 
 
     Optional inputs:
@@ -159,37 +155,13 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     if order is None:
         order = instrument.wavelengthpolyorder
 
-    if calibdir is None:
-        calibdir = instrument.calibration_path
-
-    # NOTE: Mask not used further on.
-    # if mask is None:
-    #     if instrument.instrument_name == 'SPHERE':
-    #         mask = fits.getdata(
-    #             os.path.join(os.path.split(charis.__file__)[0], 'calibrations/SPHERE/mask.fits'))
-    #     else:
-    #         mask = fits.getdata(os.path.join(calibdir, 'mask.fits'))
+    calibration_path_mode = instrument.calibration_path_mode
 
     tstart = time.time()
-
-    # if instrument.instrument_name == 'SPHERE':
-    #     bgscalemask = fits.getdata(
-    #         os.path.join(
-    #             os.path.split(charis.__file__)[0],
-    #             'calibrations/SPHERE/background_scaling_mask.fits')).astype('bool')
-    #     components = fits.getdata(
-    #         os.path.join(
-    #             os.path.split(charis.__file__)[0],
-    #             'calibrations/SPHERE/background_template.fits'))
-    #     bg, bg_coef = fit_background(
-    #         image=inImage.data, components=components, bgmask=bgscalemask, outlier_percentiles=[2, 98])
-    #     print('Background coefficients: {}'.format(bg_coef))
-    #     inImage.data -= bg
 
     lower_wavelength_limit, upper_wavelength_limit = instrument.wavelength_range.value
     R = instrument.resolution
 
-    # inImage = read_in_file(infile=, instrument=instrument, calibdir=calibdir)
     npix_y, npix_x = inImage.data.shape
 
     #################################################################
@@ -200,9 +172,9 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     # the existing calibration files.
     #################################################################
 
-    log.info("Loading wavelength solution from " + calibdir + "/lamsol.dat")
-    lam = np.loadtxt(os.path.join(calibdir, "lamsol.dat"))[:, 0]
-    allcoef = np.loadtxt(os.path.join(calibdir, "lamsol.dat"))[:, 1:]
+    log.info("Loading wavelength solution from " + calibration_path_mode + "/lamsol.dat")
+    lam = np.loadtxt(os.path.join(calibration_path_mode, "lamsol.dat"))[:, 0]
+    allcoef = np.loadtxt(os.path.join(calibration_path_mode, "lamsol.dat"))[:, 1:]
     psftool = primitives.PSFLets()
     oldcoef = []
     for cal_lam in inLam:
@@ -244,7 +216,8 @@ def buildcalibrations(inImage, instrument, inLam, mask=None, calibdir=None,
     # wavelengths.
     #################################################################
 
-    hires_list = np.sort(glob.glob(os.path.join(calibdir, 'hires_psflets_lam*.fits')))
+    hires_list = np.sort(glob.glob(os.path.join(
+        calibration_path_mode, 'hires_psflets_lam*.fits')))
     hires_arrs = [fits.getdata(filename) for filename in hires_list]
     lam_hires = [float(re.sub('.*lam', '', re.sub('.fits', '', filename)))
                  for filename in hires_list]

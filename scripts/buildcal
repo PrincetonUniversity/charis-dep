@@ -96,11 +96,11 @@ if __name__ == "__main__":
 
     inImage, hdr = buildcalibrations.read_in_file(
         infile, instrument, calibration_wavelength,
-        ncpus=nthreads, calibdir=None, bgfiles=bgfiles)
+        ncpus=nthreads, bgfiles=bgfiles)
 
     buildcalibrations.buildcalibrations(
         inImage, instrument,
         calibration_wavelength.value, mask=None,
-        calibdir=None, upsample=upsample,
+        upsample=upsample,
         order=None, header=hdr,
         ncpus=nthreads, verbose=True)

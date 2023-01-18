@@ -843,8 +843,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
             datacube.ivar[:, badlenslets] = 0
             good[badlenslets] = 0
             neighbour_indices_path = os.path.join(
-                os.path.split(
-                    instrument.calibration_path)[0], 'neighbour_indices.json')
+                instrument.calibration_path_instrument, 'neighbour_indices.json')
             with open(neighbour_indices_path) as json_data:
                 neighbour_indices = json.load(json_data)
 
@@ -1000,8 +999,7 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
             datacube.ivar[:, badlenslets] = 0.
             good[badlenslets] = 0.
             neighbour_indices_path = os.path.join(
-                os.path.split(
-                    instrument.calibration_path)[0], 'neighbour_indices.json')
+                instrument.calibration_path_instrument, 'neighbour_indices.json')
             with open(neighbour_indices_path) as json_data:
                 neighbour_indices = json.load(json_data)
             datacube = _smoothandmask_hexgeometry(datacube, good, neighbour_indices)

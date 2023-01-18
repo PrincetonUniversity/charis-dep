@@ -178,6 +178,7 @@ if __name__ == "__main__":
                     minpct=minpct,
                     fitbkgnd=fitbkgnd,
                     saveresid=saveresid,
+                    static_calibdir=None,
                     verbose=verbose)
 
         else:
@@ -206,4 +207,5 @@ if __name__ == "__main__":
                 minpct=minpct,
                 fitbkgnd=fitbkgnd,
                 saveresid=saveresid,
+                static_calibdir=None,
                 verbose=verbose)
