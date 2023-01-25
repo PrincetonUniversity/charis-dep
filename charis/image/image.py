@@ -147,13 +147,13 @@ class Image(object):
             out.append(fits.PrimaryHDU(self.chisq.astype('float32'), hdr))
         if self.flags is not None:
             out.append(fits.PrimaryHDU(self.flags), hdr)
-        # if self.extraheader is not None:
-        #    try:
-        #        extra_hdr = fits.PrimaryHDU(None, self.extraheader)
-        #        extra_hdr.verify('fix')
-        #        out.append(extra_hdr)
-        #    except Exception:
-        #        log.warn("Failed to attach extra header.")
+        if self.extraheader is not None:
+           try:
+               extra_hdr = fits.PrimaryHDU(None, self.extraheader)
+               extra_hdr.verify('fix')
+               out.append(extra_hdr)
+           except Exception:
+               log.warn("Failed to attach extra header.")
 
         # try:
 
