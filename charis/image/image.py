@@ -1,12 +1,11 @@
-from builtins import str
-from builtins import object
 import logging
+from builtins import object, str
 from datetime import date
 
 import numpy as np
 from astropy.io import fits
 
-log = logging.getLogger('main')
+log = logging.getLogger("main")
 
 
 class Image(object):
@@ -29,10 +28,19 @@ class Image(object):
     through a call to Image.load().
     """
 
-    def __init__(self, filename='', data=None, ivar=None, chisq=None,
-                 header=fits.PrimaryHDU().header, extraheader=None,
-                 reads=None, flags=None, instrument_name=None):
-        '''
+    def __init__(
+        self,
+        filename="",
+        data=None,
+        ivar=None,
+        chisq=None,
+        header=fits.PrimaryHDU().header,
+        extraheader=None,
+        reads=None,
+        flags=None,
+        instrument_name=None,
+    ):
+        """
         Image initialization
 
         Parameters
@@ -51,7 +59,7 @@ class Image(object):
             Placeholder for header from original ramp
         reads: ndarray
         flags: ndarray
-        '''
+        """
         self.data = data
         self.ivar = ivar
         self.chisq = chisq
@@ -62,7 +70,7 @@ class Image(object):
         self.extraheader = extraheader
         self.instrument_name = instrument_name
 
-        if data is None and filename != '':
+        if data is None and filename != "":
             self.load(filename)
 
     def load(self, filename, loadbadpixmap=False):
@@ -97,15 +105,24 @@ class Image(object):
             if len(hdulist) > i_data + 1:
                 self.ivar = hdulist[i_data + 1].data
                 if self.ivar.shape != self.data.shape:
-                    log.error("Error: data (HDU " + str(i_data) +
-                              ") and inverse variance (HDU " + str(i_data +
-                                                                   1) + ") have different shapes in file " + filename)
+                    log.error(
+                        "Error: data (HDU "
+                        + str(i_data)
+                        + ") and inverse variance (HDU "
+                        + str(i_data + 1)
+                        + ") have different shapes in file "
+                        + filename
+                    )
                     self.ivar = None
                 else:
-                    log.info("Read inverse variance from HDU " +
-                             str(i_data + 1) + " of " + filename)
+                    log.info(
+                        "Read inverse variance from HDU "
+                        + str(i_data + 1)
+                        + " of "
+                        + filename
+                    )
             elif loadbadpixmap:
-                self.ivar = fits.open('calibrations/mask.fits')[0].data
+                self.ivar = fits.open("calibrations/mask.fits")[0].data
             else:
                 self.ivar = None
         except Exception:
@@ -133,30 +150,27 @@ class Image(object):
 
         hdr = fits.PrimaryHDU().header
         today = date.today().timetuple()
-        yyyymmdd = '%d%02d%02d' % (today[0], today[1], today[2])
-        hdr['date'] = (yyyymmdd, 'File creation date (yyyymmdd)')
+        yyyymmdd = "%d%02d%02d" % (today[0], today[1], today[2])
+        hdr["date"] = (yyyymmdd, "File creation date (yyyymmdd)")
 
         for i, key in enumerate(self.header):
             hdr.append((key, self.header[i], self.header.comments[i]), end=True)
 
         out = fits.HDUList(fits.PrimaryHDU(None, hdr))
-        out.append(fits.PrimaryHDU(self.data.astype('float32'), hdr))
+        out.append(fits.PrimaryHDU(self.data.astype("float32"), hdr))
         if self.ivar is not None:
-            out.append(fits.PrimaryHDU(self.ivar.astype('float32'), hdr))
+            out.append(fits.PrimaryHDU(self.ivar.astype("float32"), hdr))
         if self.chisq is not None:
-            out.append(fits.PrimaryHDU(self.chisq.astype('float32'), hdr))
+            out.append(fits.PrimaryHDU(self.chisq.astype("float32"), hdr))
         if self.flags is not None:
             out.append(fits.PrimaryHDU(self.flags), hdr)
         if self.extraheader is not None:
             try:
                 extra_hdr = fits.PrimaryHDU(None, self.extraheader)
-                extra_hdr.verify('fix')
+                extra_hdr.verify("fix")
                 out.append(extra_hdr)
             except Exception:
                 log.warn("Failed to attach extra header.")
 
-        try:
-            out.writeto(filename, overwrite=overwrite)
-            log.info("Writing data to " + filename)
-        except Exception:
-            log.error("Unable to write FITS file " + filename)
+        out.writeto(filename, output_verify="fix", overwrite=overwrite)
+        log.info("Writing data to " + filename)
