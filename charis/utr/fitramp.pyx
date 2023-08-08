@@ -23,7 +23,7 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
         double fabs(double _x)
 
     nread, ny, nx = [cts.shape[0], cts.shape[1], cts.shape[2]]
-    nchan = nx/64
+    nchan = nx//64
 
     ####################################################################
     # Fit a short ramp to the part of the detector we will use to fit
@@ -44,7 +44,7 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
         for j in prange(jmax, schedule='dynamic'):
             for i in range(imax - 1):
                 for k in range(nx):
-                    ichan = k/64
+                    ichan = k//64
                     x = weights[i]*(cts[i + 1, j, k] - ref[i + 1, ichan])
                     ctrates[j, k] = ctrates[j, k] + x
 
@@ -67,11 +67,11 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
         for j in prange(jmax, schedule='dynamic'):
             for i in range(1, imax):
                 for k in range(nx):
-                    ichan = k/64   # channel, 0-31
+                    ichan = k//64   # channel, 0-31
                     x = cts[i, j, k] - ref[i, ichan] - i*ctrates[j, k]
                     resid[j, k] = resid[j, k] - x/(imax - 1.)
             for k in range(nx):
-                ichan = k/64      # channel, 0-31
+                ichan = k//64      # channel, 0-31
                 resid[j, k] = resid[j, k] - ref[0, ichan]
 
                 ########################################################
@@ -87,7 +87,7 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
                 # the next row.
                 ########################################################
 
-                if (k/64)%2 == 0:
+                if (k//64)%2 == 0:
                     t[j, k] = k%64 + j*72
                 else:
                     t[j, k] = 63 - k%64 + j*72
@@ -154,7 +154,7 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
             with nogil, parallel(num_threads=maxproc):
                 for j in prange(4, jmax, schedule='dynamic'):
                     for i in range(4, nx - 4):
-                        ichan = i/64
+                        ichan = i//64
                         if mask[j, i] == 0 or resid[j, i] == 0:
                             chisq[j] = chisq[j] + maxresid*maxresid
                             continue
@@ -239,7 +239,7 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
             if j < 4 or i < 4 or i > nx - 5:
                 ichan = nchan  # Reference pixels
             else:
-                ichan = i/64   # Channel
+                ichan = i//64   # Channel
             x = norm[ichan]*expval[t[j, i]]
             cts[0, j, i] = cts[0, j, i] - x
 
@@ -250,10 +250,10 @@ def fit_expdecay(float [:, :, :] cts, double [:, :] ref,
     #print "Fitted decay constant: %.2f ms" % (t0*1e-5*1000)
 
     if t0 < 28*72 or t0 > 31*72:
-        print "Warning: fitted exponential decay rate of reference voltage in"
-        print "fitnonlin.pyx does not appear to match time constant observed in"
-        print "late 2016.  Please visually check 2D image.  To diable fitting"
-        print "of an exponential decay, call fit_ramp with fitexpdecay=0."
+        print("Warning: fitted exponential decay rate of reference voltage in")
+        print("fitnonlin.pyx does not appear to match time constant observed in")
+        print("late 2016.  Please visually check 2D image.  To diable fitting")
+        print("of an exponential decay, call fit_ramp with fitexpdecay=0.")
     
     return
 
@@ -319,7 +319,7 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
                 if mask[i, j] == 0:
                     continue
                 x = fabs(cts[1, i, j] - cts[0, i, j]
-                         + ref[0, j/64] - ref[1, j/64]) + 1e-10
+                         + ref[0, j//64] - ref[1, j//64]) + 1e-10
                 
                 kmax2[i, j] = (int)(sat/x - read0)
                 if kmax2[i, j] < 2:
@@ -362,7 +362,7 @@ def fit_nonlin(float [:, :, :] cts, double [:, :] ctrates, double [:, :] ref,
                 ########################################################
                 
                 for k in range(nread):
-                    ichan = j/64
+                    ichan = j//64
                     cts_local[i, k] = cts[k, i, j] - ref[k, ichan]
 
                 for its in range(100):  # Maximum number of iterations
@@ -431,9 +431,9 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
 
     nread, ny, nx = [cts.shape[0], cts.shape[1], cts.shape[2]]
     if nx != 2048 or ny != 2048:
-        print "Error: fit_ramp assumes a 2048x2048 input array."
+        print("Error: fit_ramp assumes a 2048x2048 input array.")
         return None
-    nchan = nx/64
+    nchan = nx//64
         
     ####################################################################
     # Weights for up-the-ramp, used for pixels that aren't close to 
@@ -463,7 +463,7 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
 
             for j in range(4):
                 for k in range(nx):
-                    ichan = k/64
+                    ichan = k//64
                     if refsub == 'a':
                         ref[i, ichan] = ref[i, ichan] + cts[i, j, k] + cts[i, ny - 1 - j, k]
                     elif refsub == 't':
@@ -495,7 +495,7 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
         for j in prange(ny, schedule='dynamic'):
             for i in range(nread):
                 for k in range(nx):
-                    ichan = k/64
+                    ichan = k//64
                     x = weights[i]*(cts[i, j, k] - ref[i, ichan])
                     ctrates[j, k] = ctrates[j, k] + x
 
@@ -597,7 +597,7 @@ def fit_ramp(float [:, :, :] cts, unsigned short [:, :] mask,
         for j in prange(ny, schedule='dynamic'):
             for i in range(nread - 1):
                 for k in range(nx):
-                    ichan = k/64
+                    ichan = k//64
                     x = cts[i + 1, j, k] - cts[i, j, k]
                     x = x - (ref[i + 1, ichan] - ref[i, ichan])
                     if x > 20*stds[ichan]:  # >10sigma in read noise
