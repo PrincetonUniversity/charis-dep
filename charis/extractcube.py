@@ -198,6 +198,11 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                 file_ending = ''
             else:
                 ndit = 1
+                if dit >= data.shape[0]:
+                    raise ValueError(
+                        f"Requested DIT index {dit} but file only has {data.shape[0]} frames. "
+                        "Header says NDIT={hdr['HIERARCH ESO DET NDIT']} but data shape disagrees."
+                    )
                 data = data[dit]
                 file_ending = '_DIT_{:03d}'.format(dit)
         elif data.ndim == 2:
