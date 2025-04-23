@@ -473,7 +473,7 @@ def metadata_SPHERE(filename, dit_idx=None, header=None, clear=True, version=Non
         header['RA2'] = (frames_info['RA'][0], 'Derotator adjusted')
         header['DEC2'] = (frames_info['DEC'][0], 'Derotator adjusted')
     except TypeError:
-        print('Unable to compute parallactic angle for {}'.format(filename))
+        print('CHARIS pipeline unable to compute parallactic angle for {}'.format(filename))
 
     return header
 

@@ -17,7 +17,7 @@ def crosscorr(float [:, :, :] calimage, double [:, :] image,
         double sqrt(double _x)
         double exp(double _x)
 
-    upsamp = calimage.shape[2]/image.shape[1]
+    upsamp = calimage.shape[2]//image.shape[1]
     n = offsets.shape[0]
     nlam = calimage.shape[0]
     n1 = max(n1, 0)
@@ -103,7 +103,7 @@ def interpcal(float [:, :, :] calimage, double [:, :] image,
     cdef int nn1, nn2, mm1, mm2
     cdef double x
 
-    upsamp = calimage.shape[2]/image.shape[1]
+    upsamp = calimage.shape[2]//image.shape[1]
     nlam = calimage.shape[0]
     n1 = image.shape[0]
     n2 = image.shape[1]
@@ -606,7 +606,7 @@ def lstsq(double [:, :, :] A, double [:, :] b, long [:] indx, long [:] size, int
                 if inc > n:
                     break
             while True:
-                inc = inc/3
+                inc = inc//3
                 for i in range(inc, n):
                     sw = w[ii, i]
                     for k in range(m):

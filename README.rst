@@ -1,16 +1,32 @@
 charis
-====
+======
+
+|Pythonv| |License|
+
+.. |Pythonv| image:: https://img.shields.io/badge/Python-3.9%2C%203.10%2C%203.11-brightgreen.svg
+            :target: https://github.com/PrincetonUniversity/charis-dep
+.. |License| image:: https://img.shields.io/badge/license-MIT-blue.svg?style=flat
+            :target: https://github.com/PrincetonUniversity/charis-dep/tree/devel/LICENSE
+
+
 Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs
--------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 The charis pipeline is capable of extracting spectral data cubes from both the Subaru/CHARIS as well as the SPHERE/IFS integral field spectrographs for high-contrast imaging.
 
 For a detailed description of the pipeline please refer to `Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_. For a description of the pipeline's adaption to SPHERE/IFS please refer to `Samland et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022arXiv221006390S/abstract>`_.
 
 
+Installation
+------------
+The latest version can be installed using "pip install git+https://github.com/PrincetonUniversity/charis-dep@devel". If you wish to make changes to the code base, please clone the repository and install using the "pip install -e ." command in the repository folder.
+
+We recommend that you install the package in a virtual environment.  If you do not have a virtual environment, you can create one with the following command: "python3 -m venv charisenv".  You can then activate the virtual environment with "source charisenv/bin/activate".  You can deactivate the virtual environment with "deactivate". Alternatively, we recommend making a new environment in Miniconda or Anaconda using "conda create -n charisenv python=3.11" and activating it with "conda activate charisenv".
+
+
 Requirements
 ------------
-Python >3.7
+Python >3.9
 Cython with a C compiler and OpenMP
 
 
@@ -42,19 +58,10 @@ If you have made use of the pipeline in your research, please cite:
 - `Samland et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022arXiv221006390S/abstract>`_
 
 
-Documentation
--------------
-http://princetonuniversity.github.io/charis-dep/
-
+Notes
+-----
 
 Your computer should have at least ~2 GB of RAM to extract data cubes, and at least 2 GB/core (and at least 4 GB total) to build the calibration files.  The calibration files can take a long time to generate if you do not have multiple processors.
-
-
-Installation:
-The easy way to install is to use the setup.py in this directory with
-python setup.py install
-We recommend that you first install the newest anaconda Python if you are not already using anaconda:
-https://www.continuum.io/downloads
 
 ** CAUTIONARY NOTE: the method below may or may not work with the latest versions of Anaconda and Xcode; it may break either the pipeline or numpy/scipy by linking incompatible libraries.  I recommend not following these instructions.  The setup script as invoked above will attempt to install with openMP support, but will default to an installation without openMP support. **
 If you are running this on a Mac, you need gcc from Xcode, and you probably need a homebrew installation of gcc-5 to enable OpenMP linking.  Follow the instructions here:

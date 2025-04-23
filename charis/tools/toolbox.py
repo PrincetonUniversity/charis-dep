@@ -4,10 +4,10 @@ Commit: f20dbcc on Feb 6 """
 from builtins import range, zip
 
 import astropy.coordinates as coord
-from astropy import units as u
 import numpy as np
 import pandas as pd
 import scipy.ndimage as ndimage
+from astropy import units as u
 from astropy.convolution import convolve
 from astropy.io import fits
 from astropy.modeling import fitting, models
@@ -268,9 +268,9 @@ def compute_times(frames_info, idx=None):
     # get necessary values
     time_start = frames_info['DATE-OBS'].values
     time_end = frames_info['DET FRAM UTC'].values
-    time_delta = (time_end - time_start) / frames_info['DET NDIT'].values.astype(np.int)
+    time_delta = (time_end - time_start) / frames_info['DET NDIT'].values.astype(int)
     DIT = np.array(frames_info['DET SEQ1 DIT'].values.astype(
-        np.float) * 1000, dtype='timedelta64[ms]')
+        float) * 1000, dtype='timedelta64[ms]')
 
     # calculate UTC time stamps
     if idx is None:
@@ -318,8 +318,8 @@ def compute_angles(frames_info, true_north=-1.75):
     date_fix = Time('2016-07-12')
     if np.any(frames_info['MJD'].values <= date_fix.mjd):
         try:
-            alt = frames_info['TEL ALT'].values.astype(np.float)
-            drot2 = frames_info['INS4 DROT2 BEGIN'].values.astype(np.float)
+            alt = frames_info['TEL ALT'].values.astype(float)
+            drot2 = frames_info['INS4 DROT2 BEGIN'].values.astype(float)
             pa_correction = np.degrees(np.arctan(np.tan(np.radians(alt-2.*drot2))))
         except KeyError:
             pa_correction = 0
@@ -327,22 +327,42 @@ def compute_angles(frames_info, true_north=-1.75):
         pa_correction = 0
 
     # RA/DEC
-    ra_drot = frames_info['INS4 DROT2 RA'].values.astype(np.float)
-    ra_drot_h = np.floor(ra_drot / 1e4)
-    ra_drot_m = np.floor((ra_drot - ra_drot_h * 1e4)/1e2)
-    ra_drot_s = ra_drot - ra_drot_h*1e4 - ra_drot_m*1e2
-    ra_hour = coord.Angle((ra_drot_h, ra_drot_m, ra_drot_s), u.hour)
-    ra_deg = ra_hour*15
+    def convert_drot2_ra_to_deg(ra_drot):
+        ra_drot_h = np.floor(ra_drot/1e4)
+        ra_drot_m = np.floor((ra_drot - ra_drot_h * 1e4) / 1e2)
+        ra_drot_s = ra_drot - ra_drot_h * 1e4 - ra_drot_m * 1e2
+
+        ra_hour_hms_str = []
+        for idx, _ in enumerate(ra_drot_h):
+            ra_hour_hms_str.append(
+                f'{int(ra_drot_h[idx])}h{int(ra_drot_m[idx])}m{ra_drot_s[idx]}s')
+        ra_hour_hms_str = np.array(ra_hour_hms_str)
+        ra_hour = coord.Angle(angle=ra_hour_hms_str, unit=u.hour)
+        ra_deg = ra_hour * 15
+        return ra_deg, ra_hour
+    
+    def convert_drot2_dec_to_deg(dec_drot):
+        sign = np.sign(dec_drot)
+        udec_drot = np.abs(dec_drot)
+        dec_drot_d = np.floor(udec_drot / 1e4)
+        dec_drot_m = np.floor((udec_drot - dec_drot_d * 1e4) / 1e2)
+        dec_drot_s = udec_drot - dec_drot_d * 1e4 - dec_drot_m * 1e2
+        dec_drot_d *= sign
+
+        dec_dms_str = []
+        for idx, _ in enumerate(dec_drot_d):
+            dec_dms_str.append(
+                f'{int(dec_drot_d[idx])}d{int(dec_drot_m[idx])}m{dec_drot_s[idx]}s')
+        dec_dms_str = np.array(dec_dms_str)
+        dec = coord.Angle(dec_dms_str, u.degree)
+        return dec
+
+    ra_drot = frames_info['INS4 DROT2 RA'].values.astype('float')
+    ra_deg, ra_hour = convert_drot2_ra_to_deg(ra_drot)
     frames_info['RA'] = ra_deg.value
 
-    dec_drot = frames_info['INS4 DROT2 DEC'].values.astype(np.float)
-    sign = np.sign(dec_drot)
-    udec_drot = np.abs(dec_drot)
-    dec_drot_d = np.floor(udec_drot / 1e4)
-    dec_drot_m = np.floor((udec_drot - dec_drot_d * 1e4) / 1e2)
-    dec_drot_s = udec_drot - dec_drot_d * 1e4 - dec_drot_m * 1e2
-    dec_drot_d *= sign
-    dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), u.degree)
+    dec_drot = frames_info['INS4 DROT2 DEC'].values.astype('float')
+    dec = convert_drot2_dec_to_deg(dec_drot)
     frames_info['DEC'] = dec.value
 
     geolon = coord.Angle(frames_info['TEL GEOLON'].values[0], u.degree)

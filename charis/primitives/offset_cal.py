@@ -85,7 +85,7 @@ def calc_offset(psflets, image, offsets, dx=64,
             arr[:, 2] = offsets[imin:imax]**2
             coef = linalg.lstsq(arr, corrvals)[0]
 
-            shift = old_div(-coef[1], (2 * coef[2]))
+            shift = -coef[1] / (2. * coef[2])
             shiftarr[j // dx, i // dx] = shift
 
     #####################################################################

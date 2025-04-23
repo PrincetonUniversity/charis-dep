@@ -19,9 +19,7 @@ from scipy import interpolate, ndimage
 from tqdm import tqdm
 
 import charis
-from charis import instruments
-from charis import primitives
-from charis import utr
+from charis import instruments, primitives, utr
 from charis.image import Image
 from charis.parallel import Consumer, Task
 from charis.tools import expected_spectrum, fit_background
@@ -158,6 +156,8 @@ def buildcalibrations(inImage, instrument, inLam, mask=None,
     calibration_path_mode = instrument.calibration_path_mode
 
     tstart = time.time()
+
+    ncpus = min(ncpus, multiprocessing.cpu_count())
 
     lower_wavelength_limit, upper_wavelength_limit = instrument.wavelength_range.value
     R = instrument.resolution

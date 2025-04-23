@@ -2,8 +2,8 @@
 
 import glob
 
-from setuptools import setup, find_packages, Extension
 from Cython.Distutils import build_ext
+from setuptools import Extension, find_packages, setup
 
 ext_modules_openMP = []
 ext_modules_openMP += [Extension("charis.primitives.matutils",
@@ -52,8 +52,8 @@ def setup_charis(ext_modules):
                            "calibrations/**/*.json",
                            "calibrations/**/**/*.fits",
                            "calibrations/**/**/*.dat"]},
-        python_requires='>=3.7',
-        install_requires=['numpy', 'scipy', 'astropy',
+        python_requires='>=3.10,<3.14',
+        install_requires=['numpy>=1.22,<=2.2', 'scipy', 'astropy',
                           'pandas', 'tqdm', 'future', 'matplotlib',
                           'bokeh', 'bottleneck', 'psutil'],
         scripts=['scripts/buildcal', 'scripts/extractcube', 'scripts/hexplot'],

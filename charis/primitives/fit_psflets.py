@@ -10,13 +10,17 @@ from pdb import set_trace
 
 import numpy as np
 from astropy.io import fits
-from charis.image.image import Image
-from charis.image.image_geometry import (deflatten_cube, flatten_cube,
-                                         mad_std_hex_cube,
-                                         median_filter_hex_cube)
-from charis.primitives import matutils
 from past.utils import old_div
 from scipy import interpolate, ndimage, signal, stats
+
+from charis.image.image import Image
+from charis.image.image_geometry import (
+    deflatten_cube,
+    flatten_cube,
+    mad_std_hex_cube,
+    median_filter_hex_cube,
+)
+from charis.primitives import matutils
 
 log = logging.getLogger('main')
 
@@ -100,7 +104,6 @@ def _smoothandmask_hexgeometry(datacube, good, neighbour_indices,
     flat_data = flatten_cube(datacube.data)
     flat_ivar = flatten_cube(datacube.ivar)
     # flat_good = good.reshape(-1)
-    neighbour_indices = np.array(neighbour_indices)
 
     flat_data[flat_data == 0.] = np.nan
     flat_ivar[flat_ivar == 0.] = np.nan
@@ -147,7 +150,7 @@ def _smoothandmask_hexgeometry(datacube, good, neighbour_indices,
     mask = np.logical_or.reduce([mask_ivar, mask_data, mask_nan])
 
     # Replace values
-    flat_ivar[mask] = 0.
+    flat_ivar[mask] = 1e-15
     flat_data[mask] = smoothed_data[mask]
 
     data = deflatten_cube(flat_data)
@@ -473,7 +476,7 @@ def _tag_psflets(shape, x, y, good, dx=10, dy=10):
 
     """
 
-    psflet_indx = np.zeros(shape, np.int)
+    psflet_indx = np.zeros(shape, int)
     oldshape = x.shape
     x_int = (np.reshape(x + 0.5, -1)).astype(int)
     y_int = (np.reshape(y + 0.5, -1)).astype(int)
