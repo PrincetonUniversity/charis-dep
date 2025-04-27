@@ -14,6 +14,7 @@ import os
 import multiprocessing
 import glob
 import configparser
+import tqdm
 
 from astropy.io import fits
 
@@ -143,7 +144,7 @@ if __name__ == "__main__":
     except Exception:
         verbose = False
 
-    for filename in filenames:
+    for filename in tqdm.tqdm(filenames, desc="Extracting cubes"):
         header = fits.getheader(filename)
         instrument, _, _ = instruments.instrument_from_data(
             header, calibration=False, interactive=False, verbose=False)
