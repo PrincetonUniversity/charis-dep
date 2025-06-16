@@ -135,7 +135,7 @@ We welcome issues & PRs—large or small.
 ---
 
 ## License
-This project is distributed under the **MIT License**—see [`LICENSE`](LICENSE) for the full text.
+This project is distributed under the **BSD-3-Clause License**—see [`LICENSE`](LICENSE) for the full text.
 
 ---
 
