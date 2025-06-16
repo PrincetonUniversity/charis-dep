@@ -1,0 +1,15 @@
+include README.md
+
+# Include all .pyx and .c files used by Cython
+recursive-include charis *.pyx
+recursive-include charis *.c
+
+# Include calibration data files
+recursive-include charis/calibrations *.fits
+recursive-include charis/calibrations *.json
+recursive-include charis/calibrations *.dat
+
+# Include any deeper nested calibration data
+recursive-include charis/calibrations **/*.fits
+recursive-include charis/calibrations **/*.json
+recursive-include charis/calibrations **/*.dat

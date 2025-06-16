@@ -1,15 +1,34 @@
 #!/usr/bin/env python
 
-import os
-import subprocess
 import sys
+import subprocess
+import tempfile
+import os
+from charis.hexplot import create_hexplot
 
-import pkg_resources
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Usage: hexplot <filename>")
+        sys.exit(1)
 
-filename = sys.argv[1]
+    filename = sys.argv[1]
+    
+    # Create a temporary directory for our Bokeh application
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create the main application file
+        app_path = os.path.join(temp_dir, 'app.py')
+        with open(app_path, 'w') as f:
+            f.write(f"""
+from charis.hexplot import create_hexplot
+create_hexplot('{filename}')
+""")
+        
+        # Run bokeh serve with the application
+        subprocess.run(
+            ["bokeh", "serve", "--show", app_path],
+            check=True,
+            stdout=subprocess.PIPE
+        )
 
-cwd = os.getcwd()
-script_path = pkg_resources.resource_filename('charis', 'hexplot.py')
-
-subprocess.run("bokeh serve --show {} --args '{}'".format(script_path, filename),
-               shell=True, check=True, stdout=subprocess.PIPE)
+if __name__ == "__main__":
+    main()

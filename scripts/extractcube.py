@@ -18,8 +18,7 @@ import configparser
 from astropy.io import fits
 
 
-if __name__ == "__main__":
-
+def main() -> None:
     if len(sys.argv) < 3:
         errstring = "Must call extractcube.py with at least two arguments:\n"
         errstring += "1: string(s) parsed by glob matching files to be turned into data cubes\n"
@@ -209,3 +208,6 @@ if __name__ == "__main__":
                 saveresid=saveresid,
                 static_calibdir=None,
                 verbose=verbose)
+
+if __name__ == "__main__":
+    main()
