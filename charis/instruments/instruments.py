@@ -58,7 +58,7 @@ class CHARIS(object):
         self.location = EarthLocation(longitude, latitude)
 
         if self.observing_mode == 'ND':
-            observing_mode = 'Broadband'
+            self.observing_mode = 'Broadband'
 
         if static_calibdir is None:
             with as_file(files('charis').joinpath('calibrations')) as path:
