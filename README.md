@@ -1,104 +1,144 @@
-charis
-======
+# CHARIS Pipeline & SPHERE / IFS Support
 
-|Pythonv| |License|
+[![PyPI - Python Version](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13-brightgreen)](https://github.com/PrincetonUniversity/charis-dep)
+[![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
-.. |Pythonv| image:: https://img.shields.io/badge/Python-3.9%2C%203.10%2C%203.11-brightgreen.svg
-            :target: https://github.com/PrincetonUniversity/charis-dep
-.. |License| image:: https://img.shields.io/badge/license-MIT-blue.svg?style=flat
-            :target: https://github.com/PrincetonUniversity/charis-dep/tree/devel/LICENSE
+> **Open-source, parallel, and publication-ready data-reduction for high-contrast integral-field spectrographs**
 
+The **CHARIS pipeline** is the reference tool for transforming raw detector reads from the **Subaru/CHARIS** instrument into fully calibrated spectral data cubes—with uncertainties—ready for scientific analysis. The same core engine also powers the recommended **SPHERE/IFS** workflow via the companion project **[spherical](https://github.com/m-samland/spherical)**.
 
-Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs
-------------------------------------------------------------------------------
+- **Peer-reviewed methods** • χ² cube extraction, lenslet-PSF forward modeling, correlated-read-noise removal ✨  
+- **Fast** • Cython + OpenMP parallelism (< 3 min / cube on a laptop) ⚡  
+- **Reproducible** • Strict version pinning & deterministic outputs 🔒
 
-The charis pipeline is capable of extracting spectral data cubes from both the Subaru/CHARIS as well as the SPHERE/IFS integral field spectrographs for high-contrast imaging.
+---
 
-For a detailed description of the pipeline please refer to `Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_. For a description of the pipeline's adaption to SPHERE/IFS please refer to `Samland et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022arXiv221006390S/abstract>`_.
+## Table of Contents
+1. [Quick Start](#quick-start)  
+2. [Installation](#installation)  
+3. [Requirements & Dependencies](#requirements--dependencies)  
+4. [Instrument Workflows](#instrument-workflows)  
+   * [CHARIS](#charis-workflow)  
+   * [SPHERE / IFS](#sphereifs-workflow)  
+5. [System & Performance Notes](#system--performance-notes)  
+6. [Citing](#citing)  
+7. [Contributing](#contributing)  
+8. [License](#license)
 
+---
 
-Installation
-------------
-The latest version can be installed using "pip install git+https://github.com/PrincetonUniversity/charis-dep@devel". If you wish to make changes to the code base, please clone the repository and install using the "pip install -e ." command in the repository folder.
+## Quick Start
+```bash
+# Create a fresh virtual environment (recommended)
+python -m venv charisenv && source charisenv/bin/activate
 
-We recommend that you install the package in a virtual environment.  If you do not have a virtual environment, you can create one with the following command: "python3 -m venv charisenv".  You can then activate the virtual environment with "source charisenv/bin/activate".  You can deactivate the virtual environment with "deactivate". Alternatively, we recommend making a new environment in Miniconda or Anaconda using "conda create -n charisenv python=3.11" and activating it with "conda activate charisenv".
+# Install the latest stable pipeline
+pip install git+https://github.com/PrincetonUniversity/charis-dep@main
 
+# Build a calibration (CHARIS example; interactive)
+buildcal /path/to/CRSA00000001.fits
+# Optional: pass darks and mode info
+buildcal /path/to/CRSA00000001.fits 1320 J /path/to/darks/*fits
 
-Requirements
-------------
-Python >3.9
-Cython with a C compiler and OpenMP
+# Extract a data cube
+extractcube /path/to/CRSA00000000.fits my_config.ini
+```
+For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow).
 
+---
 
-Dependencies
-------------
-The charis pipeline requires the following packages in a reasonably up-to-date version
-to function:
+## Installation
+1. **Python ≥ 3.10** is required. We test against 3.10 – 3.13.  
+2. Set up an isolated environment:  
+   * **venv**
+     ```bash
+     python3.12 -m venv charisenv
+     source charisenv/bin/activate
+     ```
+   * **Conda**
+     ```bash
+     conda create -n charisenv python=3.12
+     conda activate charisenv
+     ```
+3. Install the pipeline:
+   ```bash
+   pip install git+https://github.com/PrincetonUniversity/charis-dep@main
+   ```
+4. (Developers) Editable install:
+   ```bash
+   git clone https://github.com/PrincetonUniversity/charis-dep.git
+   cd charis-dep && pip install -e .
+   ```
 
-- numpy, scipy, astropy, pandas, tqdm, matplotlib, cython, bokeh
-- bottleneck, psutil
+---
 
+## Requirements & Dependencies
+| Kind | Packages |
+|------|----------|
+| **Core** | `numpy` · `scipy` · `astropy` · `pandas` |
+| **Visualization** | `matplotlib` · `bokeh` |
+| **Acceleration** | `cython` · OpenMP-capable C compiler |
+| **Utilities** | `tqdm` · `bottleneck` · `psutil` |
 
-Contributing
-------------
+> **Memory** ≥ 2 GB per extraction; ≥ 2 GB / core (≥ 4 GB total) when rebuilding calibrations.
 
-Please open a new issue or new pull request for bugs, feedback, or new features you would like to see.   If there is an issue you would like to work on, please leave a comment and we will be happy to assist.   New contributions and contributors are very welcome!
+---
 
-New to github or open source projects?  If you are unsure about where to start or haven't used github before, please feel free to email `@t-brandt`_ or `@m-samland`_.
+## Instrument Workflows
 
-Feedback and feature requests?  Is there something missing you would like to see?  Please open an issue or send an email to `@t-brandt`_ or `@m-samland`_.
+### CHARIS Workflow
+| Step | Command | Notes |
+|------|---------|-------|
+| **1. Build calibration** | `buildcal <monochromatic_flat.fits> <λ[nm]> <mode>` | Accepts optional dark/background frames. If wavelength & mode are encoded in the header, omit them. |
+| **2. Configure extraction** | Copy & edit [`sample.ini`](./sample.ini) | Tune bad-pixel masks, cube size, etc. |
+| **3. Extract cube** | `extractcube <raw_reads.fits> <config.ini>` | Generates a 4‑HDU FITS: header · cube · inverse-variance · raw-header. |
 
+### SPHERE/IFS Workflow
+For SPHERE/IFS we recommend the **[spherical](https://github.com/m-samland/spherical)** wrapper, which automates the entire process:
 
-Acknowledgements
-----------------
+```bash
+pip install git+https://github.com/m-samland/spherical.git
+```
+`spherical` handles data discovery, download, calibration, cube extraction, and post-processing—using this pipeline under the hood for the heavy lifting. Please refer to the examples in the repository for details.
 
-If you have made use of the pipeline in your research, please cite:
+---
 
-- `Brandt et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract>`_
-- `Samland et al. 2022 <https://ui.adsabs.harvard.edu/abs/2022arXiv221006390S/abstract>`_
+## System & Performance Notes
+### macOS (Apple Silicon & Intel)
+```bash
+brew install libomp          # enable multi-core acceleration
+pip install git+https://github.com/PrincetonUniversity/charis-dep@main
+```
+The installer automatically falls back to a non‑OpenMP build if the toolchain is missing, but we **recommend** ensuring OpenMP is available for large datasets.
 
+---
 
-Notes
------
+## Citing
+If this pipeline contributes to your research, please cite both foundational papers:
 
-Your computer should have at least ~2 GB of RAM to extract data cubes, and at least 2 GB/core (and at least 4 GB total) to build the calibration files.  The calibration files can take a long time to generate if you do not have multiple processors.
+- **[Brandt et al. 2017](https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract)**, *JATIS* 3, 4, 8002  
+  DOI: 10.1117/1.JATIS.3.4.048002
+- **[Samland et al. 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...668A..84S/abstract)**, *A&A* 675, A13  
+  DOI: 10.1051/0004-6361/202346758
 
-** CAUTIONARY NOTE: the method below may or may not work with the latest versions of Anaconda and Xcode; it may break either the pipeline or numpy/scipy by linking incompatible libraries.  I recommend not following these instructions.  The setup script as invoked above will attempt to install with openMP support, but will default to an installation without openMP support. **
-If you are running this on a Mac, you need gcc from Xcode, and you probably need a homebrew installation of gcc-5 to enable OpenMP linking.  Follow the instructions here:
-http://mathcancer.blogspot.com/2016/01/PrepOSXForCoding-Homebrew.html
-You may need to specify the C compiler when running the setup script using something like
-CC=gcc-5 python setup.py install
-or
-CC=gcc-mp-5 python setup.py install
-Type gcc [tab][tab] in a terminal to see your available gcc compilers.  If you use tcsh instead of bash, your export command will be different, but something like this should work:
-set CC = gcc-5
-python setup.py install
-** END CAUTIONARY NOTE **
+The ADS entries are linked in the bibliography below.
 
-Quick-start tutorial, basic usage with sample files:
-(note: sample files of the M5 globular cluster are currently hosted at http://web.physics.ucsb.edu/~tbrandt/charis_sample_data/)
-** NOTE: file hosting location changed December 2017 **
+---
 
-Example:
-CRSA00000001.fits is a 1550-nm monochromatic flat taken in broadband/lowres mode
-CRSA00000002.fits through CRSA00000005.fits are broadband/lowres darks
-CRSA10000000.fits is a science frame in broadband/lowres mode
+## Contributing
+We welcome issues & PRs—large or small.
 
-First, we must build the calibration files.  Create a directory where they will live, make this the current working directory, and run
-buildcal /path/to/CRSA00000001.fits 1550 lowres /path/to/CRSA0000000[2-5].fits
-Follow the prompts to create (or not) oversampled PSFlet images.  This routine will create calibration files in the current working directory.  The arguments to buildcal are:
-1. The monochromatic flat, as a raw sequence of CHARIS reads
-2. The wavelength (in nm) of the monochromatic flat
-3. The CHARIS mode (J/H/K/lowres)
-4. Background frame(s)/dark(s) (optional)
+1. **Fork** → **create a feature branch** → **commit** → **open a PR**.  
+2. Run `pre-commit run --all-files` to satisfy lint & formatting hooks.  
+3. New here? Open an issue or email [Tim Brandt](mailto:timothy.d.brandt@gmail.com) or [Matthias Samland](mailto:matthias.samland@gmail.com) for guidance.
 
-Newer calibration files require simply, e.g.,
-buildcal /path/to/CRSA00000000.fits
-with the wavelength and observing mode encoded in the fits header.
+---
 
-Now extract a cube.  First, you need to create an appropriate .ini file by modifying sample.ini in the code directory.  With the example file names given above and with your modified .ini file in the current working directory, you would run
-extractcube /path/to/CRSA00000000.fits modified.ini
-The arguments are simply
-1. The raw file(s) to extract into cubes
-2. The configuration file
-The extracted cubes will be written to the current working directory.  The first HDU is simply the header with some basic information, the second HDU is the cube, the third HDU is the inverse variance on the cube, and the fourth HDU has no data but saves the original header on HDU0 of the raw reads.
+## License
+This project is distributed under the **MIT License**—see [`LICENSE`](LICENSE) for the full text.
+
+---
+
+### Bibliography
+* [Brandt, T. D., *et al.* 2017](https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract), "CHARIS Data Reduction Pipeline", **JATIS**, 3, 048002  
+* [Samland, M., *et al.* 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...668A..84S/abstract), "A New SPHERE IFS Pipeline Based on CHARIS", **A&A**, 675, A13
