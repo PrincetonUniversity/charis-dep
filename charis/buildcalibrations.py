@@ -5,12 +5,9 @@ import glob
 import logging
 import multiprocessing
 import os
-import pdb
 import re
-import shutil
-import sys
 import time
-from builtins import input, range, str
+from builtins import range
 
 import numpy as np
 from astropy import units as u
@@ -18,8 +15,7 @@ from astropy.io import fits
 from scipy import interpolate, ndimage
 from tqdm import tqdm
 
-import charis
-from charis import instruments, primitives, utr
+from charis import primitives, utr
 from charis.image import Image
 from charis.parallel import Consumer, Task
 from charis.tools import expected_spectrum, fit_background
@@ -28,8 +24,7 @@ log = logging.getLogger('main')
 
 
 def read_in_file(infile, instrument, calibration_wavelength=None,
-                 ncpus=1, mask=None, bgfiles=[],
-                 outdir="./"):
+                 ncpus=1, mask=None, bgfiles=[]):
 
     if mask is None:
         mask = fits.getdata(
