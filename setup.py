@@ -1,69 +1,65 @@
 #!/usr/bin/env python
+import platform
+from pathlib import Path
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
+from Cython.Distutils import build_ext as cython_build_ext
 
-import glob
+def find_libomp():
+    """
+    Searches common Homebrew lib paths for omp.h and libomp.dylib.
+    Returns (include_dir, lib_dir) or (None, None) if not found.
+    """
+    homebrew = Path("/opt/homebrew")
+    for header in homebrew.rglob("omp.h"):
+        inc = header.parent
+        lib = None
+        for dylib in homebrew.rglob("libomp.dylib"):
+            lib = dylib.parent
+            break
+        if lib:
+            return str(inc), str(lib)
+    return None, None
 
-from Cython.Distutils import build_ext
-from setuptools import Extension, find_packages, setup
+is_macos = platform.system() == "Darwin"
+omp_include, omp_lib = find_libomp()
 
-ext_modules_openMP = []
-ext_modules_openMP += [Extension("charis.primitives.matutils",
-                                 ['charis/primitives/matutils.pyx'],
-                                 extra_compile_args=['-fopenmp'],
-                                 extra_link_args=['-fopenmp'],
-                                 )]
+def get_extensions(with_openmp=True):
+    if is_macos and with_openmp and omp_include and omp_lib:
+        compile_args = ["-Xpreprocessor", "-fopenmp", f"-I{omp_include}"]
+        link_args = ["-Xpreprocessor", "-fopenmp", f"-L{omp_lib}"]
+        libs = ["omp"]
+    else:
+        compile_args = []
+        link_args = []
+        libs = []
 
-ext_modules_openMP += [Extension("charis.utr.fitramp",
-                                 ['charis/utr/fitramp.pyx'],
-                                 extra_compile_args=['-fopenmp'],
-                                 extra_link_args=['-fopenmp'],
-                                 )]
-
-ext_modules_noopenMP = []
-ext_modules_noopenMP += [Extension("charis.primitives.matutils",
-                                   ['charis/primitives/matutils.pyx'],
-                                   )]
-
-ext_modules_noopenMP += [Extension("charis.utr.fitramp",
-                                   ['charis/utr/fitramp.pyx'],
-                                   )]
-
-with open("README.rst", "r") as fh:
-    long_description = fh.read()
-
-
-def setup_charis(ext_modules):
-    setup(
-        name='charis',
-        version='2.0.1',
-        description='Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs',
-        author='Timothy Brandt, Maxime Rizzo, Matthias Samland',
-        author_email='timothy.d.brandt@gmail.com',
-        url="https://github.com/PrincetonUniversity/charis-dep",
-        long_description=long_description,
-        long_description_content_type="text/x-rst",
-        classifiers=[
-            "Programming Language :: Python :: 3",
-            "License :: OSI Approved :: BSD License",
-            "Operating System :: OS Independent",
-            "Intended Audience :: Science/Research",
-        ],
-        packages=find_packages(),
-        package_data={"": ["calibrations/**/*.fits",
-                           "calibrations/**/*.json",
-                           "calibrations/**/**/*.fits",
-                           "calibrations/**/**/*.dat"]},
-        python_requires='>=3.10,<3.14',
-        install_requires=['numpy>=1.22,<=2.2', 'scipy', 'astropy',
-                          'pandas', 'tqdm', 'future', 'matplotlib',
-                          'bokeh', 'bottleneck', 'psutil'],
-        scripts=['scripts/buildcal', 'scripts/extractcube', 'scripts/hexplot'],
-        cmdclass={'build_ext': build_ext},
-        ext_modules=ext_modules
-    )
-
+    return [
+        Extension(
+            "charis.primitives.matutils",
+            ["charis/primitives/matutils.pyx"],
+            extra_compile_args=compile_args,
+            extra_link_args=link_args,
+            libraries=libs,
+        ),
+        Extension(
+            "charis.utr.fitramp",
+            ["charis/utr/fitramp.pyx"],
+            extra_compile_args=compile_args,
+            extra_link_args=link_args,
+            libraries=libs,
+        ),
+    ]
 
 try:
-    setup_charis(ext_modules_openMP)
-except:
-    print("Falling back on installation without openMP.")
-    setup_charis(ext_modules_noopenMP)
+    setup(
+        ext_modules=get_extensions(with_openmp=True),
+        cmdclass={"build_ext": cython_build_ext},
+    )
+except Exception as e:
+    print("⚠️ OpenMP build failed or not supported; falling back without OpenMP.")
+    print(f"  Reason: {e}")
+    setup(
+        ext_modules=get_extensions(with_openmp=False),
+        cmdclass={"build_ext": cython_build_ext},
+    )

@@ -253,17 +253,8 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
         inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
         inImage.ivar[bpm.astype('bool')] = 0  # inImage.ivar[bpm.astype('bool')] * 1e-20
+    
     if dc_xtalk_correction:
-        # bpm = np.logical_not(
-        #     fits.getdata(os.path.join(calibdir, 'mask.fits')).astype('bool'))
-        # if instrument.instrument_name == 'SPHERE' and flatfield:
-        #     pixelflat = fits.getdata(os.path.join(calibdir, 'pixelflat.fits'))
-        #     good_pixels = pixelflat > 0.
-        #     inImage.data[good_pixels] /= pixelflat[good_pixels]
-        #     inImage.ivar[good_pixels] *= pixelflat[good_pixels]**2
-        #     print("Divide by flat for good pixels")
-        # print('Fixing bad pixels')
-
         inImage.data, convolved_image = sph_ifs_correct_spectral_xtalk(
             inImage.data, mask=~(maskarr.astype('bool')))
         fits.writeto(
@@ -395,30 +386,12 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                 resid.write(
                     re.sub('.fits', '_residuals' + file_ending + '.fits',
                            os.path.join(outdir, os.path.basename(filename))))
-                # mask_resid = inImage.data > 0.
-                # relative_resid = resid.data.copy()
-                # relative_resid[mask_resid] /= inImage.data[mask_resid]
-                # relative_resid[~mask_resid] = np.nan
-                # relative_resid[np.abs(relative_resid) > mad_std(relative_resid, ignore_nan=True) * 6] = np.nan
-                # fits.writeto(
-                #     # re.sub('.*/', '',
-                #     re.sub('.fits', '_resid_relative' + file_ending + '.fits',
-                #            os.path.join(outdir, os.path.basename(filename))),
-                #     relative_resid, overwrite=True)
             else:
                 datacube = result
 
     if method == 'optext' or method == 'apphot3' or method == 'apphot5':
         loc = primitives.PSFLets(load=True, infiledir=calibdir)
-        # try:
-        #     lam_midpts = fits.open(os.path.join(calibdir, '/polychromekeyR%d.fits' % (R)))[0].data
-        #     R2 = R
-        # except IOError:
-        # keyfilenames = glob.glob(calibdir + '*polychromekeyR*.fits')
-        # if len(keyfilenames) == 0:
-        #     raise IOError("No key file found in " + calibdir)
-        # R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
-        # lam = fits.open(keyfilenames[0])[0].data
+
         if linear_wavelength:
             lam_midpts = np.linspace(
                 instrument.wavelength_range[0].value,
@@ -445,11 +418,8 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         else:
             delt_x = 5
 
+        # TODO: Implement a way to only do pre-processing.
         if flatfield:
-            # if refine:
-            #     # revert flatfield correction for psflets?
-            #     psflets[:, good_pixel_mask] = psflets[:,
-            #                                           good_pixel_mask] / pixelflat[good_pixel_mask]
             inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / \
                 pixelflat[good_pixel_mask]
             if instrument.instrument_name == 'SPHERE':

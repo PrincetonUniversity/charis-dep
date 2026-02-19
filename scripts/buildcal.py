@@ -9,8 +9,7 @@ from builtins import input, range, str
 from astropy.io import fits
 from charis import buildcalibrations, instruments
 
-if __name__ == "__main__":
-
+def main() -> None:
     if len(sys.argv) < 2:
         print("Must call buildcal with at least one argument:")
         print("  The path to the narrow-band flatfield image")
@@ -104,3 +103,6 @@ if __name__ == "__main__":
         upsample=upsample,
         order=None, header=hdr,
         ncpus=nthreads, verbose=True)
+
+if __name__ == "__main__":
+    main()

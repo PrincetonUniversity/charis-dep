@@ -3,7 +3,7 @@ import os
 from builtins import input, object
 
 import numpy as np
-import pkg_resources
+from importlib.resources import as_file, files
 from astropy import units as u
 from astropy.coordinates import EarthLocation
 
@@ -58,10 +58,11 @@ class CHARIS(object):
         self.location = EarthLocation(longitude, latitude)
 
         if self.observing_mode == 'ND':
-            observing_mode = 'Broadband'
+            self.observing_mode = 'Broadband'
 
         if static_calibdir is None:
-            static_calibdir = pkg_resources.resource_filename('charis', 'calibrations')
+            with as_file(files('charis').joinpath('calibrations')) as path:
+                static_calibdir = str(path)
 
         self.calibration_path_instrument = \
             os.path.join(
@@ -164,7 +165,8 @@ class SPHERE(object):
         self.location = EarthLocation(longitude, latitude)
 
         if static_calibdir is None:
-            static_calibdir = pkg_resources.resource_filename('charis', 'calibrations')
+            with as_file(files('charis').joinpath('calibrations')) as path:
+                static_calibdir = str(path)
 
         self.calibration_path_instrument = \
             os.path.join(

@@ -1,33 +1,73 @@
 [build-system]
 requires = [
-    "setuptools>=60",
+    "setuptools>=77",
     "setuptools_scm>=8.0",
     "wheel",
     "cython>=2.0.0,<3.1"
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "charis"
+version = "2.0.1"
+description = "Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = "BSD-3-Clause"
+authors = [
+    {name = "Timothy Brandt, Maxime Rizzo, Matthias Samland"},
+    {email = "timothy.d.brandt@gmail.com"}
+]
+dependencies = [
+    "numpy>=1.22,<=2.2",
+    "scipy",
+    "astropy",
+    "pandas",
+    "tqdm",
+    "future",
+    "matplotlib",
+    "bokeh",
+    "bottleneck",
+    "psutil"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research"
+]
+
+[project.scripts]
+buildcal = "scripts.buildcal:main"
+extractcube = "scripts.extractcube:main"
+hexplot     = "scripts.hexplot:main"
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE*", "COPYING*", "NOTICE*"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests"]
+
+[tool.setuptools.package-data]
+# include all .fits, .json, .dat recursively under calibrations/
+"charis" = ["calibrations/**/*.fits", "calibrations/**/*.json", "calibrations/**/*.dat"]
+
 [tool.ruff]
 line-length = 127
 target-version = "py312"
-exclude = [
-    'docs',
-    '*_version.py',
-]
+exclude = ["docs", "*_version.py"]
 
 [tool.ruff.lint]
-# Enable Ruff rulesets you like (equivalent to Flake8 + isort, etc.)
-select = ["E", "F", "I"]  # E/F = Flake8 rules, I = isort rules, C90 = McCabe complexity, D = docstrings
-ignore = ["E203", "E501", "E712", "E722", "D100", "D104"] # ignore specific rules (customize as needed)
+select = ["E", "F", "I"]
+ignore = ["E203", "E501", "E712", "E722", "D100", "D104"]
 
-# Ignore specific docstring rules in test files
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D100", "D101", "D102", "D103", "D104", "D105", "D107"]
 
 [tool.ruff.lint.mccabe]
-# Flag errors (`C901`) whenever the complexity level exceeds 5.
 max-complexity = 10
 
 [tool.ruff.format]
-quote-style = "double"  # to match Black formatting
+quote-style = "double"
 indent-style = "space"
