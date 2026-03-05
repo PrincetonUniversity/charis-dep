@@ -19,7 +19,7 @@ authors = [
     {email = "timothy.d.brandt@gmail.com"}
 ]
 dependencies = [
-    "numpy>=2,<=3",
+    "numpy>=2,<3",
     "scipy",
     "astropy",
     "pandas",
