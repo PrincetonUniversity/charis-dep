@@ -325,6 +325,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             try:
                 psflets = primitives.calc_offset(
                     psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
+                print("Fit shift successful, PSFlet positions adjusted across the detector.")
             except Exception as e:
                 if verbose:
                     print('Fit shift failed. Continuing without fitting shift.')

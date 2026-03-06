@@ -75,7 +75,7 @@ def calc_offset(psflets, image, offsets, dx=64,
             # best value
             #############################################################
 
-            icen = np.arange(offsets.shape[0])[np.where(corrvals == np.amax(corrvals))]
+            icen = np.argmax(corrvals)
             imin = int(max(0, icen - 2))
             imax = int(min(offsets.shape[0], icen + 3))
             corrvals = corrvals[imin:imax]
