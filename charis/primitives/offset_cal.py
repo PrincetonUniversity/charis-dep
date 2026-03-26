@@ -75,9 +75,9 @@ def calc_offset(psflets, image, offsets, dx=64,
             # best value
             #############################################################
 
-            icen = np.argmax(corrvals)
-            imin = int(max(0, icen - 2))
-            imax = int(min(offsets.shape[0], icen + 3))
+            icen = int(np.argmax(corrvals))
+            imin = max(0, icen - 2)
+            imax = min(offsets.shape[0], icen + 3)
             corrvals = corrvals[imin:imax]
 
             arr = np.ones((imax - imin, 3))
@@ -86,6 +86,10 @@ def calc_offset(psflets, image, offsets, dx=64,
             coef = linalg.lstsq(arr, corrvals)[0]
 
             shift = -coef[1] / (2. * coef[2])
+            if not np.isfinite(shift):
+                shift = 0.0
+            else:
+                shift = float(np.clip(shift, float(offsets[0]), float(offsets[-1])))
             shiftarr[j // dx, i // dx] = shift
 
     #####################################################################
