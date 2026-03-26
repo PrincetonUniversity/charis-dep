@@ -25,6 +25,45 @@ log = logging.getLogger('main')
 
 def read_in_file(infile, instrument, calibration_wavelength=None,
                  ncpus=1, mask=None, bgfiles=[]):
+    """Read and preprocess a monochromatic calibration flat-field image.
+
+    Handles both CHARIS (up-the-ramp ramp fitting) and SPHERE (multi-DIT
+    mean after outlier trimming) input formats. Returns the preprocessed
+    ``Image`` and a minimal FITS header with calibration metadata, ready to
+    pass directly to :func:`buildcalibrations`.
+
+    Parameters
+    ----------
+    infile : str
+        Path or glob pattern to the raw calibration FITS file. For CHARIS,
+        a sequence of reads; for SPHERE, a cube of DITs.
+    instrument : Instrument
+        Instrument configuration object providing ``instrument_name``,
+        ``calibration_path_instrument``, and ``gain``.
+    calibration_wavelength : astropy.units.Quantity or None, optional
+        Calibration wavelength(s) with units (e.g. ``[987.72] * u.nm``).
+        Required for CHARIS (written to the output header as ``cal_lam``).
+        Default None.
+    ncpus : int, optional
+        Number of CPU threads for the up-the-ramp combination (CHARIS only).
+        Default 1.
+    mask : ndarray of int or None, optional
+        Bad-pixel mask with shape ``(ny, nx)``, where 0 marks bad pixels and
+        1 marks good pixels. If None, loaded from
+        ``instrument.calibration_path_instrument/mask.fits``. Default None.
+    bgfiles : list of str, optional
+        Paths to background (dark) frames to subtract (CHARIS only).
+        Default ``[]`` (no background subtraction).
+
+    Returns
+    -------
+    inImage : Image
+        Preprocessed flat-field image with ``data`` (count rate, shape
+        ``(ny, nx)``) and ``ivar`` (inverse variance, same shape).
+    hdr : astropy.io.fits.Header
+        Minimal FITS header containing calibration metadata: input filename,
+        MJD observation date, observing band, and calibration wavelength.
+    """
 
     if mask is None:
         mask = fits.getdata(
@@ -116,33 +155,101 @@ def buildcalibrations(inImage, instrument, inLam, mask=None,
                       nlam=10, outdir="./",
                       stellar_temperature=None,
                       verbose=True):
-    """
-    Build the calibration files needed to extract data cubes from
-    sequences of CHARIS reads.
+    """Build the calibration files required to extract spectral data cubes.
 
-    Inputs:
-    1. inImage:  Image object, should include count rate and ivar for
-                 a narrow-band flatfield calibration image.
-    2. instrument: instrument object
-    3. inLam:    wavelength in nm of inImage
-    4. mask:     bad pixel mask, =0 for bad pixels
+    Fits PSFlet positions to a monochromatic flat-field calibration image,
+    computes the wavelength-dependent lenslet position grid, and generates the
+    polychrome PSFlet template images used by
+    :func:`~charis.extractcube.getcube`.
 
+    Parameters
+    ----------
+    inImage : Image
+        Preprocessed monochromatic flat-field image (count rate and inverse
+        variance). Typically the output of :func:`read_in_file`. For CHARIS
+        this is a laser flat; for SPHERE it is an internal wavelength
+        calibration lamp frame.
+    instrument : Instrument
+        Instrument configuration object (e.g. ``instruments.SPHERE('YH')``).
+        Provides wavelength range, lenslet grid geometry, PSFlet resolution,
+        and transmission curve. The output wavelength grid is derived from
+        ``instrument.lam_midpts`` and ``instrument.lam_endpts``; override
+        these attributes (on a copy) to build calibrations at a non-default
+        spectral resolution.
+    inLam : array-like of float
+        Calibration wavelength(s) in nm corresponding to ``inImage``.
+    mask : ndarray of int or None, optional
+        Bad-pixel mask with shape ``(ny, nx)``, where 0 marks bad pixels and
+        1 marks good pixels. If None, loaded from the instrument's static
+        calibration directory. Default None.
+    order : int or None, optional
+        Polynomial order for the lenslet position fit as a function of
+        wavelength. Default None uses ``instrument.wavelengthpolyorder``.
+    upsample : bool, optional
+        If True, build the oversampled PSFlet templates
+        (``polychromefullR{R}.npy``, 5× in the cross-dispersion direction)
+        in addition to the standard ``polychromeR{R}.fits``. The oversampled
+        file is required for sub-pixel shift fitting (``fitshift=True`` in
+        :func:`~charis.extractcube.getcube`). Building the oversampled file
+        is slow at high spectral resolutions. Default True.
+    header : astropy.io.fits.Header or None, optional
+        FITS header to which calibration shift metadata (``cal_dx``,
+        ``cal_dy``, ``cal_dphi``) are appended before being written to
+        ``cal_params.fits``. Default None.
+    ncpus : int, optional
+        Number of parallel worker processes for building the polychrome
+        template images. Default ``multiprocessing.cpu_count()``.
+    nlam : int, optional
+        Number of monochromatic PSFlet images integrated per wavelength
+        channel when building the polychrome templates. Higher values give
+        smoother band-integrated templates at the cost of computation time.
+        Default 10.
+    outdir : str, optional
+        Directory where all calibration files are written. Default ``'./'``.
+    stellar_temperature : astropy.units.Quantity or None, optional
+        If provided, weight the polychrome template integration by a blackbody
+        spectrum at this temperature convolved with the instrument transmission,
+        rather than using a spectrally flat weighting. Default None.
+    verbose : bool, optional
+        Print progress messages and total elapsed time. Default True.
 
-    Optional inputs:
+    Returns
+    -------
+    None
+        All output is written to ``outdir``. Files produced:
 
-    order:    int, order of polynomial fit to position(lambda).
-                 Default None (taken from instrument class).
-    header:   FITS header, to which will be appended the shifts
-                 and rotation angle between the stored and the fitted
-                 wavelength solutions.  Default None.
-    ncpus:    number of threads for multithreading.
-                 Default multiprocessing.cpu_count()
+        ``PSFloc.fits``
+            Lenslet pixel positions as a function of wavelength
+            (resolution-independent).
+        ``PSFwidths.fits``
+            Cross-dispersion PSFlet widths at each lenslet and wavelength,
+            used by the optimal extraction (resolution-independent).
+        ``polychromeR{R}.fits``
+            Band-integrated PSFlet template images, shape ``(nlam, ny, nx)``,
+            where ``R`` is ``instrument.resolution``.
+        ``polychromekeyR{R}.fits``
+            Multi-extension FITS containing the wavelength grid, lenslet x/y
+            positions, and a good-lenslet boolean mask, keyed to resolution
+            ``R``.
+        ``polychromefullR{R}.npy`` *(only if* ``upsample=True`` *)*
+            Oversampled (5×) PSFlet templates for sub-pixel shift fitting,
+            shape ``(nlam, ny, 5*nx)``.
+        ``cal_params.fits``
+            FITS file storing the ``header`` supplied to this function,
+            augmented with the measured shift offsets.
 
-    nlam: int, number of monochromatic PSFlets per integrated PSFlet
-    outdir:   directory in which to place
+    Notes
+    -----
+    The wavelength solution in ``lamsol.dat`` in the static calibration
+    directory is used as the reference. This function fits the PSFlet positions
+    in ``inImage`` and records the shift (translation + rotation) relative to
+    that reference. The updated position solution is used for all subsequent
+    polychrome template generation.
 
-    Returns None, writes calibration files to outdir.
-
+    To build calibrations at a non-default spectral resolution, override
+    ``instrument.lam_midpts`` and ``instrument.lam_endpts`` on a
+    ``copy.copy`` of the instrument before calling this function, to avoid
+    mutating the shared instrument object.
     """
 
     if order is None:
