@@ -45,6 +45,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             instrument=None, resample=True,
             outdir="./",
             static_calibdir=None,
+            preprocessing_only=False,
             verbose=True):
     """Provisional routine getcube.  Construct and return a data cube
     from a set of reads.
@@ -87,6 +88,10 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
     10. fitshift: Fit a subpixel shift in the psflet locations across
                  the detector?  Recommended except for quicklook.  Cost
                  is modest compared to cube extraction
+    11. preprocessing_only: Only perform preprocessing steps (background
+                 subtraction, bad pixel correction, flat fielding) and
+                 write the cleaned 2D detector image.  Skips cube
+                 extraction entirely.  Default False.
 
     Returns:
     1. datacube: an instance of the Image class containing the data cube.
@@ -178,7 +183,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         readnoise = 6
 
         if maskarr is None:
-            maskarr = np.ones((data.shape[-2], data.shape[-2]))
+            maskarr = np.ones((data.shape[-2], data.shape[-1]))
         if flatfield:
             pixelflat = fits.getdata(
                 os.path.join(calibration_path_instrument, 'pixelflat.fits'))
@@ -213,6 +218,10 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         inImage = Image(data=data, ivar=ivar, header=header,
                         instrument_name=instrument.instrument_name)
 
+    if flatfield and instrument.instrument_name == 'CHARIS':
+        pixelflat = fits.getdata(
+            os.path.join(calibration_path_instrument, 'pixelflat.fits'))
+
     if bgsub:
         if bgpath is not None:
             hdulist = fits.open(bgpath)
@@ -231,7 +240,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                 if bg_scaling_without_mask:
                     norm = inImage.data[maskarr == 1] / bg[maskarr == 1]
                 else:
-                    norm = inImage.data[bgscalemask] / bg[bgscalemask]
+                    norm = inImage.data[bgscalemask & (bpm == 0)] / bg[bgscalemask & (bpm == 0)]
 
                 norm = norm[np.isfinite(norm)].flatten()
                 _, norm, _ = sigma_clipped_stats(
@@ -239,14 +248,14 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                     maxiters=5, cenfunc='median', stdfunc='std',
                     std_ddof=0)
                 bg *= norm
-                print("Background subtracted")
+                log.info("Background subtracted")
             else:
-                print('Fitting bg')
+                log.info("Fitting background from template components")
                 components = fits.getdata(
                     os.path.join(calibration_path_instrument, 'background_template.fits'))
                 bg, bg_coef = fit_background(
-                    image=inImage.data, components=components, bgmask=bgscalemask, outlier_percentiles=[2, 98])
-                print("BG coefficients: {}".format(bg_coef))
+                    image=inImage.data, components=components, bgmask=bgscalemask & (bpm == 0), outlier_percentiles=[2, 98])
+                log.debug("Background template coefficients: %s", bg_coef)
             inImage.data -= bg
 
     if instrument.instrument_name == 'SPHERE':
@@ -254,21 +263,47 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
         inImage.ivar[bpm.astype('bool')] = 0  # inImage.ivar[bpm.astype('bool')] * 1e-20
     
-    if dc_xtalk_correction:
+    if dc_xtalk_correction and instrument.instrument_name == 'SPHERE':
         inImage.data, convolved_image = sph_ifs_correct_spectral_xtalk(
-            inImage.data, mask=~(maskarr.astype('bool')))
+            inImage.data, mask=~(bpm == 0))
         fits.writeto(
-            re.sub('.fits', '_convolved_image' + file_ending + '.fits',
+            re.sub(r'\.fits$','_convolved_image' + file_ending + '.fits',
                    os.path.join(outdir, os.path.basename(filename))),
             convolved_image, overwrite=True)
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
-        inImage.write(re.sub('.fits', f'_ramp{file_ending}.fits', os.path.join(
+        inImage.write(re.sub(r'\.fits$',f'_ramp{file_ending}.fits', os.path.join(
             outdir, os.path.basename(filename))))
-        if instrument.instrument_name == 'SPHERE':
-            fits.writeto(re.sub('.fits', f'_bg{file_ending}.fits', os.path.join(
+        if instrument.instrument_name == 'SPHERE' and bgsub:
+            fits.writeto(re.sub(r'\.fits$',f'_bg{file_ending}.fits', os.path.join(
                 outdir, os.path.basename(filename))), bg, overwrite=True)
+
+    ################################################################
+    # If preprocessing_only, apply pixel flat to the image and
+    # return early without cube extraction.
+    ################################################################
+
+    if preprocessing_only:
+        if flatfield:
+            good_pixel_mask = np.logical_not(bpm.astype('bool'))
+            inImage.data[good_pixel_mask] = (
+                inImage.data[good_pixel_mask] / pixelflat[good_pixel_mask])
+            if instrument.instrument_name == 'SPHERE':
+                inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
+                inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
+                inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
+                inImage.ivar[bpm.astype('bool')] = 0
+
+        header['preonly'] = (True, 'Preprocessing only, no cube extraction')
+        inImage.header = header
+        extrahdr = fits.getheader(filename)
+        inImage.extraheader = extrahdr
+        outname = re.sub(
+            r'\.fits$', '_preprocessed' + file_ending + '.fits',
+            os.path.join(outdir, os.path.basename(filename)))
+        inImage.write(outname)
+        return inImage
 
     ################################################################
     # Read in necessary calibration files and extract the data cube.
@@ -285,8 +320,6 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         lensletflat = fits.getdata(
             os.path.join(
                 calibration_path_mode, 'lensletflat.fits')).astype('float64')
-        pixelflat = fits.getdata(
-            os.path.join(calibration_path_instrument, 'pixelflat.fits'))
         good_pixel_mask = np.logical_not(bpm.astype('bool'))
     else:
         lensletflat = None
@@ -303,18 +336,17 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             keyfilenames = glob.glob(calibdir + '*polychromekeyR*.fits')
             if len(keyfilenames) == 0:
                 raise IOError("No key file found in " + calibdir)
-            R2 = int(re.sub('.*keyR', '', re.sub('.fits', '', keyfilenames[0])))
+            R2 = int(re.sub('.*keyR', '', re.sub(r'\.fits$','', keyfilenames[0])))
             keyfile = fits.open(os.path.join(calibdir, 'polychromekeyR%d.fits' % (R2)))
             if verbose:
-                print("Warning: calibration files not found at requested resolution of R = %d" % (R))
-                print("Found files at R = %d, using these instead." % (R2))
+                log.warning("Calibration files not found at requested resolution R=%d, using R=%d instead.", R, R2)
 
         if fitshift:
             try:
                 psflets = np.load(os.path.join(calibdir, 'polychromefullR%d.npy' % (R2)))
             except FileNotFoundError:
                 if verbose:
-                    print("Oversampled PSFlets for fitshift not found, reverting to not shifting.")
+                    log.warning("Oversampled PSFlets for fitshift not found, reverting to not shifting.")
                 fitshift = False
         if fitshift:
             offsets = instrument.offsets
@@ -327,8 +359,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                     psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
             except Exception as e:
                 if verbose:
-                    print('Fit shift failed. Continuing without fitting shift.')
-                    print(e)
+                    log.warning("Fit shift failed, continuing without fitting shift: %s", e)
                 fitshift = False
         if not fitshift:
             psflets = fits.getdata(os.path.join(calibdir, 'polychromeR%d.fits' % (R2)))
@@ -372,7 +403,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                 if crosstalk_scale > 0:
                     coefs *= crosstalk_scale
                     inImage.data += crosstalk_scale*(residuals - inImage.data)
-                print("Crosstalk scale: {}".format(crosstalk_scale))
+                log.info("Crosstalk scale: %s", crosstalk_scale)
         else:
             result = primitives.fit_spectra(
                 inImage, psflets, lam_midpts, x, y, good,
@@ -384,7 +415,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             if saveresid:
                 datacube, resid = result
                 resid.write(
-                    re.sub('.fits', '_residuals' + file_ending + '.fits',
+                    re.sub(r'\.fits$','_residuals' + file_ending + '.fits',
                            os.path.join(outdir, os.path.basename(filename))))
             else:
                 datacube = result
@@ -406,7 +437,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         try:
             sig = fits.getdata(os.path.join(calibdir, 'PSFwidths.fits'))
         except IOError:
-            print("Failed to load PSFwidths.fits. Defaulting to standard PSF width.")
+            log.warning("Failed to load PSFwidths.fits, defaulting to standard PSF width.")
             sig = 0.7
 
         if method == 'apphot3' or method == 'apphot5':
@@ -418,7 +449,6 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         else:
             delt_x = 5
 
-        # TODO: Implement a way to only do pre-processing.
         if flatfield:
             inImage.data[good_pixel_mask] = inImage.data[good_pixel_mask] / \
                 pixelflat[good_pixel_mask]
@@ -478,15 +508,15 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
 
         datacube.write(
-            re.sub('.fits', '_cube' + file_ending + '.fits',
+            re.sub(r'\.fits$','_cube' + file_ending + '.fits',
                    os.path.join(outdir, os.path.basename(filename))))
         datacube_resampled.write(
-            re.sub('.fits', '_cube_resampled' + file_ending + '.fits',
+            re.sub(r'\.fits$','_cube_resampled' + file_ending + '.fits',
                    os.path.join(outdir, os.path.basename(filename))))
         return datacube, datacube_resampled
 
     else:
         datacube.write(
-            re.sub('.fits', '_cube.fits',
+            re.sub(r'\.fits$','_cube.fits',
                    os.path.join(outdir, os.path.basename(filename))))
         return datacube

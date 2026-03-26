@@ -133,6 +133,11 @@ def main() -> None:
         smoothandmask = True
 
     try:
+        preprocessing_only = Config.getboolean('Extract', 'preprocessing_only')
+    except Exception:
+        preprocessing_only = False
+
+    try:
         individual_dits = Config.getboolean('Extract', 'individual_dits')
     except Exception:
         individual_dits = False
@@ -177,6 +182,7 @@ def main() -> None:
                     minpct=minpct,
                     fitbkgnd=fitbkgnd,
                     saveresid=saveresid,
+                    preprocessing_only=preprocessing_only,
                     static_calibdir=None,
                     verbose=verbose)
 
@@ -206,6 +212,7 @@ def main() -> None:
                 minpct=minpct,
                 fitbkgnd=fitbkgnd,
                 saveresid=saveresid,
+                preprocessing_only=preprocessing_only,
                 static_calibdir=None,
                 verbose=verbose)
 
