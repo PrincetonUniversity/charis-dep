@@ -15,6 +15,7 @@ import re
 import numpy as np
 from astropy.io import fits
 from astropy.stats import mad_std, sigma_clipped_stats
+from scipy.ndimage import binary_dilation
 
 import charis
 from charis import instruments, primitives, utr
@@ -434,6 +435,22 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             if verbose:
                 log.warning("Calibration files not found at requested resolution R=%d, using R=%d instead.", R, R2)
 
+        # For SPHERE, zero ivar in the vignetted/non-illuminated detector
+        # corners so that fitshift cross-correlation ignores those regions.
+        # The mask is dilated by a few pixels to bridge gaps left by excluded
+        # bad pixels and ensure a continuous non-illuminated region.
+        if fitshift and instrument.instrument_name == 'SPHERE':
+            bgmask_path = os.path.join(
+                calibration_path_instrument, 'background_scaling_mask.fits')
+            if os.path.exists(bgmask_path):
+                vignetting_mask = fits.getdata(bgmask_path).astype('bool')
+                vignetting_mask = binary_dilation(vignetting_mask, iterations=3)
+                n_masked = int(np.sum(vignetting_mask & (inImage.ivar > 0)))
+                inImage.ivar[vignetting_mask] = 0
+                log.info(
+                    "fitshift: zeroed ivar in %d vignetted pixels "
+                    "(dilated background_scaling_mask)", n_masked)
+
         if fitshift:
             try:
                 psflets = np.load(os.path.join(calibdir, 'polychromefullR%d.npy' % (R2)))
@@ -451,12 +468,18 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                 nchunks = int(fitshift_nchunks)
             dx = max(1, inImage.data.shape[0] // nchunks)
             try:
-                psflets = primitives.calc_offset(
+                fitshift_result = primitives.calc_offset(
                     psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
-                print("Fit shift successful, PSFlet positions adjusted across the detector.")
+                psflets = fitshift_result.psflets
+                if saveresid:
+                    diag_path = re.sub(
+                        r'\.fits$', '_fitshift_diag.fits',
+                        os.path.join(outdir, os.path.basename(filename)))
+                    fitshift_result.to_fits().writeto(diag_path, overwrite=True)
+                    log.info("fitshift: diagnostics written to %s", diag_path)
             except Exception as e:
-                if verbose:
-                    log.warning("Fit shift failed, continuing without fitting shift: %s", e)
+                log.warning(
+                    "fitshift failed (%s), continuing without shift fitting.", e)
                 fitshift = False
         if not fitshift:
             psflets = fits.getdata(os.path.join(calibdir, 'polychromeR%d.fits' % (R2)))
