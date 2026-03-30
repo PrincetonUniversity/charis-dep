@@ -150,7 +150,7 @@ def _smoothandmask_hexgeometry(datacube, good, neighbour_indices,
     mask = np.logical_or.reduce([mask_ivar, mask_data, mask_nan])
 
     # Replace values
-    flat_ivar[mask] = 1e-15
+    flat_ivar[mask] = 0
     flat_data[mask] = smoothed_data[mask]
 
     data = deflatten_cube(flat_data)
@@ -231,7 +231,7 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
         return np.mean(arr_sorted, axis=axis)
 
 
-def _get_corrnoise(resid, ivar, minpct=70):
+def _get_corrnoise(resid, ivar, minpct=70, channel_width=64):
     """
     Private function that returns the correlated noise
 
@@ -241,6 +241,15 @@ def _get_corrnoise(resid, ivar, minpct=70):
         Residuals of the psflet fit
     ivar: ndarray
         Inverse variance of the data
+    minpct: int, optional
+        Minimum percentage of pixels to use when estimating the correlated
+        read noise.  Default 70.
+    channel_width: int, optional
+        Width in pixels of each readout channel.  Both CHARIS and SPHERE IFS
+        use Hawaii-2RG detectors with 32 channels of 64 pixels each
+        (2048 / 32 = 64).  This parameter is instrument-specific and should
+        be updated if a detector with a different channel geometry is added.
+        Default 64.
 
     Returns
     -------
@@ -250,7 +259,7 @@ def _get_corrnoise(resid, ivar, minpct=70):
 
     mask = np.zeros(resid.shape)
     corrnoise = np.zeros(resid.shape)
-    dx = 64
+    dx = channel_width
 
     var_ratios = np.zeros((resid.shape[0], resid.shape[1]))
     for i in range(0, resid.shape[1] // dx):
@@ -298,17 +307,33 @@ def _get_corrnoise(resid, ivar, minpct=70):
     return corrnoise, pctpix
 
 
-def _recalc_ivar(data, ivar):
+def _recalc_ivar(data, ivar, channel_width=64):
     """
-    Private function to recalculate the inverse variance
+    Private function to recalculate the inverse variance after correlated
+    read-noise suppression.
+
+    Compares the empirical read noise measured from the reference rows
+    (first 4 rows) to the modelled read noise in ivar, then applies a
+    damped correction (factor 0.5) to the variance across the full channel.
 
     Parameters
     ----------
+    data: ndarray
+        Detector image after correlated noise subtraction (used to measure
+        empirical read noise from reference rows).
+    ivar: ndarray
+        Current inverse variance array to be updated.
+    channel_width: int, optional
+        Width in pixels of each readout channel.  Both CHARIS and SPHERE IFS
+        use Hawaii-2RG detectors with 32 channels of 64 pixels each
+        (2048 / 32 = 64).  This parameter is instrument-specific and should
+        be updated if a detector with a different channel geometry is added.
+        Default 64.
     """
 
-    dx = 64
+    dx = channel_width
     var = old_div(1, (ivar + 1e-100))
-    for i in range(32):
+    for i in range(data.shape[1] // dx):
         rdnoise_old = np.sqrt(np.median(var[:4, i * dx:(i + 1) * dx]))
         rdnoise_new = np.std(np.sort(data[:4, i * dx:(i + 1) * dx])[1:-1])
         var[:, i * dx:(i + 1) * dx] += 0.5 * (rdnoise_new**2 - rdnoise_old**2)
