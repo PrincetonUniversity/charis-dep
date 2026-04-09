@@ -351,11 +351,19 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                     image=inImage.data, components=components, bgmask=bgscalemask & (bpm == 0), outlier_percentiles=[2, 98])
                 log.debug("Background template coefficients: %s", bg_coef)
             inImage.data -= bg
+            # Add photon noise of the background to the variance.
+            # The background contributes Poisson noise even after subtraction;
+            # this term is absent from the initial ivar which was computed
+            # before bg subtraction.
+            bg_var = np.maximum(bg, 0) * gain * ndit
+            inImage.ivar = 1.0 / (1.0 / (inImage.ivar + 1e-100) + bg_var) * (inImage.ivar > 0)
 
     if instrument.instrument_name == 'SPHERE':
         inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
-        inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
-        inImage.ivar[bpm.astype('bool')] = 0  # inImage.ivar[bpm.astype('bool')] * 1e-20
+        # Do not interpolate ivar: the analytic noise model for good pixels
+        # must not be contaminated by neighbours of bad pixels.  Zero bad
+        # pixels directly.
+        inImage.ivar[bpm.astype('bool')] = 0
     
     if dc_xtalk_correction and instrument.instrument_name == 'SPHERE':
         inImage.data, convolved_image = sph_ifs_correct_spectral_xtalk(
@@ -364,6 +372,14 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             re.sub(r'\.fits$','_convolved_image' + file_ending + '.fits',
                    os.path.join(outdir, os.path.basename(filename))),
             convolved_image, overwrite=True)
+
+    if suppressrn and instrument.instrument_name == 'SPHERE':
+        log.warning(
+            "suppressrn=True is not supported for SPHERE: the ESO DRS CDS "
+            "pipeline already removes channel-correlated readnoise, so "
+            "_get_corrnoise would fit non-noise structure and degrade the "
+            "extraction. suppressrn has been disabled for this run.")
+        suppressrn = False
 
     header['bgsub'] = (bgsub, 'Subtract background count rate from a dark?')
     if saveramp:
