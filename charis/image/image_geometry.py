@@ -384,6 +384,116 @@ def resample_image_cube(
     return image_cube
 
 
+def resample_ivar_cube(ivar_cube, clip_infos, hexagon_size=1 / np.sqrt(3)):
+    """Propagate inverse variance through the hexagon->square resampling.
+
+    ``resample_image_cube`` forms each output pixel as a weighted sum of
+    lenslet values, ``value_j = sum_h w_jh * d_h`` with
+    ``w_jh = area_jh / A_hex``.  The variance of that sum is
+    ``Var(value_j) = sum_h w_jh**2 * Var(d_h) = sum_h w_jh**2 / ivar_h`` --
+    *not* the flux operator applied to ``ivar``, which is what
+    ``resample_image_cube`` would (incorrectly) compute.  A square that
+    overlaps a masked lenslet (``ivar_h <= 0``) inherits that lenslet's
+    infinite variance and is returned as ``ivar_j = 0``; because ``value_j``
+    literally contains ``w_jh * d_h`` from the masked lenslet, that is the
+    correct answer and is what lets bad spaxels survive the resample.
+
+    The returned cube has the identical shape and crop as
+    ``resample_image_cube``, so it is pixel-aligned with the resampled data.
+
+    Parameters
+    ----------
+    ivar_cube : array
+        Hexagonal inverse-variance cube (wave * y_index * x_index).
+    clip_infos : list
+        List of dictionaries containing hexagon index and overlap area for
+        each pixel (the same calibration used for the data resample).
+    hexagon_size : float
+        Side length of hexagon.
+
+    Returns
+    -------
+    array
+        Inverse-variance cube on the pixel grid.
+
+    """
+    flat_ivar = flatten_cube(ivar_cube)
+    hexagon_area = hexagon_size**2 * 3 / 2 * np.sqrt(3)
+    number_of_pixels = int(np.sqrt(len(clip_infos)))
+    variance = np.full([len(flat_ivar), len(clip_infos)], np.inf)
+
+    for index, clip_info in enumerate(clip_infos):
+        if len(clip_info['areas']) == 0:
+            continue
+        w = np.array(clip_info['areas']) / hexagon_area
+        iv = flat_ivar[:, clip_info['hex_indices']]
+        # Any masked contributor makes the square's variance infinite: its
+        # resampled value already contains that lenslet's flux.
+        bad = np.any(iv <= 0, axis=1)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            var = np.sum(w**2 / iv, axis=1)
+        var[bad] = np.inf
+        variance[:, index] = var
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ivar_cube = np.where(
+            np.isfinite(variance) & (variance > 0), 1.0 / variance, 0.0)
+
+    ivar_cube = ivar_cube.reshape(
+        len(ivar_cube), number_of_pixels, number_of_pixels)
+    ivar_cube = np.swapaxes(ivar_cube, 1, 2)
+    ivar_cube = ivar_cube[:, 18:-68, 46:-40]
+    return ivar_cube
+
+
+def resample_good_fraction_cube(ivar_cube, clip_infos, hexagon_size=1 / np.sqrt(3)):
+    """Fraction of each output pixel's area contributed by good lenslets.
+
+    ``good_fraction_j = sum_h w_jh * 1[ivar_h > 0] / sum_h w_jh`` -- the flux
+    operator applied to the good-lenslet indicator, normalised by the total
+    overlap weight.  A value of ``1.0`` means every lenslet contributing to the
+    square is good; ``0.0`` means all are masked.  It gives consumers a soft
+    knob instead of the hard "any bad contributor" rule of
+    :func:`resample_ivar_cube`: at the field edge, where squares straddle the
+    illuminated boundary, the fraction becomes a smooth ramp rather than a
+    cliff.  Same shape and crop as the resampled data.
+
+    Parameters
+    ----------
+    ivar_cube : array
+        Hexagonal inverse-variance cube (wave * y_index * x_index); only the
+        sign (``> 0`` vs masked) is used.
+    clip_infos : list
+        List of dictionaries containing hexagon index and overlap area for
+        each pixel.
+    hexagon_size : float
+        Side length of hexagon.
+
+    Returns
+    -------
+    array
+        Good-area-fraction cube on the pixel grid, in ``[0, 1]``.
+
+    """
+    flat_ivar = flatten_cube(ivar_cube)
+    hexagon_area = hexagon_size**2 * 3 / 2 * np.sqrt(3)
+    number_of_pixels = int(np.sqrt(len(clip_infos)))
+    good_fraction = np.zeros([len(flat_ivar), len(clip_infos)])
+
+    for index, clip_info in enumerate(clip_infos):
+        if len(clip_info['areas']) == 0:
+            continue
+        w = np.array(clip_info['areas']) / hexagon_area
+        good = (flat_ivar[:, clip_info['hex_indices']] > 0).astype(float)
+        good_fraction[:, index] = np.sum(w * good, axis=1) / np.sum(w)
+
+    good_fraction = good_fraction.reshape(
+        len(good_fraction), number_of_pixels, number_of_pixels)
+    good_fraction = np.swapaxes(good_fraction, 1, 2)
+    good_fraction = good_fraction[:, 18:-68, 46:-40]
+    return good_fraction
+
+
 def resample_image_cube_file(filename, clip_info_file, hexagon_size=1 / np.sqrt(3)):
     clip_infos = pickle.load(open(clip_info_file, "rb"))
 

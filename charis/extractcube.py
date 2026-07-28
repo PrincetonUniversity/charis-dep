@@ -20,7 +20,11 @@ from scipy.ndimage import binary_dilation
 import charis
 from charis import instruments, primitives, utr
 from charis.image import Image
-from charis.image.image_geometry import resample_image_cube
+from charis.image.image_geometry import (
+    resample_good_fraction_cube,
+    resample_image_cube,
+    resample_ivar_cube,
+)
 from charis.tools import (
     fit_background,
     sph_ifs_correct_spectral_xtalk,
@@ -640,7 +644,11 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         datacube_resampled = copy.copy(datacube)
         datacube_resampled.data = resample_image_cube(
             datacube.data, clip_infos, hexagon_size=1 / np.sqrt(3))
-        datacube_resampled.ivar = resample_image_cube(
+        # ivar needs variance propagation, not the flux operator, so masked
+        # lenslets survive the resample as ivar == 0 (see image_geometry).
+        datacube_resampled.ivar = resample_ivar_cube(
+            datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
+        good_fraction = resample_good_fraction_cube(
             datacube.ivar, clip_infos, hexagon_size=1 / np.sqrt(3))
 
         datacube.write(
@@ -649,6 +657,12 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         datacube_resampled.write(
             re.sub(r'\.fits$','_cube_resampled' + file_ending + '.fits',
                    os.path.join(outdir, os.path.basename(filename))))
+        # Sidecar: fraction of each pixel's area from good lenslets, for
+        # consumers that want a soft threshold instead of the hard ivar == 0.
+        fits.writeto(
+            re.sub(r'\.fits$', '_cube_resampled_goodfrac' + file_ending + '.fits',
+                   os.path.join(outdir, os.path.basename(filename))),
+            good_fraction.astype('float32'), datacube.header, overwrite=True)
         return datacube, datacube_resampled
 
     else:
