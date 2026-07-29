@@ -18,7 +18,7 @@ from tqdm import tqdm
 from charis import primitives, utr
 from charis.image import Image
 from charis.parallel import Consumer, Task
-from charis.tools import expected_spectrum, fit_background
+from charis.tools import expected_spectrum
 
 log = logging.getLogger('main')
 

@@ -1,4 +1,4 @@
-from sutherland_hodgman import *
+from charis.image.sutherland_hodgman import area, clip
 
 
 def test_clip_of_triangle_is_quad():

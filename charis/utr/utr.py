@@ -1,18 +1,15 @@
 #!/usr/bin/env python
 
-from past.utils import old_div
 import logging
 import multiprocessing
-import re
-import time
 
 import numpy as np
 from astropy.io import fits
+from past.utils import old_div
 
-from . import fitramp
 from charis import image  # .image import Image
 
-from pdb import set_trace
+from . import fitramp
 
 log = logging.getLogger('main')
 

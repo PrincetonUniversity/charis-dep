@@ -4,6 +4,7 @@ Commit: f20dbcc on Feb 6 """
 from builtins import range, zip
 
 import astropy.coordinates as coord
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.ndimage as ndimage
@@ -12,6 +13,8 @@ from astropy.convolution import convolve
 from astropy.io import fits
 from astropy.modeling import fitting, models
 from astropy.time import Time
+from matplotlib import colors, patches
+from matplotlib.backends.backend_pdf import PdfPages
 from scipy.stats import scoreatpercentile
 
 global_cmap = 'inferno'

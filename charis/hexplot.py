@@ -1,25 +1,23 @@
 #!/usr/bin/env python
 
-import sys
 
+import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
+from astropy.visualization import (
+    ImageNormalize,
+    ZScaleInterval,
+)
+from bokeh import palettes
 from bokeh.io import curdoc
 from bokeh.layouts import gridplot
+
 # from bokeh.models import LinearColorMapper  # , LogTicker, ColorBar
-from bokeh.models import ColumnDataSource, HoverTool, Range1d, Slider
+from bokeh.models import ColumnDataSource, HoverTool, Slider
 from bokeh.plotting import figure
 from bokeh.transform import linear_cmap
-from bokeh import palettes
-from bokeh.util.hex import axial_to_cartesian, hexbin
 
 from charis.image.hex import cartesian_to_axial
-
-import pandas as pd
-from astropy.visualization import (AsymmetricPercentileInterval,
-                                   ImageNormalize, LinearStretch, LogStretch,
-                                   MinMaxInterval, PercentileInterval,
-                                   ZScaleInterval)
 
 
 def crop_hex_cube(image_cube, i1=None, i2=None, j1=None, j2=None):

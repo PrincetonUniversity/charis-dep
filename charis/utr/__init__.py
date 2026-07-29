@@ -1,4 +1,10 @@
-# from __future__ import absolute_import
-from .utr import getreads
-from .utr import calcramp
-from .calc_metadata import metadata, metadata_SPHERE, addWCS
+from .calc_metadata import addWCS, metadata, metadata_SPHERE
+from .utr import calcramp, getreads
+
+__all__ = [
+    'addWCS',
+    'calcramp',
+    'getreads',
+    'metadata',
+    'metadata_SPHERE',
+]

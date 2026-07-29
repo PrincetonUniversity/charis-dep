@@ -1,1 +1,3 @@
-from .par_utils import Task, Consumer
+from .par_utils import Consumer, Task
+
+__all__ = ['Consumer', 'Task']

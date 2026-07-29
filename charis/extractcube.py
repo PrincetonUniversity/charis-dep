@@ -14,7 +14,7 @@ import re
 
 import numpy as np
 from astropy.io import fits
-from astropy.stats import mad_std, sigma_clipped_stats
+from astropy.stats import sigma_clipped_stats
 from scipy.ndimage import binary_dilation
 
 import charis
@@ -296,11 +296,6 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             good_pixels = np.logical_and(pixelflat > 0.9, pixelflat < 1.1)
             maskarr[~good_pixels] = 0
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
-
-        if nonlinear_threshold is not None:
-            nonlinear = data > nonlinear_threshold
-        else:
-            nonlinear = np.zeros([data.shape[-2], data.shape[-1]]).astype('bool')
 
         if data.ndim == 3:
             if not individual_dits:

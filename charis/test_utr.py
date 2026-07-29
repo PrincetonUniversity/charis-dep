@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 from __future__ import absolute_import
-import numpy as np
-from astropy.io import fits
 
 from .utr import getreads, utr
 

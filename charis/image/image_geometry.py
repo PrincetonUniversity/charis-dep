@@ -9,18 +9,20 @@ between arbitrary polygons.
 """
 
 
-import os
-import json
-import numpy as np
-import bottleneck as bn
-from astropy.io import fits
-
-from astropy.stats import sigma_clip, mad_std
-from tqdm import tqdm
 import collections
-import math
+import json
+import os
+import pickle
 from itertools import product
-from .sutherland_hodgman import clip, area
+
+import bottleneck as bn
+import matplotlib.pyplot as plt
+import numpy as np
+from astropy.io import fits
+from astropy.stats import mad_std, sigma_clip
+from tqdm import tqdm
+
+from .sutherland_hodgman import area, clip
 
 Point = collections.namedtuple("Point", ["x", "y"])
 _Hex = collections.namedtuple("Hex", ["q", "r", "s"])

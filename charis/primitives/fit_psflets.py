@@ -4,14 +4,12 @@ import json
 import logging
 import multiprocessing
 import os
-import time
 from builtins import range
-from pdb import set_trace
 
 import numpy as np
 from astropy.io import fits
 from past.utils import old_div
-from scipy import interpolate, ndimage, signal, stats
+from scipy import ndimage, signal, stats
 
 from charis.image.image import Image
 from charis.image.image_geometry import (
