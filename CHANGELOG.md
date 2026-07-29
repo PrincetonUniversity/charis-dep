@@ -51,7 +51,8 @@ registration have all changed. Re-extract before combining old and new products.
 ### Fixed
 
 - **Inverse variance is now propagated through the hexagon→square resampling**
-  ([`cfb0519`](https://github.com/PrincetonUniversity/charis-dep/commit/cfb0519), ISSUES/013).
+  ([`cfb0519`](https://github.com/PrincetonUniversity/charis-dep/commit/cfb0519),
+  [#42](https://github.com/PrincetonUniversity/charis-dep/issues/42)).
   The flux-conserving operator was applied to `ivar` directly, which understated the noise by
   ~16× on SPHERE OBS_H and averaged masked-lenslet zeros away, so `ivar == 0` found nothing
   downstream and bad spaxels did not survive the resample.

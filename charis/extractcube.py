@@ -99,7 +99,8 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
            removed in the 2.1.0 lint pass rather than left as a false signal
            that the correction was applied. Nothing in the extraction reacts to
            this parameter today. Either implement the non-linearity handling or
-           drop the parameter. See ISSUES/015.
+           drop the parameter. See
+           https://github.com/PrincetonUniversity/charis-dep/issues/51.
     noisefac : float, optional
         Additional noise floor as a fraction of the count rate:
         ``var = readnoise + shotnoise + (noisefac * countrate)^2``.
