@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 
-import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 from astropy.visualization import (
@@ -29,26 +28,6 @@ def crop_hex_cube(image_cube, i1=None, i2=None, j1=None, j2=None):
     y *= np.sqrt(3) / 2
 
     return x[i1:i2, j1:j2], y[i1:i2, j1:j2], image_cube[:, i1:i2, j1:j2]
-
-
-def prepare_slice(x, y, image_slice):
-
-    x, y, cells, image_data = set_points_cells(x, y, image_slice)
-
-    indx = np.where(image_data != 0)
-    cells = np.asarray(cells)[indx]
-    image_data = image_data[indx]
-
-    return x, y, cells, image_data
-
-
-def plot_slice(x, y, cells, image_data):
-    norm = ImageNormalize(image_data, interval=ZScaleInterval())
-    plt.figure()
-    plt.gca().set_aspect('equal')
-    plt.tripcolor(x[::-1], y, cells, facecolors=image_data,
-                  cmap='inferno', norm=norm)  # cmap='cubehelix_r')
-    plt.show()
 
 
 def flatten_cube(image_cube):

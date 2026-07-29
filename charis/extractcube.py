@@ -92,6 +92,14 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
     nonlinear_threshold : int, optional
         Count level (DN) above which a full non-linearity fit is performed
         (SPHERE only). Default 40000.
+
+        .. warning::
+           **Currently inert — revisit.** The saturation mask this threshold
+           defines was computed and then discarded; the dead computation was
+           removed in the 2.1.0 lint pass rather than left as a false signal
+           that the correction was applied. Nothing in the extraction reacts to
+           this parameter today. Either implement the non-linearity handling or
+           drop the parameter. See ISSUES/015.
     noisefac : float, optional
         Additional noise floor as a fraction of the count rate:
         ``var = readnoise + shotnoise + (noisefac * countrate)^2``.
