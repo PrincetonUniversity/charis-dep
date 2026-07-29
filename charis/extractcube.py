@@ -376,9 +376,9 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
 
     if instrument.instrument_name == 'SPHERE':
         inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
-        # Do not interpolate ivar: the analytic noise model for good pixels
-        # must not be contaminated by neighbours of bad pixels.  Zero bad
-        # pixels directly.
+        # ivar is not interpolated because doing so is wasted work, not because it
+        # would corrupt anything: sph_ifs_fix_badpix writes only inside the run of
+        # bad pixels it is repairing, and the next line overwrites exactly those.
         inImage.ivar[bpm.astype('bool')] = 0
     
     if dc_xtalk_correction and instrument.instrument_name == 'SPHERE':
@@ -418,7 +418,6 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             if instrument.instrument_name == 'SPHERE':
                 inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
                 inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
-                inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
                 inImage.ivar[bpm.astype('bool')] = 0
 
         header['preonly'] = (True, 'Preprocessing only, no cube extraction')
@@ -609,8 +608,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             if instrument.instrument_name == 'SPHERE':
                 inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)
                 inImage.ivar[good_pixel_mask] *= pixelflat[good_pixel_mask]**2
-                inImage.ivar = sph_ifs_fix_badpix(img=inImage.ivar, bpm=bpm)
-                inImage.ivar[bpm.astype('bool')] = 0  # inImage.ivar[bpm.astype('bool')] / 1.2
+                inImage.ivar[bpm.astype('bool')] = 0
 
         # If we did the crosstalk correction, we need to add the model
         # spectra back in and do a modified optimal extraction.

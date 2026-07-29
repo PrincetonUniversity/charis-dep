@@ -47,6 +47,11 @@ registration have all changed. Re-extract before combining old and new products.
 - **The static bad-lenslet definition is shared by both extraction paths** — `fit_spectra`
   previously omitted the `lensletflat < 0.7` term that `optext_spectra` applied.
 - **Improved localised `fitshift`**, and expanded `getcube` / `buildcalibration` docstrings.
+- **`ivar` is no longer interpolated before being zeroed at bad pixels.** All three sites in
+  `extractcube` now zero directly. No change to any delivered array — `sph_ifs_fix_badpix`
+  writes only inside the run of bad pixels it repairs, which the following line overwrites —
+  but the three sites had drifted apart and the surviving comment described a corruption that
+  does not occur ([#50](https://github.com/PrincetonUniversity/charis-dep/issues/50)).
 
 ### Fixed
 
