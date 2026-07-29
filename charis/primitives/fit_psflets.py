@@ -98,8 +98,32 @@ def _static_bad_lenslets(lensletflat):
         lensletflat < 0.7])
 
 
-def _smoothandmask_hexgeometry(datacube, neighbour_indices, ivar_threshold=8,
-                               ivar_mad_floor=0.02, min_neighbours=5):
+def _out_of_field_lenslets(lensletflat):
+    """Lenslets that lie outside the microlens field.
+
+    A subset of ``_static_bad_lenslets``: the padding sentinel ``1.`` and the corners the
+    microlens field does not reach (``0.``). Lenslets excluded only by ``lensletflat < 0.7``
+    are real but weak, and stay inside the field so their flux can be interpolated.
+
+    On the SPHERE YH flat the two sentinels together form a single border-connected region
+    that encloses no interior lenslet, so this test cannot punch a hole in the field.
+
+    Parameters
+    ----------
+    lensletflat : 2D array
+        Lenslet flat field.
+
+    Returns
+    -------
+    2D boolean array
+        True where the lenslet is outside the field.
+
+    """
+    return np.logical_or(lensletflat == 1., lensletflat == 0.)
+
+
+def _smoothandmask_hexgeometry(datacube, neighbour_indices, out_of_field=None,
+                               ivar_threshold=8, ivar_mad_floor=0.02, min_neighbours=5):
     """
     Set bad spectral measurements to an inverse variance of zero.
 
@@ -126,8 +150,15 @@ def _smoothandmask_hexgeometry(datacube, neighbour_indices, ivar_threshold=8,
     That is *not* cosmetic: ``resample_image_cube`` forms each output pixel as an
     area-weighted sum over roughly 2.4 lenslets, so a non-finite value here would propagate
     into the flux of every square pixel the lenslet touches, not merely into its inverse
-    variance. Lenslets outside the field are left alone, so the mask cannot grow the
-    footprint.
+    variance. The field therefore comes out with no non-finite flux anywhere inside it,
+    which is what lets a downstream footprint be inferred from the all-NaN border alone.
+
+    Lenslets outside the field keep their NaN and are never filled, so the mask cannot grow
+    the footprint. Which lenslets those are must come from ``out_of_field``, not from the
+    arrays: the extraction returns a small crosstalk flux for padding lenslets on the rim of
+    the field at some wavelengths and an exact zero at others, so a footprint inferred from
+    ``data == 0`` classifies the same lenslet differently at different wavelengths and leaves
+    NaN blocks inside the field.
 
     Parameters
     ----------
@@ -135,6 +166,10 @@ def _smoothandmask_hexgeometry(datacube, neighbour_indices, ivar_threshold=8,
         Containing 3D arrays data and ivar. Modified in place.
     neighbour_indices : list
         Neighbour indices per spaxel, as built by ``find_neighbour_indices``.
+    out_of_field : 2D boolean array, optional
+        True where a lenslet lies outside the microlens field, as built by
+        ``_out_of_field_lenslets``. Without it the footprint falls back to the lenslets
+        carrying an exact zero in both arrays, which is only exact away from the rim.
     ivar_threshold : float
         Robust standard deviations below the neighbour median at which to mask.
     ivar_mad_floor : float
@@ -151,10 +186,15 @@ def _smoothandmask_hexgeometry(datacube, neighbour_indices, ivar_threshold=8,
     flat_data = flatten_cube(datacube.data)
     flat_ivar = flatten_cube(datacube.ivar)
 
-    # A lenslet that was never extracted carries an exact zero in both arrays. Those sit
-    # outside the microlens field and must keep their value: filling them from their
-    # neighbours would enlarge the apparent footprint by a rim one lenslet deep.
-    in_field = ~np.logical_and(flat_data == 0., flat_ivar == 0.)
+    if out_of_field is None:
+        outside = np.logical_and(flat_data == 0., flat_ivar == 0.)
+        flat_data[outside] = np.nan
+        flat_ivar[outside] = np.nan
+    else:
+        outside_lenslet = np.asarray(out_of_field, dtype=bool).ravel()
+        flat_data[:, outside_lenslet] = np.nan
+        flat_ivar[:, outside_lenslet] = np.nan
+        outside = np.broadcast_to(outside_lenslet, flat_data.shape)
 
     flat_data[flat_data == 0.] = np.nan
     flat_ivar[flat_ivar == 0.] = np.nan
@@ -177,9 +217,16 @@ def _smoothandmask_hexgeometry(datacube, neighbour_indices, ivar_threshold=8,
 
     # A masked spaxel whose neighbours are all masked too keeps its extracted value; its
     # ivar of zero already marks it, and writing NaN would poison the resampled fluxes.
-    replaceable = np.logical_and.reduce([mask, in_field, np.isfinite(smoothed_data)])
+    replaceable = np.logical_and.reduce([mask, ~outside, np.isfinite(smoothed_data)])
     flat_ivar[mask] = 0
     flat_data[replaceable] = smoothed_data[replaceable]
+
+    # Nothing inside the field may stay non-finite. No lenslet is statically isolated, so
+    # this only fires where a whole neighbourhood is masked at one wavelength and there is
+    # no flux to interpolate from. Zero is neutral in the area-weighted resample, and the
+    # ivar of zero set above still marks the spaxel as carrying no information.
+    stranded = np.logical_and(~outside, ~np.isfinite(flat_data))
+    flat_data[stranded] = 0.
 
     datacube.data = deflatten_cube(flat_data)
     datacube.ivar = deflatten_cube(flat_ivar)
@@ -899,7 +946,10 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
             with open(neighbour_indices_path) as json_data:
                 neighbour_indices = json.load(json_data)
 
-            datacube = _smoothandmask_hexgeometry(datacube, neighbour_indices)
+            out_of_field = (_out_of_field_lenslets(lensletflat)
+                            if lensletflat is not None else None)
+            datacube = _smoothandmask_hexgeometry(
+                datacube, neighbour_indices, out_of_field=out_of_field)
 
     datacube.header['maskivar'] = (smoothandmask, 'Set poor ivar to 0, smoothed I for cosmetics')
 
@@ -1048,5 +1098,8 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
                 instrument.calibration_path_instrument, 'neighbour_indices.json')
             with open(neighbour_indices_path) as json_data:
                 neighbour_indices = json.load(json_data)
-            datacube = _smoothandmask_hexgeometry(datacube, neighbour_indices)
+            out_of_field = (_out_of_field_lenslets(lensletflat)
+                            if lensletflat is not None else None)
+            datacube = _smoothandmask_hexgeometry(
+                datacube, neighbour_indices, out_of_field=out_of_field)
     return datacube

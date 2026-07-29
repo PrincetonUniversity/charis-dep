@@ -40,7 +40,16 @@ registration have all changed. Re-extract before combining old and new products.
   error in a six-sample `mad_std` rather than defects. It is now a single one-sided pass with a
   scale floor and a minimum-neighbour requirement, masking 2.67 % per frame and stable frame to
   frame, at roughly a third of the runtime. `_smoothandmask_hexgeometry` lost its unused `good`
-  argument.
+  argument and gained `out_of_field`.
+- **The microlens footprint is taken from the lenslet flat, not inferred from the data.** Padding
+  lenslets on the rim of the field carry a small crosstalk flux at some wavelengths and an exact
+  zero at others, so a footprint inferred from `data == 0` classified the same lenslet differently
+  at different wavelengths: on 51 Eri OBS_H it left 315 lenslets NaN in one contiguous wavelength
+  block and interpolated at the rest, putting 300–480 NaN pixels per channel *inside* the
+  resampled footprint. `_out_of_field_lenslets` uses the flat's two sentinels instead, and any
+  in-field spaxel that still cannot be interpolated falls back to zero flux with `ivar == 0`.
+  No non-finite flux now survives inside the field, so a downstream footprint can be inferred
+  from the all-NaN border alone. Masking rate and runtime are unchanged.
 - **`suppressrn` is force-disabled for SPHERE**, with a warning — the ESO DRS CDS already removes
   channel-correlated read noise, so applying it again degraded SPHERE extractions. The parameter
   default is unchanged for CHARIS ([#36](https://github.com/PrincetonUniversity/charis-dep/issues/36)).

@@ -10,6 +10,7 @@ import pytest
 from charis.image.image import Image
 from charis.image.image_geometry import count_finite_hex_cube
 from charis.primitives.fit_psflets import (
+    _out_of_field_lenslets,
     _smoothandmask_hexgeometry,
     _static_bad_lenslets,
 )
@@ -133,6 +134,72 @@ def test_out_of_field_lenslets_are_not_filled_from_their_neighbours():
     result = _run(cube)
     assert np.all(np.isnan(result.data[:, 0, :]))
     assert np.all(np.isfinite(result.data[:, 1:, :]))
+
+
+def _out_of_field_top_row():
+    """Top row of the grid outside the field, everything else inside."""
+    outside = np.zeros((SIZE, SIZE), dtype=bool)
+    outside[0, :] = True
+    return outside
+
+
+def _rim_cube():
+    """Out-of-field top row whose flux is an exact zero at every wavelength but one."""
+    cube = _cube()
+    cube.data[:, 0, :] = 0.0
+    cube.data[1, 0, :] = 0.3          # crosstalk from the neighbouring microspectra
+    cube.ivar[:, 0, :] = 0.0
+    return cube
+
+
+def test_explicit_footprint_masks_the_rim_even_where_it_carries_flux():
+    """The rim's crosstalk flux must not make it look in-field at some wavelengths.
+
+    This is the case an inferred footprint gets wrong: an exact zero at one wavelength and
+    a small nonzero at the next, so the same lenslet flips between filled and NaN.
+    """
+    inferred = _run(_rim_cube())
+    assert np.isnan(inferred.data[0, 0, 0]), "exact zero is inferred out-of-field"
+    assert np.isfinite(inferred.data[1, 0, 0]), "nonzero rim flux is inferred in-field"
+
+    explicit = _run(_rim_cube(), out_of_field=_out_of_field_top_row())
+    assert np.all(np.isnan(explicit.data[:, 0, :])), "the whole rim stays out-of-field"
+    assert np.all(explicit.ivar[:, 0, :] == 0)
+
+
+def test_no_nan_survives_inside_the_field():
+    """The guarantee downstream relies on: NaN only ever marks the out-of-field border."""
+    cube = _cube()
+    cube.data[:, 0, :] = 0.0
+    cube.ivar[:, 0, :] = 0.0
+    cube.data[0, 4, 4] = np.nan                    # isolated defect
+    cube.data[1, 2:5, 2:5] = np.nan                # whole neighbourhood gone
+    cube.ivar[1, 2:5, 2:5] = 0.0
+
+    result = _run(cube, out_of_field=_out_of_field_top_row())
+    in_field = result.data[:, 1:, :]
+    assert np.all(np.isfinite(in_field)), "no NaN may remain inside the field"
+    assert np.all(np.isnan(result.data[:, 0, :])), "the border keeps its NaN"
+    assert result.data[0, 4, 4] == pytest.approx(10.0), "isolated defect is interpolated"
+    assert np.all(result.ivar[1, 2:5, 2:5] == 0), "unfillable spaxels still carry ivar 0"
+
+
+def test_stranded_spaxels_fall_back_to_zero_not_nan():
+    """Zero is neutral in the area-weighted resample; NaN would poison every square."""
+    cube = _cube()
+    cube.data[0] = np.nan
+    cube.ivar[0] = 0.0
+    result = _run(cube, out_of_field=np.zeros((SIZE, SIZE), dtype=bool))
+    assert np.all(result.data[0] == 0.0)
+    assert np.all(result.ivar[0] == 0)
+
+
+def test_out_of_field_lenslets_are_a_subset_of_the_static_bad_ones():
+    """Weak but real lenslets stay in the field so their flux can be interpolated."""
+    flat = np.array([[0.0, 1.0, 0.5, 0.8, 1.02]])
+    assert np.array_equal(_out_of_field_lenslets(flat),
+                          np.array([[True, True, False, False, False]]))
+    assert np.all(_static_bad_lenslets(flat)[_out_of_field_lenslets(flat)])
 
 
 def test_idempotent():
