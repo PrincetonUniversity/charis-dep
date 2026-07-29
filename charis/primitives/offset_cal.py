@@ -2,6 +2,7 @@
 
 import logging
 import multiprocessing
+import os
 from builtins import range
 from dataclasses import dataclass
 
@@ -110,6 +111,34 @@ class FitshiftResult:
             fits.ImageHDU(self.status_arr, name='STATUS'),
         ])
         return hdul
+
+    def write_diagnostics(self, path) -> bool:
+        """Write the QC diagnostics to ``path``, never raising.
+
+        These FITS diagnostics are QC-only and are never read back by the
+        pipeline; the fitshift *result* (:attr:`psflets`) is already in hand
+        before this runs. A write failure must therefore never be allowed to
+        propagate and discard the successful shift fit, so every error here is
+        logged and swallowed.
+
+        Parameters
+        ----------
+        path : str
+            Destination FITS path. Missing parent directories are created.
+
+        Returns
+        -------
+        bool
+            ``True`` if the file was written, ``False`` if the write failed.
+        """
+        try:
+            os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+            self.to_fits().writeto(path, overwrite=True)
+        except Exception as e:
+            log.warning("fitshift diagnostics not written (%s)", e)
+            return False
+        log.info("fitshift: diagnostics written to %s", path)
+        return True
 
 
 def _fit_parabola(corrvals, offsets):

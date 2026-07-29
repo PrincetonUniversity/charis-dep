@@ -44,6 +44,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             dc_xtalk_correction=False,
             linear_wavelength=False,
             suppressrn=True, fitshift=True, fitshift_nchunks=None,
+            save_fitshift_diag=False,
             flatfield=True, smoothandmask=True,
             minpct=70, fitbkgnd=True, saveresid=False,
             maxcpus=multiprocessing.cpu_count(),
@@ -144,6 +145,13 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         the cost of lower signal-to-noise per chunk. Default None uses 16 for
         CHARIS (128 px chunks on a 2048×2048 detector) and 1 for SPHERE (a
         single image-wide shift).
+    save_fitshift_diag : bool, optional
+        Write the QC diagnostics of the shift fit (interpolated shift map,
+        per-chunk shifts and status codes) to
+        ``{outdir}/{basename}_fitshift_diag.fits``. Debugging/QC only; never
+        read back by the pipeline, and its write is fully decoupled from the
+        fit — a failed write is logged and ignored, never disabling shifting.
+        Default False.
     flatfield : bool, optional
         Apply the pixel flat and lenslet flat corrections. Default True.
     smoothandmask : bool, optional
@@ -491,16 +499,18 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                 fitshift_result = primitives.calc_offset(
                     psflets, inImage, offsets, dx=dx, maxcpus=maxcpus)
                 psflets = fitshift_result.psflets
-                if saveresid:
-                    diag_path = re.sub(
-                        r'\.fits$', '_fitshift_diag.fits',
-                        os.path.join(outdir, os.path.basename(filename)))
-                    fitshift_result.to_fits().writeto(diag_path, overwrite=True)
-                    log.info("fitshift: diagnostics written to %s", diag_path)
             except Exception as e:
                 log.warning(
                     "fitshift failed (%s), continuing without shift fitting.", e)
                 fitshift = False
+            else:
+                # QC-only diagnostics, off by default; write_diagnostics never
+                # raises, so a failed write cannot discard the shift fit above.
+                if save_fitshift_diag:
+                    diag_path = re.sub(
+                        r'\.fits$', '_fitshift_diag.fits',
+                        os.path.join(outdir, os.path.basename(filename)))
+                    fitshift_result.write_diagnostics(diag_path)
         if not fitshift:
             psflets = fits.getdata(os.path.join(calibdir, 'polychromeR%d.fits' % (R2)))
 
