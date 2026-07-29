@@ -572,6 +572,28 @@ def mad_std_hex_cube(flat_cube, index_list):
     return surrounding_robust_std_dev
 
 
+def count_finite_hex_cube(flat_cube, index_list):
+    """Number of finite neighbours available to each spaxel at each wavelength.
+
+    Parameters
+    ----------
+    flat_cube : array
+        Flattened cube (wavelength * spaxel).
+    index_list : list
+        Neighbour indices per spaxel, as built by ``find_neighbour_indices``.
+
+    Returns
+    -------
+    array
+        Integer count, same shape as ``flat_cube``.
+
+    """
+    counts = np.zeros_like(flat_cube, dtype=int)
+    for pix_index, neighbour_mask in enumerate(index_list):
+        counts[:, pix_index] = np.isfinite(flat_cube[:, neighbour_mask]).sum(axis=1)
+    return counts
+
+
 def mask_outliers_from_absolute_deviation(flat_cube, sigma=12):
     good_pixel = flat_cube > 0.
     for wave_idx in range(len(flat_cube)):
