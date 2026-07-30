@@ -1,13 +1,6 @@
-__version__ = "2.0.1"
+__version__ = "2.1.0"
 
-from . import instruments
-from . import buildcalibrations
-from . import extractcube
-from . import image
-from . import parallel
-from . import primitives
-from . import tools
-from . import utr
+from . import buildcalibrations, extractcube, image, instruments, parallel, primitives, tools, utr
 
 __all__ = [
     'instruments',

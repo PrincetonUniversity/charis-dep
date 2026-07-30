@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 
-from builtins import range
-from builtins import object
-from past.utils import old_div
 import copy
-import glob
 import logging
 import os
 import re
-
-from pdb import set_trace
+from builtins import object, range
 
 import numpy as np
 from astropy.io import fits
+from past.utils import old_div
 from scipy import interpolate, ndimage, optimize, signal
 
 log = logging.getLogger('main')
@@ -341,7 +337,6 @@ class PSFLets(object):
         y = np.zeros(x.shape)
         nlam = np.zeros(lenslet_ix.shape, int)
         lam_out = np.zeros(y.shape)
-        good = np.zeros(lenslet_ix.shape)
 
         for ix in range(lenslet_ix.shape[0]):
             for iy in range(lenslet_ix.shape[1]):
@@ -707,7 +702,6 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
         iy_arr = np.arange(0, 25, 0.5)
         log.info("Initializing PSFlet location transformation coefficients")
         init = True
-        nlam = 1
     else:
         ix_arr = np.arange(-3.0, 3.05, 0.2)
         iy_arr = np.arange(-3.0, 3.05, 0.2)
@@ -716,10 +710,7 @@ def locatePSFlets(inImage, instrument, polyorder=2, sig=0.7, coef=None,
                 coef = coef.tolist()
             except Exception:
                 raise TypeError("Coef in locatePSFlets must be of a format convertible to a list.")
-        if isinstance(coef[0], list):
-            nlam = len(coef)
-        else:
-            nlam = 1
+        if not isinstance(coef[0], list):
             coef = [coef]
         log.info("Initializing transformation coefficients with previous values")
         init = False

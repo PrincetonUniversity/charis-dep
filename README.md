@@ -25,6 +25,8 @@ The **CHARIS pipeline** is the reference tool for transforming raw detector read
 7. [Contributing](#contributing)  
 8. [License](#license)
 
+Release notes live in [`CHANGELOG.md`](./CHANGELOG.md).
+
 ---
 
 ## Quick Start
@@ -69,6 +71,12 @@ For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow)
    git clone https://github.com/PrincetonUniversity/charis-dep.git
    cd charis-dep && pip install -e .
    ```
+   Or with [pixi](https://pixi.sh), which is what the project is developed against:
+   ```bash
+   pixi install -e dev      # test + notebook tooling
+   pixi run -e test test    # pytest
+   pixi run -e test lint    # ruff check charis/
+   ```
 
 ---
 
@@ -90,7 +98,7 @@ For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow)
 | Step | Command | Notes |
 |------|---------|-------|
 | **1. Build calibration** | `buildcal <monochromatic_flat.fits> <λ[nm]> <mode>` | Accepts optional dark/background frames. If wavelength & mode are encoded in the header, omit them. |
-| **2. Configure extraction** | Copy & edit [`sample.ini`](./sample.ini) | Tune bad-pixel masks, cube size, etc. |
+| **2. Configure extraction** | Copy & edit [`charis/sample.ini`](./charis/sample.ini) | Tune bad-pixel masks, cube size, etc. |
 | **3. Extract cube** | `extractcube <raw_reads.fits> <config.ini>` | Generates a 4‑HDU FITS: header · cube · inverse-variance · raw-header. |
 
 ### SPHERE/IFS Workflow
@@ -118,8 +126,7 @@ If this pipeline contributes to your research, please cite both foundational pap
 
 - **[Brandt et al. 2017](https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract)**, *JATIS* 3, 4, 8002  
   DOI: 10.1117/1.JATIS.3.4.048002
-- **[Samland et al. 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...668A..84S/abstract)**, *A&A* 675, A13  
-  DOI: 10.1051/0004-6361/202346758
+- **[Samland et al. 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...668A..84S/abstract)**, *A&A* 668, A84
 
 The ADS entries are linked in the bibliography below.
 
@@ -128,9 +135,10 @@ The ADS entries are linked in the bibliography below.
 ## Contributing
 We welcome issues & PRs—large or small.
 
-1. **Fork** → **create a feature branch** → **commit** → **open a PR**.  
-2. Run `pre-commit run --all-files` to satisfy lint & formatting hooks.  
-3. New here? Open an issue or email [Tim Brandt](mailto:timothy.d.brandt@gmail.com) or [Matthias Samland](mailto:matthias.samland@gmail.com) for guidance.
+1. **Fork** → **create a feature branch** → **commit** → **open a PR** against `devel`.  
+2. Run `pixi run -e test test` and `pixi run -e test lint` before opening the PR.  
+3. Note user-visible changes in [`CHANGELOG.md`](./CHANGELOG.md) under `[Unreleased]`.  
+4. New here? Open an issue or email [Tim Brandt](mailto:timothy.d.brandt@gmail.com) or [Matthias Samland](mailto:matthias.samland@gmail.com) for guidance.
 
 ---
 
@@ -141,4 +149,4 @@ This project is distributed under the **BSD-3-Clause License**—see [`LICENSE`]
 
 ### Bibliography
 * [Brandt, T. D., *et al.* 2017](https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract), "CHARIS Data Reduction Pipeline", **JATIS**, 3, 048002  
-* [Samland, M., *et al.* 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...668A..84S/abstract), "A New SPHERE IFS Pipeline Based on CHARIS", **A&A**, 675, A13
+* [Samland, M., *et al.* 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...668A..84S/abstract), "A New SPHERE IFS Pipeline Based on CHARIS", **A&A**, 668, A84

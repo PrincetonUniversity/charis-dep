@@ -1,5 +1,5 @@
-from builtins import object
 import multiprocessing
+from builtins import object
 
 ######################################################################
 # Controllers for parallel execution, one per worker.
@@ -15,7 +15,6 @@ class Consumer(multiprocessing.Process):
         self.result_queue = result_queue
 
     def run(self):
-        proc_name = self.name
         while True:
             next_task = self.task_queue.get()
             if next_task is None:

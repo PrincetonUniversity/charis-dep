@@ -4,17 +4,16 @@ import json
 import logging
 import multiprocessing
 import os
-import time
 from builtins import range
-from pdb import set_trace
 
 import numpy as np
 from astropy.io import fits
 from past.utils import old_div
-from scipy import interpolate, ndimage, signal, stats
+from scipy import ndimage, signal, stats
 
 from charis.image.image import Image
 from charis.image.image_geometry import (
+    count_finite_hex_cube,
     deflatten_cube,
     flatten_cube,
     mad_std_hex_cube,
@@ -74,90 +73,163 @@ def _smoothandmask(datacube, good):
     return datacube
 
 
-def _smoothandmask_hexgeometry(datacube, good, neighbour_indices,
-                               ivar_threshold=10, data_threshold=5):
-    """
-    Set bad spectral measurements to an inverse variance of zero. The
-    threshold for effectively discarding data is 20 robust standard deviations
-    separation from the median of variance of adjacent hexagons or 5 robust
-    standard deviations from the median of adjacent flux values.
-    This rejection is done separately at each wavelength.
+def _static_bad_lenslets(lensletflat):
+    """Lenslets excluded by the lenslet flat itself.
 
-    Then median of adjacent values to replace the
-    values of the masked spectral measurements.  Note that this last
-    step is purely cosmetic as the inverse variances are, in any case,
-    zero.
+    ``lensletflat == 1.`` marks the padding outside the microlens field. That sentinel is
+    only unambiguous because no measured flat value lands exactly on 1.0 -- over a thousand
+    good lenslets sit within 1e-3 of it -- so rebuilding, rounding or downcasting the flat
+    would silently mask real lenslets.
 
     Parameters
     ----------
-    datacube: image instance
-            containing 3D arrays data and ivar
-    good:     2D array
-            nonzero = good lenslet
+    lensletflat : 2D array
+        Lenslet flat field.
+
+    Returns
+    -------
+    2D boolean array
+        True where the lenslet must not be used.
+
+    """
+    return np.logical_or.reduce([
+        lensletflat == 0.,
+        lensletflat == 1.,
+        lensletflat < 0.7])
+
+
+def _out_of_field_lenslets(lensletflat):
+    """Lenslets that lie outside the microlens field.
+
+    A subset of ``_static_bad_lenslets``: the padding sentinel ``1.`` and the corners the
+    microlens field does not reach (``0.``). Lenslets excluded only by ``lensletflat < 0.7``
+    are real but weak, and stay inside the field so their flux can be interpolated.
+
+    On the SPHERE YH flat the two sentinels together form a single border-connected region
+    that encloses no interior lenslet, so this test cannot punch a hole in the field.
+
+    Parameters
+    ----------
+    lensletflat : 2D array
+        Lenslet flat field.
+
+    Returns
+    -------
+    2D boolean array
+        True where the lenslet is outside the field.
+
+    """
+    return np.logical_or(lensletflat == 1., lensletflat == 0.)
+
+
+def _smoothandmask_hexgeometry(datacube, neighbour_indices, out_of_field=None,
+                               ivar_threshold=8, ivar_mad_floor=0.02, min_neighbours=5):
+    """
+    Set bad spectral measurements to an inverse variance of zero.
+
+    A lenslet is masked when its inverse variance falls ``ivar_threshold`` robust standard
+    deviations *below* the median of its hexagonal neighbours, evaluated separately at each
+    wavelength. Only deficits mask: on a 256-frame SPHERE sequence the low side outnumbers
+    the high side 45000 to 1400, so upward excursions are sampling noise rather than defects.
+
+    Two guards keep the small neighbour sample from dominating the decision. The robust
+    scale is floored at ``ivar_mad_floor`` times the neighbour median, because in the flat,
+    read-noise-dominated outer field the six-sample ``mad_std`` collapses and a nominal
+    10-sigma cut fires at an 8% deviation. And spaxels with fewer than ``min_neighbours``
+    usable neighbours are exempt from the test entirely: a scale estimated from three or
+    four samples carries no information, and the field rim was previously culled at ~19%,
+    matching the rate expected from pure noise.
+
+    Flux is deliberately not tested. A flux criterion scaled by the neighbour ``mad_std``
+    flags spaxels that deviate by a median of 0.85 of their own measurement noise -- about
+    95% of its flags are sampling noise -- and one scaled by the measurement's own sigma
+    fires on the stellar core, where the hexagonal median cannot follow the gradient, not on
+    defects.
+
+    Masked spaxels inside the microlens field take the median of their neighbours' flux.
+    That is *not* cosmetic: ``resample_image_cube`` forms each output pixel as an
+    area-weighted sum over roughly 2.4 lenslets, so a non-finite value here would propagate
+    into the flux of every square pixel the lenslet touches, not merely into its inverse
+    variance. The field therefore comes out with no non-finite flux anywhere inside it,
+    which is what lets a downstream footprint be inferred from the all-NaN border alone.
+
+    Lenslets outside the field keep their NaN and are never filled, so the mask cannot grow
+    the footprint. Which lenslets those are must come from ``out_of_field``, not from the
+    arrays: the extraction returns a small crosstalk flux for padding lenslets on the rim of
+    the field at some wavelengths and an exact zero at others, so a footprint inferred from
+    ``data == 0`` classifies the same lenslet differently at different wavelengths and leaves
+    NaN blocks inside the field.
+
+    Parameters
+    ----------
+    datacube : image instance
+        Containing 3D arrays data and ivar. Modified in place.
+    neighbour_indices : list
+        Neighbour indices per spaxel, as built by ``find_neighbour_indices``.
+    out_of_field : 2D boolean array, optional
+        True where a lenslet lies outside the microlens field, as built by
+        ``_out_of_field_lenslets``. Without it the footprint falls back to the lenslets
+        carrying an exact zero in both arrays, which is only exact away from the rim.
+    ivar_threshold : float
+        Robust standard deviations below the neighbour median at which to mask.
+    ivar_mad_floor : float
+        Lower bound on the robust scale, as a fraction of the neighbour median.
+    min_neighbours : int
+        Usable neighbours required before the test is applied. Above 6 it disables the
+        test, leaving only non-finite values masked.
 
     Returns
     -------
     datacube: input datacube modified in place
 
     """
-
     flat_data = flatten_cube(datacube.data)
     flat_ivar = flatten_cube(datacube.ivar)
-    # flat_good = good.reshape(-1)
+
+    if out_of_field is None:
+        outside = np.logical_and(flat_data == 0., flat_ivar == 0.)
+        flat_data[outside] = np.nan
+        flat_ivar[outside] = np.nan
+    else:
+        outside_lenslet = np.asarray(out_of_field, dtype=bool).ravel()
+        flat_data[:, outside_lenslet] = np.nan
+        flat_ivar[:, outside_lenslet] = np.nan
+        outside = np.broadcast_to(outside_lenslet, flat_data.shape)
 
     flat_data[flat_data == 0.] = np.nan
     flat_ivar[flat_ivar == 0.] = np.nan
 
-    # 1st iteration
-    smoothed_data = median_filter_hex_cube(
-        flat_data, neighbour_indices)
     smoothed_ivar = median_filter_hex_cube(flat_ivar, neighbour_indices)
-    surrounding_data_robust_std_dev = mad_std_hex_cube(
-        flat_data, neighbour_indices)
-    surrounding_ivar_robust_std_dev = mad_std_hex_cube(
-        flat_ivar, neighbour_indices)
+    surrounding_ivar_robust_std_dev = mad_std_hex_cube(flat_ivar, neighbour_indices)
+    usable_neighbours = count_finite_hex_cube(flat_ivar, neighbour_indices)
+
+    scale = np.maximum(surrounding_ivar_robust_std_dev,
+                       ivar_mad_floor * np.abs(smoothed_ivar))
+    with np.errstate(invalid='ignore', divide='ignore'):
+        deviation = (flat_ivar - smoothed_ivar) / scale
+        mask_ivar = np.logical_and(deviation < -ivar_threshold,
+                                   usable_neighbours >= min_neighbours)
 
     mask_nan = ~np.logical_and(np.isfinite(flat_ivar), np.isfinite(flat_data))
-    mask_ivar = np.abs(
-        flat_ivar - smoothed_ivar) / (surrounding_ivar_robust_std_dev + 1e-100) > ivar_threshold
-    mask_data = np.abs(
-        flat_data - smoothed_data) / (surrounding_data_robust_std_dev + 1e-100) > data_threshold
+    mask = np.logical_or(mask_ivar, mask_nan)
 
-    mask = np.logical_or.reduce([mask_ivar, mask_data, mask_nan])
+    smoothed_data = median_filter_hex_cube(flat_data, neighbour_indices)
 
-    # Remove bad extractions from smoothing and median
-    flat_ivar[mask] = np.nan
-    flat_data[mask] = np.nan
+    # A masked spaxel whose neighbours are all masked too keeps its extracted value; its
+    # ivar of zero already marks it, and writing NaN would poison the resampled fluxes.
+    replaceable = np.logical_and.reduce([mask, ~outside, np.isfinite(smoothed_data)])
+    flat_ivar[mask] = 0
+    flat_data[replaceable] = smoothed_data[replaceable]
 
-    # 2st iteration
-    smoothed_data = median_filter_hex_cube(
-        flat_data, neighbour_indices)
-    smoothed_ivar = median_filter_hex_cube(flat_ivar, neighbour_indices)
-    surrounding_data_robust_std_dev = mad_std_hex_cube(
-        flat_data, neighbour_indices)
-    surrounding_ivar_robust_std_dev = mad_std_hex_cube(
-        flat_ivar, neighbour_indices)
+    # Nothing inside the field may stay non-finite. No lenslet is statically isolated, so
+    # this only fires where a whole neighbourhood is masked at one wavelength and there is
+    # no flux to interpolate from. Zero is neutral in the area-weighted resample, and the
+    # ivar of zero set above still marks the spaxel as carrying no information.
+    stranded = np.logical_and(~outside, ~np.isfinite(flat_data))
+    flat_data[stranded] = 0.
 
-    mask_nan = ~np.logical_and(np.isfinite(flat_ivar), np.isfinite(flat_data))
-
-    mask_ivar = np.abs(
-        flat_ivar - smoothed_ivar) / (surrounding_ivar_robust_std_dev + 1e-100) > ivar_threshold
-    mask_ivar = np.logical_or(~np.isfinite(flat_ivar), mask_ivar)
-    mask_data = np.abs(
-        flat_data - smoothed_data) / (surrounding_data_robust_std_dev + 1e-100) > data_threshold
-    mask_data = np.logical_or(~np.isfinite(flat_data), mask_data)
-
-    mask = np.logical_or.reduce([mask_ivar, mask_data, mask_nan])
-
-    # Replace values
-    flat_ivar[mask] = 1e-15
-    flat_data[mask] = smoothed_data[mask]
-
-    data = deflatten_cube(flat_data)
-    ivar = deflatten_cube(flat_ivar)
-
-    datacube.data = data
-    datacube.ivar = ivar
+    datacube.data = deflatten_cube(flat_data)
+    datacube.ivar = deflatten_cube(flat_ivar)
 
     return datacube
 
@@ -231,7 +303,7 @@ def _trimmed_mean(arr, n=2, axis=None, maskval=0):
         return np.mean(arr_sorted, axis=axis)
 
 
-def _get_corrnoise(resid, ivar, minpct=70):
+def _get_corrnoise(resid, ivar, minpct=70, channel_width=64):
     """
     Private function that returns the correlated noise
 
@@ -241,6 +313,15 @@ def _get_corrnoise(resid, ivar, minpct=70):
         Residuals of the psflet fit
     ivar: ndarray
         Inverse variance of the data
+    minpct: int, optional
+        Minimum percentage of pixels to use when estimating the correlated
+        read noise.  Default 70.
+    channel_width: int, optional
+        Width in pixels of each readout channel.  Both CHARIS and SPHERE IFS
+        use Hawaii-2RG detectors with 32 channels of 64 pixels each
+        (2048 / 32 = 64).  This parameter is instrument-specific and should
+        be updated if a detector with a different channel geometry is added.
+        Default 64.
 
     Returns
     -------
@@ -250,7 +331,7 @@ def _get_corrnoise(resid, ivar, minpct=70):
 
     mask = np.zeros(resid.shape)
     corrnoise = np.zeros(resid.shape)
-    dx = 64
+    dx = channel_width
 
     var_ratios = np.zeros((resid.shape[0], resid.shape[1]))
     for i in range(0, resid.shape[1] // dx):
@@ -298,17 +379,33 @@ def _get_corrnoise(resid, ivar, minpct=70):
     return corrnoise, pctpix
 
 
-def _recalc_ivar(data, ivar):
+def _recalc_ivar(data, ivar, channel_width=64):
     """
-    Private function to recalculate the inverse variance
+    Private function to recalculate the inverse variance after correlated
+    read-noise suppression.
+
+    Compares the empirical read noise measured from the reference rows
+    (first 4 rows) to the modelled read noise in ivar, then applies a
+    damped correction (factor 0.5) to the variance across the full channel.
 
     Parameters
     ----------
+    data: ndarray
+        Detector image after correlated noise subtraction (used to measure
+        empirical read noise from reference rows).
+    ivar: ndarray
+        Current inverse variance array to be updated.
+    channel_width: int, optional
+        Width in pixels of each readout channel.  Both CHARIS and SPHERE IFS
+        use Hawaii-2RG detectors with 32 channels of 64 pixels each
+        (2048 / 32 = 64).  This parameter is instrument-specific and should
+        be updated if a detector with a different channel geometry is added.
+        Default 64.
     """
 
-    dx = 64
+    dx = channel_width
     var = old_div(1, (ivar + 1e-100))
-    for i in range(32):
+    for i in range(data.shape[1] // dx):
         rdnoise_old = np.sqrt(np.median(var[:4, i * dx:(i + 1) * dx]))
         rdnoise_new = np.std(np.sort(data[:4, i * dx:(i + 1) * dx])[1:-1])
         var[:, i * dx:(i + 1) * dx] += 0.5 * (rdnoise_new**2 - rdnoise_old**2)
@@ -831,7 +928,7 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
     datacube = Image(data=coefs, ivar=1. / cov, header=header)
 
     if lensletflat is not None:
-        badlenslets = np.logical_or(lensletflat == 0., lensletflat == 1.)
+        badlenslets = _static_bad_lenslets(lensletflat)
         datacube.data[:, ~badlenslets] /= lensletflat[~badlenslets]
         datacube.ivar[:, ~badlenslets] *= lensletflat[~badlenslets]**2
     else:
@@ -844,15 +941,15 @@ def fit_spectra(im, psflets, lam, x, y, good, instrument,
                 datacube, good)
         elif instrument.instrument_name == 'SPHERE':
             datacube.ivar[:, badlenslets] = 0
-            good[badlenslets] = 0
             neighbour_indices_path = os.path.join(
                 instrument.calibration_path_instrument, 'neighbour_indices.json')
             with open(neighbour_indices_path) as json_data:
                 neighbour_indices = json.load(json_data)
 
-            datacube = _smoothandmask_hexgeometry(datacube,
-                                                  good,
-                                                  neighbour_indices)
+            out_of_field = (_out_of_field_lenslets(lensletflat)
+                            if lensletflat is not None else None)
+            datacube = _smoothandmask_hexgeometry(
+                datacube, neighbour_indices, out_of_field=out_of_field)
 
     datacube.header['maskivar'] = (smoothandmask, 'Set poor ivar to 0, smoothed I for cosmetics')
 
@@ -985,10 +1082,7 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
     datacube = Image(data=coefs, ivar=tot_ivar, header=header)
 
     if lensletflat is not None:
-        badlenslets = np.logical_or.reduce([
-            lensletflat == 0.,
-            lensletflat == 1.,
-            lensletflat < 0.7])
+        badlenslets = _static_bad_lenslets(lensletflat)
         datacube.data[:, ~badlenslets] /= lensletflat[~badlenslets]
         datacube.ivar[:, ~badlenslets] *= lensletflat[~badlenslets]**2
     else:
@@ -1000,10 +1094,12 @@ def optext_spectra(im, PSFlet_tool, lam, instrument, delt_x=5, lensletflat=None,
             datacube = _smoothandmask(datacube, good)
         elif instrument.instrument_name == 'SPHERE':
             datacube.ivar[:, badlenslets] = 0.
-            good[badlenslets] = 0.
             neighbour_indices_path = os.path.join(
                 instrument.calibration_path_instrument, 'neighbour_indices.json')
             with open(neighbour_indices_path) as json_data:
                 neighbour_indices = json.load(json_data)
-            datacube = _smoothandmask_hexgeometry(datacube, good, neighbour_indices)
+            out_of_field = (_out_of_field_lenslets(lensletflat)
+                            if lensletflat is not None else None)
+            datacube = _smoothandmask_hexgeometry(
+                datacube, neighbour_indices, out_of_field=out_of_field)
     return datacube

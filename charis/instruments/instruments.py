@@ -1,9 +1,10 @@
 import os
+
 # from abc import ABCMeta, abstractmethod, abstractproperty
 from builtins import input, object
+from importlib.resources import as_file, files
 
 import numpy as np
-from importlib.resources import as_file, files
 from astropy import units as u
 from astropy.coordinates import EarthLocation
 

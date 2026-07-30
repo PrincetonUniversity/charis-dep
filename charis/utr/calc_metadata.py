@@ -1,6 +1,5 @@
 import collections
 import re
-import time
 import warnings
 from builtins import str
 
@@ -12,6 +11,7 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.time import Time
 from astropy.utils import iers
+
 from charis.tools import compute_angles, compute_times
 
 iers.Conf.iers_auto_url.set('ftp://cddis.gsfc.nasa.gov/pub/products/iers/finals2000A.all')
@@ -118,7 +118,10 @@ def header_dataframe(filename):
 
     return frames_info, header_table
 
-from astropy.utils import iers    #importing iers to pull The International Earth Rotation and Reference Systems Service data for WCS/PA determination
+from astropy.utils import (  # noqa: E402  (kept below the module body: the URL override must run at import)
+    iers,  # pulls IERS data for WCS/PA determination
+)
+
 iers.Conf.iers_auto_url.set('https://datacenter.iers.org/data/9/finals2000A.all') #force astropy to point here
 
 #possible work-around of ssl certificate problems with iers

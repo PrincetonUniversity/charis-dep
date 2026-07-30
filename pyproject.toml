@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "charis"
-version = "2.0.1"
+version = "2.1.0"
 description = "Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"

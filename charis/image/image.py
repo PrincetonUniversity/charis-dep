@@ -2,7 +2,6 @@ import logging
 from builtins import object, str
 from datetime import date
 
-import numpy as np
 from astropy.io import fits
 
 log = logging.getLogger("main")

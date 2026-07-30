@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 from builtins import range
-from past.utils import old_div
-from astropy.io import fits
+
 import numpy as np
-from scipy import signal, ndimage
+from past.utils import old_div
+from scipy import ndimage, signal
 
 
 def gethires(x, y, image, upsample=5, nsubarr=5, npix=13, renorm=True):

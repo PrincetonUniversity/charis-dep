@@ -1,25 +1,22 @@
 #!/usr/bin/env python
 
-import sys
 
 import numpy as np
 from astropy.io import fits
+from astropy.visualization import (
+    ImageNormalize,
+    ZScaleInterval,
+)
+from bokeh import palettes
 from bokeh.io import curdoc
 from bokeh.layouts import gridplot
+
 # from bokeh.models import LinearColorMapper  # , LogTicker, ColorBar
-from bokeh.models import ColumnDataSource, HoverTool, Range1d, Slider
+from bokeh.models import ColumnDataSource, HoverTool, Slider
 from bokeh.plotting import figure
 from bokeh.transform import linear_cmap
-from bokeh import palettes
-from bokeh.util.hex import axial_to_cartesian, hexbin
 
 from charis.image.hex import cartesian_to_axial
-
-import pandas as pd
-from astropy.visualization import (AsymmetricPercentileInterval,
-                                   ImageNormalize, LinearStretch, LogStretch,
-                                   MinMaxInterval, PercentileInterval,
-                                   ZScaleInterval)
 
 
 def crop_hex_cube(image_cube, i1=None, i2=None, j1=None, j2=None):
@@ -31,26 +28,6 @@ def crop_hex_cube(image_cube, i1=None, i2=None, j1=None, j2=None):
     y *= np.sqrt(3) / 2
 
     return x[i1:i2, j1:j2], y[i1:i2, j1:j2], image_cube[:, i1:i2, j1:j2]
-
-
-def prepare_slice(x, y, image_slice):
-
-    x, y, cells, image_data = set_points_cells(x, y, image_slice)
-
-    indx = np.where(image_data != 0)
-    cells = np.asarray(cells)[indx]
-    image_data = image_data[indx]
-
-    return x, y, cells, image_data
-
-
-def plot_slice(x, y, cells, image_data):
-    norm = ImageNormalize(image_data, interval=ZScaleInterval())
-    plt.figure()
-    plt.gca().set_aspect('equal')
-    plt.tripcolor(x[::-1], y, cells, facecolors=image_data,
-                  cmap='inferno', norm=norm)  # cmap='cubehelix_r')
-    plt.show()
 
 
 def flatten_cube(image_cube):
