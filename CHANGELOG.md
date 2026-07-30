@@ -35,7 +35,7 @@ registration have all changed. Re-extract before combining old and new products.
 ### Changed
 
 - **The SPHERE hexagonal bad-lenslet mask is one-sided on inverse variance**
-  ([`e255469`](https://github.com/PrincetonUniversity/charis-dep/commit/e255469)). The two-armed
+  ([`fd35ece`](https://github.com/PrincetonUniversity/charis-dep/commit/fd35ece)). The two-armed
   rule flagged a *different* 4.48 % of in-field spaxel-channels in every frame, most of it sampling
   error in a six-sample `mad_std` rather than defects. It is now a single one-sided pass with a
   scale floor and a minimum-neighbour requirement, masking 2.67 % per frame and stable frame to
@@ -65,13 +65,13 @@ registration have all changed. Re-extract before combining old and new products.
 ### Fixed
 
 - **Inverse variance is now propagated through the hexagon→square resampling**
-  ([`cfb0519`](https://github.com/PrincetonUniversity/charis-dep/commit/cfb0519),
+  ([`75f2246`](https://github.com/PrincetonUniversity/charis-dep/commit/75f2246),
   [#42](https://github.com/PrincetonUniversity/charis-dep/issues/42)).
   The flux-conserving operator was applied to `ivar` directly, which understated the noise by
   ~16× on SPHERE OBS_H and averaged masked-lenslet zeros away, so `ivar == 0` found nothing
   downstream and bad spaxels did not survive the resample.
 - **A failed `fitshift` diagnostic write no longer discards a successful shift fit**
-  ([`6413b79`](https://github.com/PrincetonUniversity/charis-dep/commit/6413b79)). The write sat
+  ([`d37f765`](https://github.com/PrincetonUniversity/charis-dep/commit/d37f765)). The write sat
   inside the `try` guarding the fit, so any I/O error silently reverted to unshifted PSFlets —
   corrupting astrometry for the sake of a never-read-back QC file.
 - **Background photon noise is included in `ivar`** after PCA background subtraction
