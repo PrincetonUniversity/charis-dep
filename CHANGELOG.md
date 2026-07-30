@@ -62,6 +62,16 @@ registration have all changed. Re-extract before combining old and new products.
   but the three sites had drifted apart and the surviving comment described a corruption that
   does not occur ([#50](https://github.com/PrincetonUniversity/charis-dep/issues/50)).
 
+### Removed
+
+- **`charis/test_utr.py`** — not a test but an old manual script, collected only because of its
+  name. It called a signature that no longer exists and read a hardcoded path, and its collection
+  error aborted the whole suite.
+- **Five uncalled `charis.tools.toolbox` functions** and **two unreachable `hexplot` helpers**, one
+  of which called a function that exists nowhere in the repository. Checked for external callers
+  against [spherical](https://github.com/m-samland/spherical) and
+  [trap](https://github.com/m-samland/trap) before removal.
+
 ### Fixed
 
 - **Inverse variance is now propagated through the hexagon→square resampling**
