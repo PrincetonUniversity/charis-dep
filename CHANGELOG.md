@@ -8,6 +8,15 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **A progress bar for the `extractcube` command**, one step per input file, shown only in an interactive terminal.
+  Based on [#23](https://github.com/PrincetonUniversity/charis-dep/pull/23) by @mileslucas.
+
+---
+
 ## [2.1.0] — 2026-07-29
 
 Substantial corrections to the SPHERE/IFS inverse-variance chain, plus a preprocessing-only mode

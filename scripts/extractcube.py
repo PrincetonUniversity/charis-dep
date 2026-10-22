@@ -16,6 +16,7 @@ import glob
 import configparser
 
 from astropy.io import fits
+from tqdm import tqdm
 
 
 def main() -> None:
@@ -147,7 +148,8 @@ def main() -> None:
     except Exception:
         verbose = False
 
-    for filename in filenames:
+    # disable=None turns the bar off when stderr is not a terminal (batch logs).
+    for filename in tqdm(filenames, desc="Extracting cubes", unit="file", disable=None):
         header = fits.getheader(filename)
         instrument, _, _ = instruments.instrument_from_data(
             header, calibration=False, interactive=False, verbose=False)
