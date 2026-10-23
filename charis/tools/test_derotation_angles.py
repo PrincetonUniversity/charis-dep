@@ -95,6 +95,19 @@ def test_field_tracking_does_not_rotate():
     assert np.allclose(frames["DEROT ANGLE"].to_numpy(), 10.0 - 1.75)
 
 
+def test_field_tracking_ifs_applies_the_instrument_offset_once():
+    """IFS field tracking: DEROT ANGLE = POSANG + instrument offset + true North (the old code added -100.48 twice)."""
+    frames = _hr8799_frames(pd.date_range("2016-11-18T00:39:23", "2016-11-18T02:08:26", periods=10))
+    frames["SEQ ARM"] = "IFS"
+    frames["INS4 DROT2 MODE"] = "SKY"
+    frames["INS4 DROT2 POSANG"] = 10.0
+
+    compute_angles(frames)
+
+    assert np.allclose(frames["PUPIL OFFSET"].to_numpy(), 10.0 - 100.48)
+    assert np.allclose(frames["DEROT ANGLE"].to_numpy(), 10.0 - 100.48 - 1.75)
+
+
 def test_field_tracking_drift_correction_does_not_flip():
     """PZ Tel 2014-08-05, four IRDIS files 3.5 min apart (headers from the archive).
 

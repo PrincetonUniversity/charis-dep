@@ -252,6 +252,8 @@ def buildcalibrations(inImage, instrument, inLam, mask=None,
     mutating the shared instrument object.
     """
 
+    primitives.warn_if_serial(ncpus, log)
+
     if order is None:
         order = instrument.wavelengthpolyorder
 

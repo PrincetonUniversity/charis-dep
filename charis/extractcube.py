@@ -330,6 +330,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
     calibration_path_mode = instrument.calibration_path_mode
 
     maxcpus = min(maxcpus, multiprocessing.cpu_count())
+    primitives.warn_if_serial(maxcpus, log)
 
     maskarr = None
     if mask:
