@@ -8,6 +8,15 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- The license metadata now matches the `LICENSE` file (`BSD-2-Clause-Views`).
+- A `test` extra (`pytest`, `ruff`) is available for running the test suite.
+
+---
+
 ## [2.1.0] — 2026-07-29
 
 Substantial corrections to the SPHERE/IFS inverse-variance chain, plus a preprocessing-only mode
