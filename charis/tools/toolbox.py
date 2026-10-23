@@ -222,6 +222,21 @@ def fit_background(image, components, bgmask, outlier_percentiles=[2, 98]):
     return bgfit, coef
 
 
+def _sexagesimal_to_deg(values, hours):
+    """ESO ``HHMMSS.s`` (``hours=True``) or ``DDMMSS.s`` numbers in degrees, e.g. ``INS4 DROT2 RA`` or ``INS4 DROT2 DEC``.
+
+    The sign is applied to the whole value, so ``-000530.0`` (-00d05m30s) stays negative.
+    """
+    values = np.asarray(values, dtype=float)
+    sign = np.where(values < 0, -1.0, 1.0)
+    values = np.abs(values)
+    whole = np.floor(values / 1e4)
+    minutes = np.floor((values - whole * 1e4) / 100.0)
+    seconds = values - whole * 1e4 - minutes * 100.0
+    degrees = sign * (whole + minutes / 60.0 + seconds / 3600.0)
+    return degrees * 15.0 if hours else degrees
+
+
 def parallatic_angle(ha, dec, geolat):
     '''
     Parallactic angle of a source in degrees
@@ -229,7 +244,7 @@ def parallatic_angle(ha, dec, geolat):
     Parameters
     ----------
     ha : array_like
-        Hour angle, in hours
+        Hour angle, in hours. Any branch is accepted; it is wrapped to [-12h, 12h).
 
     dec : float
         Declination, in degrees
@@ -242,6 +257,10 @@ def parallatic_angle(ha, dec, geolat):
     pa : array_like
         Parallactic angle values
     '''
+    # The branch below needs the hour angle in [-12h, 12h). ``LST - RA`` spans (-24h, 24h),
+    # so a sequence during which the sidereal time wraps past 0h would otherwise jump by
+    # 360 deg.
+    ha = coord.Angle(ha).wrap_at(12 * u.hourangle)
     pa = -np.arctan2(-np.sin(ha),
                      np.cos(dec) * np.tan(geolat) - np.sin(dec) * np.cos(ha))
 
@@ -311,54 +330,37 @@ def compute_angles(frames_info, true_north=-1.75):
         The data frame with all the information on science frames
     '''
 
+    drot_mode = frames_info['INS4 DROT2 MODE'].unique()
+    if len(drot_mode) != 1:
+        raise ValueError('Derotator mode has several values in the sequence')
+
+    # Derotator drift before 2016-07-12 (Maire et al. 2016, Eq. 1), from the
+    # file-start header values. The angle is 0 mod 180 deg for a synchronised
+    # derotator: ALT - 2 DROT2 in pupil tracking, ALT - PARANG - 2 DROT2 + POSANG
+    # in field tracking.
     date_fix = Time('2016-07-12')
+    drift = 0
     if np.any(frames_info['MJD'].values <= date_fix.mjd):
         try:
-            alt = frames_info['TEL ALT'].values.astype(float)
-            drot2 = frames_info['INS4 DROT2 BEGIN'].values.astype(float)
-            pa_correction = np.degrees(np.arctan(np.tan(np.radians(alt-2.*drot2))))
+            angle = (frames_info['TEL ALT'].values.astype('float')
+                     - 2. * frames_info['INS4 DROT2 BEGIN'].values.astype('float'))
+            if drot_mode == 'SKY':
+                angle += (frames_info['INS4 DROT2 POSANG'].values.astype('float')
+                          - frames_info['TEL PARANG START'].values.astype('float'))
+            drift = np.degrees(np.arctan(np.tan(np.radians(angle))))
         except KeyError:
-            pa_correction = 0
-    else:
-        pa_correction = 0
+            drift = 0
+    # Field tracking does not use the parallactic angle, so its drift enters the
+    # derotation angle directly.
+    pa_correction = 0 if drot_mode == 'SKY' else drift
 
     # RA/DEC
-    def convert_drot2_ra_to_deg(ra_drot):
-        ra_drot_h = np.floor(ra_drot/1e4)
-        ra_drot_m = np.floor((ra_drot - ra_drot_h * 1e4) / 1e2)
-        ra_drot_s = ra_drot - ra_drot_h * 1e4 - ra_drot_m * 1e2
-
-        ra_hour_hms_str = []
-        for idx, _ in enumerate(ra_drot_h):
-            ra_hour_hms_str.append(
-                f'{int(ra_drot_h[idx])}h{int(ra_drot_m[idx])}m{ra_drot_s[idx]}s')
-        ra_hour_hms_str = np.array(ra_hour_hms_str)
-        ra_hour = coord.Angle(angle=ra_hour_hms_str, unit=u.hour)
-        ra_deg = ra_hour * 15
-        return ra_deg, ra_hour
-    
-    def convert_drot2_dec_to_deg(dec_drot):
-        sign = np.sign(dec_drot)
-        udec_drot = np.abs(dec_drot)
-        dec_drot_d = np.floor(udec_drot / 1e4)
-        dec_drot_m = np.floor((udec_drot - dec_drot_d * 1e4) / 1e2)
-        dec_drot_s = udec_drot - dec_drot_d * 1e4 - dec_drot_m * 1e2
-        dec_drot_d *= sign
-
-        dec_dms_str = []
-        for idx, _ in enumerate(dec_drot_d):
-            dec_dms_str.append(
-                f'{int(dec_drot_d[idx])}d{int(dec_drot_m[idx])}m{dec_drot_s[idx]}s')
-        dec_dms_str = np.array(dec_dms_str)
-        dec = coord.Angle(dec_dms_str, u.degree)
-        return dec
-
     ra_drot = frames_info['INS4 DROT2 RA'].values.astype('float')
-    ra_deg, ra_hour = convert_drot2_ra_to_deg(ra_drot)
-    frames_info['RA'] = ra_deg.value
+    ra_hour = coord.Angle(_sexagesimal_to_deg(ra_drot, hours=True) / 15.0, u.hour)
+    frames_info['RA'] = ra_hour.degree
 
     dec_drot = frames_info['INS4 DROT2 DEC'].values.astype('float')
-    dec = convert_drot2_dec_to_deg(dec_drot)
+    dec = coord.Angle(_sexagesimal_to_deg(dec_drot, hours=False), u.degree)
     frames_info['DEC'] = dec.value
 
     geolon = coord.Angle(frames_info['TEL GEOLON'].values[0], u.degree)
@@ -369,7 +371,7 @@ def compute_angles(frames_info, true_north=-1.75):
     # calculate parallactic angles
     utc = Time(frames_info['TIME'].values.astype(str), scale='utc', location=location)
     lst = utc.sidereal_time('apparent')
-    ha = lst - ra_hour
+    ha = (lst - ra_hour).wrap_at(12 * u.hourangle)
     pa = parallatic_angle(ha, dec[0], geolat)
     frames_info['PARANG'] = pa.value + pa_correction
     frames_info['HOUR ANGLE'] = ha.value
@@ -385,7 +387,7 @@ def compute_angles(frames_info, true_north=-1.75):
 
     utc = Time(frames_info['TIME START'].values.astype(str), scale='utc', location=location)
     lst = utc.sidereal_time('apparent')
-    ha = lst - ra_hour
+    ha = (lst - ra_hour).wrap_at(12 * u.hourangle)
     pa = parallatic_angle(ha, dec[0], geolat)
     frames_info['PARANG START'] = pa.value + pa_correction
     frames_info['HOUR ANGLE START'] = ha.value
@@ -393,7 +395,7 @@ def compute_angles(frames_info, true_north=-1.75):
 
     utc = Time(frames_info['TIME END'].values.astype(str), scale='utc', location=location)
     lst = utc.sidereal_time('apparent')
-    ha = lst - ra_hour
+    ha = (lst - ra_hour).wrap_at(12 * u.hourangle)
     pa = parallatic_angle(ha, dec[0], geolat)
     frames_info['PARANG END'] = pa.value + pa_correction
     frames_info['HOUR ANGLE END'] = ha.value
@@ -418,15 +420,17 @@ def compute_angles(frames_info, true_north=-1.75):
     # pa = parallatic_angle(ha, dec[0], geolat)
     # frames_info['PARANG END'] = pa.value + pa_correction
 
-    #
     # Derotation angles
     #
-    # PA_on-sky = PA_detector + PARANGLE + True_North + PUP_OFFSET + INSTRUMENT_OFFSET + TRUE_NORTH
-    #  PUP_OFFSET = -135.99 +/- 0.11
+    # DEROT ANGLE = PARANG + PUP_OFFSET + INSTRUMENT_OFFSET + TRUE_NORTH
+    #  PUP_OFFSET = +135.99 +/- 0.11 (ELEV derotator mode, i.e. pupil tracking)
+    # In field tracking (SKY) the field does not rotate and North is set by the
+    # derotator position angle (Maire et al. 2016; IRDAP, van Holstein et al. 2020):
+    # DEROT ANGLE = POSANG + DRIFT + INSTRUMENT_OFFSET + TRUE_NORTH
     #  INSTRUMENT_OFFSET
-    #   IFS = +100.48 +/- 0.10
+    #   IFS = -100.48 +/- 0.10
     #   IRD =    0.00 +/- 0.00
-    #   TRUE_NORTH = -1.75 +/- 0.08
+    #  TRUE_NORTH = -1.75 +/- 0.08
     #
     instru = frames_info['SEQ ARM'].unique()
     if len(instru) != 1:
@@ -438,13 +442,12 @@ def compute_angles(frames_info, true_north=-1.75):
     else:
         raise ValueError('Unkown instrument {0}'.format(instru))
 
-    drot_mode = frames_info['INS4 DROT2 MODE'].unique()
-    if len(drot_mode) != 1:
-        raise ValueError('Derotator mode has several values in the sequence')
+    parang = frames_info['PARANG']
     if drot_mode == 'ELEV':
         pupoff = 135.99
     elif drot_mode == 'SKY':
-        pupoff = -100.48 + frames_info['INS4 DROT2 POSANG']
+        pupoff = frames_info['INS4 DROT2 POSANG'] + drift
+        parang = 0
     elif drot_mode == 'STAT':
         pupoff = -100.48
     else:
@@ -453,5 +456,5 @@ def compute_angles(frames_info, true_north=-1.75):
     frames_info['PUPIL OFFSET'] = pupoff + instru_offset
 
     # final derotation value
-    frames_info['DEROT ANGLE'] = frames_info['PARANG'] + pupoff + instru_offset + true_north
+    frames_info['DEROT ANGLE'] = parang + pupoff + instru_offset + true_north
 

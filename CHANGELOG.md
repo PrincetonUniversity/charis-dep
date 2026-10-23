@@ -25,6 +25,12 @@ rationale is too long for a changelog entry; the commit messages carry the measu
   and `charis.openmp_enabled()` reports whether the installed build is parallel.
   `CHARIS_REQUIRE_OPENMP=1` turns a missing OpenMP into a build error,
   and `CHARIS_NO_OPENMP=1` builds serially on purpose.
+- The `PARANG START`, `PARANG`, `PARANG END`, `PUPIL OFFSET` and `DEROT ANGLE` cube-header values are corrected
+  for targets just south of the equator, for sequences that cross the local sidereal time wrap,
+  and for field-tracking data, which no longer crashes extraction
+  ([#53](https://github.com/PrincetonUniversity/charis-dep/issues/53)).
+  Re-extract affected cubes to update the header angles.
+  spherical users are unaffected, because spherical computes its own angles.
 
 ---
 
