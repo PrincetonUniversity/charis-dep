@@ -20,6 +20,8 @@ jobs:
       CHARIS_REQUIRE_OPENMP: "1"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # setuptools_scm derives the version from the tags
 
       - uses: actions/setup-python@v5
         with:
@@ -51,6 +53,8 @@ jobs:
       CHARIS_REQUIRE_OPENMP: "1"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # setuptools_scm derives the version from the tags
 
       - uses: actions/setup-python@v5
         with:
