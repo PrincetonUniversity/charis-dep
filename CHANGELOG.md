@@ -38,6 +38,9 @@ rationale is too long for a changelog entry; the commit messages carry the measu
   ([#53](https://github.com/PrincetonUniversity/charis-dep/issues/53)).
   Re-extract affected cubes to update the header angles.
   spherical users are unaffected, because spherical computes its own angles.
+- A CHARIS file without the `Y_FLTNAM` or `OBJECT` mode keywords (typical of data before 2017-04-01)
+  now raises a clear `ValueError` instead of an `UnboundLocalError`,
+  unless `interactive=True` is passed ([#11](https://github.com/PrincetonUniversity/charis-dep/issues/11)).
 
 ---
 
