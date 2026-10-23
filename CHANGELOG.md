@@ -18,6 +18,8 @@ and the header angles change for targets just south of the equator, for sequence
 ### Added
 
 - A `test` extra (`pytest`, `ruff`) for running the test suite.
+- A progress bar for the `extractcube` command, one step per input file, shown only in an interactive terminal.
+  Based on [#23](https://github.com/PrincetonUniversity/charis-dep/pull/23) by @mileslucas.
 - `charis.openmp_enabled()` reports whether the installed build is parallel.
   `CHARIS_REQUIRE_OPENMP=1` makes a missing OpenMP a build error, and `CHARIS_NO_OPENMP=1` builds serially on purpose.
 
