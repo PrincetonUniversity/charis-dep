@@ -17,6 +17,10 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ### Fixed
 
+- SPHERE `ivar` is now the inverse variance in counts
+  and scales correctly with the number of averaged DITs,
+  so SPHERE `ivar` values change (larger by about the gain squared) ([#52](https://github.com/PrincetonUniversity/charis-dep/issues/52)).
+  The CLI now defaults to the instrument gain (1.8 for SPHERE).
 - Linux builds now compile with OpenMP,
   so the extraction loops run in parallel as `maxproc` requests.
 - On macOS the build finds `libomp` in the active conda or pixi environment

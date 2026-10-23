@@ -45,7 +45,7 @@ def main() -> None:
     try:
         gain = Config.getfloat('Ramp', 'gain')
     except Exception:
-        gain = 2
+        gain = None
     try:
         noisefac = Config.getfloat('Ramp', 'noisefac')
     except Exception:
