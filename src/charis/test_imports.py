@@ -9,12 +9,10 @@ import pytest
 
 import charis
 
-# The per-directory setup.py files are legacy standalone build scripts (they import
-# distutils and call setup() at import time); they are not part of the package API.
 MODULES = sorted(
     m.name
     for m in pkgutil.walk_packages(charis.__path__, "charis.")
-    if not m.name.rsplit(".", 1)[-1].startswith("test_") and m.name.rsplit(".", 1)[-1] != "setup"
+    if not m.name.rsplit(".", 1)[-1].startswith("test_")
 )
 
 
@@ -46,3 +44,9 @@ def test_console_scripts_point_into_the_package(script):
     (entry_point,) = [ep for ep in importlib.metadata.entry_points(group="console_scripts") if ep.name == script]
     assert entry_point.value == f"charis.scripts.{script}:main"
     assert callable(entry_point.load())
+
+
+def test_no_build_scripts_inside_the_package():
+    # A setup.py inside the package ships in the wheel and runs setup() when imported.
+    names = [m.name for m in pkgutil.walk_packages(charis.__path__, "charis.")]
+    assert [n for n in names if n.rsplit(".", 1)[-1] == "setup"] == []
