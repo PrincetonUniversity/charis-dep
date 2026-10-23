@@ -4,6 +4,26 @@ from cython.parallel import prange, parallel
 import numpy as np
 import multiprocessing
 
+cdef extern from *:
+    """
+    #ifdef _OPENMP
+    #define CHARIS_OPENMP_ENABLED 1
+    #else
+    #define CHARIS_OPENMP_ENABLED 0
+    #endif
+    """
+    int CHARIS_OPENMP_ENABLED
+
+
+def openmp_enabled():
+    """Return True if the Cython extensions were compiled with OpenMP.
+
+    Read from the compiler's ``_OPENMP`` macro at build time. When False, the
+    ``prange`` loops run single-threaded whatever ``maxproc`` is set to.
+    """
+    return bool(CHARIS_OPENMP_ENABLED)
+
+
 @cython.wraparound(False)
 @cython.boundscheck(False)
 

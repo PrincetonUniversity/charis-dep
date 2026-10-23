@@ -1,7 +1,8 @@
 from builtins import object
 
 import numpy as np
-import tools
+
+from .. import tools
 
 log = tools.getLogger('main')
 

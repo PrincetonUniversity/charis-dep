@@ -15,6 +15,17 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 - The license metadata now matches the `LICENSE` file (`BSD-2-Clause-Views`).
 - A `test` extra (`pytest`, `ruff`) is available for running the test suite.
 
+### Fixed
+
+- Linux builds now compile with OpenMP,
+  so the extraction loops run in parallel as `maxproc` requests.
+- On macOS the build finds `libomp` in the active conda or pixi environment
+  or in either Homebrew prefix (Apple Silicon and Intel).
+- A build without OpenMP now prints a clear warning,
+  and `charis.openmp_enabled()` reports whether the installed build is parallel.
+  `CHARIS_REQUIRE_OPENMP=1` turns a missing OpenMP into a build error,
+  and `CHARIS_NO_OPENMP=1` builds serially on purpose.
+
 ---
 
 ## [2.1.0] — 2026-07-29
