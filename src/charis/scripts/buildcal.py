@@ -7,7 +7,9 @@ import sys
 from builtins import input, range, str
 
 from astropy.io import fits
+
 from charis import buildcalibrations, instruments
+
 
 def main() -> None:
     if len(sys.argv) < 2:
@@ -21,7 +23,6 @@ def main() -> None:
 
     infile = sys.argv[1]
     bgfiles = []
-    bgimages = []
     for i in range(2, len(sys.argv)):
         bgfiles += glob.glob(sys.argv[i])
     print(f"Background files: {bgfiles}")

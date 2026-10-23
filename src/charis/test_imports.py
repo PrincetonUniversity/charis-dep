@@ -1,6 +1,8 @@
 """Every charis module imports with only the declared dependencies installed."""
 
 import importlib
+import importlib.metadata
+import os
 import pkgutil
 
 import pytest
@@ -29,3 +31,18 @@ def test_compiled_extensions_load():
 
     assert callable(matutils.lstsq)
     assert callable(fitramp.fit_ramp)
+
+
+def test_calibrations_resolve_from_an_installed_package():
+    from charis.instruments import SPHERE
+
+    mode_dir = SPHERE("YH").calibration_path_mode
+    assert os.path.isfile(os.path.join(mode_dir, "lamsol.dat"))
+
+
+@pytest.mark.parametrize("script", ["buildcal", "extractcube", "hexplot"])
+def test_console_scripts_point_into_the_package(script):
+    # A top-level "scripts" package would be installed into users' site-packages.
+    (entry_point,) = [ep for ep in importlib.metadata.entry_points(group="console_scripts") if ep.name == script]
+    assert entry_point.value == f"charis.scripts.{script}:main"
+    assert callable(entry_point.load())

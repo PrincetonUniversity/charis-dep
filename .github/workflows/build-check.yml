@@ -41,3 +41,29 @@ jobs:
       - name: Test
         working-directory: ${{ runner.temp }}
         run: python -m pytest --pyargs charis -q
+
+  # A non-editable install, used from outside the checkout: the package must find its
+  # calibrations and console scripts without the source tree (carried into ci.yml in Task 1).
+  install-smoke:
+    name: install smoke (ubuntu-latest / Python 3.12)
+    runs-on: ubuntu-latest
+    env:
+      CHARIS_REQUIRE_OPENMP: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install into a fresh venv (non-editable)
+        run: |
+          python -m venv "${{ runner.temp }}/venv"
+          "${{ runner.temp }}/venv/bin/python" -m pip install ".[test]"
+
+      - name: Use it from outside the checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          venv/bin/python -c "import charis; print(charis.__file__)"
+          venv/bin/extractcube | grep -q "Must call extractcube.py"
+          venv/bin/python -m pytest --pyargs charis -q

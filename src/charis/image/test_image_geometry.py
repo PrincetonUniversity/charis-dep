@@ -7,7 +7,7 @@ synthetic mini-grid would not survive it.
 """
 
 import json
-import os
+from importlib.resources import files
 
 import numpy as np
 import pytest
@@ -18,9 +18,7 @@ from charis.image.image_geometry import (
     resample_ivar_cube,
 )
 
-CALIBRATION = os.path.join(
-    os.path.dirname(__file__), os.pardir, "calibrations", "SPHERE",
-    "hexagon_mapping_calibration.json")
+CALIBRATION = files("charis").joinpath("calibrations", "SPHERE", "hexagon_mapping_calibration.json")
 
 
 @pytest.fixture(scope="module")

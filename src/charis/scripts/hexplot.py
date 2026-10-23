@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-import sys
-import subprocess
-import tempfile
 import os
-from charis.hexplot import create_hexplot
+import subprocess
+import sys
+import tempfile
+
 
 def main() -> None:
     if len(sys.argv) < 2:

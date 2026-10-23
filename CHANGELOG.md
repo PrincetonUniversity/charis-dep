@@ -17,6 +17,8 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 - `nonlinear_threshold` now defaults to `None` (previously an inert 40000) and, when set,
   masks SPHERE pixels above that count level per DIT as bad pixels,
   recording `NLTHRESH` and `NLNPIX` in the header ([#51](https://github.com/PrincetonUniversity/charis-dep/issues/51)).
+- The package moved to a `src/` layout, and the `buildcal`, `extractcube` and `hexplot` commands now live in `charis.scripts`;
+  `import charis` is unchanged, and an install no longer adds a top-level `scripts` package ([#31](https://github.com/PrincetonUniversity/charis-dep/issues/31)).
 
 ### Fixed
 

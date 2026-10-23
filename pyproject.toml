@@ -40,16 +40,16 @@ classifiers = [
 test = ["pytest", "ruff"]
 
 [project.scripts]
-buildcal = "scripts.buildcal:main"
-extractcube = "scripts.extractcube:main"
-hexplot     = "scripts.hexplot:main"
+buildcal = "charis.scripts.buildcal:main"
+extractcube = "charis.scripts.extractcube:main"
+hexplot     = "charis.scripts.hexplot:main"
 
 [tool.setuptools]
 include-package-data = true
 license-files = ["LICENSE*", "COPYING*", "NOTICE*"]
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 exclude = ["tests"]
 
 [tool.setuptools.package-data]
@@ -57,7 +57,7 @@ exclude = ["tests"]
 "charis" = ["calibrations/**/*.fits", "calibrations/**/*.json", "calibrations/**/*.dat"]
 
 [tool.pytest.ini_options]
-testpaths = ["charis"]
+testpaths = ["src/charis"]
 
 [tool.ruff]
 line-length = 127
