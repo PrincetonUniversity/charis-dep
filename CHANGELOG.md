@@ -14,6 +14,9 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 - The license metadata now matches the `LICENSE` file (`BSD-2-Clause-Views`).
 - A `test` extra (`pytest`, `ruff`) is available for running the test suite.
+- `nonlinear_threshold` now defaults to `None` (previously an inert 40000) and, when set,
+  masks SPHERE pixels above that count level per DIT as bad pixels,
+  recording `NLTHRESH` and `NLNPIX` in the header ([#51](https://github.com/PrincetonUniversity/charis-dep/issues/51)).
 
 ### Fixed
 

@@ -51,6 +51,14 @@ def main() -> None:
     except Exception:
         noisefac = 0
     try:
+        nonlinear_threshold = Config.get('Extract', 'nonlinear_threshold').strip()
+        if nonlinear_threshold.lower() in ('', 'none'):
+            nonlinear_threshold = None
+        else:
+            nonlinear_threshold = float(nonlinear_threshold)
+    except Exception:
+        nonlinear_threshold = None
+    try:
         saveramp = Config.getboolean('Ramp', 'saveramp')
     except Exception:
         saveramp = True
@@ -165,6 +173,7 @@ def main() -> None:
                     mask=mask,
                     gain=gain,
                     noisefac=noisefac,
+                    nonlinear_threshold=nonlinear_threshold,
                     saveramp=saveramp,
                     individual_dits=individual_dits,
                     refine=refine,
@@ -195,6 +204,7 @@ def main() -> None:
                 mask=mask,
                 gain=gain,
                 noisefac=noisefac,
+                nonlinear_threshold=nonlinear_threshold,
                 saveramp=saveramp,
                 individual_dits=individual_dits,
                 refine=refine,

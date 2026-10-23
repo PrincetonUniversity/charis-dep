@@ -58,10 +58,35 @@ def sphere_variance(data, gain, readnoise, ndit, noisefac):
     return (np.abs(data) / gain + (readnoise / gain)**2) / ndit + (data * noisefac)**2
 
 
+def nonlinear_pixel_mask(data, threshold):
+    """Boolean mask of pixels above a saturation / non-linearity count level.
+
+    Parameters
+    ----------
+    data : ndarray
+        Raw counts (DN) per DIT, shape (y, x) or (NDIT, y, x). For a 3-D
+        stack a pixel is flagged if any DIT exceeds ``threshold``, since
+        averaging would hide a single saturated DIT.
+    threshold : float or None
+        Count level (DN, per DIT). ``None`` disables the mask.
+
+    Returns
+    -------
+    ndarray of bool
+        Shape (y, x); True where the pixel is flagged.
+    """
+    data = np.asarray(data)
+    if data.ndim == 3:
+        data = data.max(axis=0)
+    if threshold is None:
+        return np.zeros(data.shape, dtype=bool)
+    return data > threshold
+
+
 def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
             mask=True,
-            gain=None, nonlinear_threshold=40000, noisefac=0,
+            gain=None, nonlinear_threshold=None, noisefac=0,
             saveramp=False, R=30,
             individual_dits=False,
             method='lstsq', refine=True, crosstalk_scale=0.8,
@@ -114,18 +139,12 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         Detector gain in e⁻/DN, used to compute shot noise in the variance
         model. Default None, which uses the instrument's gain (2 for CHARIS,
         1.8 for SPHERE).
-    nonlinear_threshold : int, optional
-        Count level (DN) above which a full non-linearity fit is performed
-        (SPHERE only). Default 40000.
-
-        .. warning::
-           **Currently inert — revisit.** The saturation mask this threshold
-           defines was computed and then discarded; the dead computation was
-           removed in the 2.1.0 lint pass rather than left as a false signal
-           that the correction was applied. Nothing in the extraction reacts to
-           this parameter today. Either implement the non-linearity handling or
-           drop the parameter. See
-           https://github.com/PrincetonUniversity/charis-dep/issues/51.
+    nonlinear_threshold : float or None, optional
+        Count level (DN, per DIT) above which SPHERE pixels are treated as
+        saturated or non-linear and masked (``ivar = 0``, values
+        interpolated). ``None`` (default) disables it. No non-linearity
+        correction is applied; CHARIS ignores it. When set, the header
+        records ``NLTHRESH`` and ``NLNPIX`` (pixels flagged).
     noisefac : float, optional
         Additional noise floor as a fraction of the count rate:
         ``var = readnoise + shotnoise + (noisefac * countrate)^2``.
@@ -336,6 +355,20 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             good_pixels = np.logical_and(pixelflat > 0.9, pixelflat < 1.1)
             maskarr[~good_pixels] = 0
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
+
+        # Saturation mask on the raw data, before any NDIT averaging, so one
+        # saturated DIT is not hidden by the mean.
+        if nonlinear_threshold is not None:
+            if data.ndim == 3 and individual_dits and dit is not None and dit < data.shape[0]:
+                raw = data[dit]
+            else:
+                raw = data
+            nl_mask = nonlinear_pixel_mask(raw, nonlinear_threshold)
+            bpm = np.logical_or(bpm.astype(bool), nl_mask).astype('int')
+            header.append(('NLTHRESH', nonlinear_threshold,
+                           'Saturation mask threshold (DN per DIT)'), end=True)
+            header.append(('NLNPIX', int(nl_mask.sum()),
+                           'Pixels flagged by the saturation mask'), end=True)
 
         if data.ndim == 3:
             if not individual_dits:
