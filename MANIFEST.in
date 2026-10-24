@@ -1,8 +1,7 @@
 include README.md
 
-# Include all .pyx and .c files used by Cython
+# Include the Cython sources
 recursive-include src/charis *.pyx
-recursive-include src/charis *.c
 
 # Include calibration data files
 recursive-include src/charis/calibrations *.fits

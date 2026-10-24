@@ -10,13 +10,26 @@ wrap, or the derotation angle jumps by 360 deg.
 
 import numpy as np
 import pandas as pd
+import pytest
 from astropy import units as u
 from astropy.coordinates import Angle
 from astropy.io import fits
+from astropy.utils import iers
 
 from charis.tools.toolbox import compute_angles, parallatic_angle
 
 PARANAL_LAT = -24.6268
+
+
+@pytest.fixture(autouse=True)
+def _bundled_iers_tables():
+    """Use the IERS tables bundled with astropy instead of downloading them.
+
+    They cover these 2016 dates. On a fresh cache astropy otherwise fetches
+    ``finals2000A.all``, which on CI runners can take minutes of retries.
+    """
+    with iers.conf.set_temp("auto_download", False):
+        yield
 
 
 def _hr8799_frames(times):

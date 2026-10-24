@@ -14,6 +14,7 @@ description = "Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field 
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 license = "BSD-2-Clause-Views"
+license-files = ["LICENSE"]
 authors = [
     {name = "Timothy Brandt, Maxime Rizzo, Matthias Samland"},
     {email = "timothy.d.brandt@gmail.com"}
@@ -50,7 +51,6 @@ version_file = "src/charis/_version.py"
 
 [tool.setuptools]
 include-package-data = true
-license-files = ["LICENSE*", "COPYING*", "NOTICE*"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
