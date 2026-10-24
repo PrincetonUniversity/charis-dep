@@ -126,8 +126,8 @@ class build_ext(cython_build_ext):
 
 setup(
     ext_modules=[
-        Extension("charis.primitives.matutils", ["charis/primitives/matutils.pyx"]),
-        Extension("charis.utr.fitramp", ["charis/utr/fitramp.pyx"]),
+        Extension("charis.primitives.matutils", ["src/charis/primitives/matutils.pyx"]),
+        Extension("charis.utr.fitramp", ["src/charis/utr/fitramp.pyx"]),
     ],
     cmdclass={"build_ext": build_ext},
 )

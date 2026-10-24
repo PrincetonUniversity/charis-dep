@@ -61,6 +61,6 @@ dev = { features = ["notebook", "test"], solve-group = "default" }
 # ──────────────────────────────────────────────
 [feature.test.tasks]
 test = "pytest"
-lint = "ruff check charis/"
-format = "ruff format charis/"
-format-check = "ruff format --check charis/"
+lint = "ruff check src/charis/"
+format = "ruff format src/charis/"
+format-check = "ruff format --check src/charis/"

@@ -4,19 +4,16 @@
 # A provisional routine for actually producing and returning data cubes.
 #########################################################################
 
-from charis import extractcube, instruments
-import numpy as np
-from builtins import range
-import time
-import sys
-import re
-import os
-import multiprocessing
-import glob
 import configparser
+import glob
+import multiprocessing
+import sys
+from builtins import range
 
 from astropy.io import fits
 from tqdm import tqdm
+
+from charis import extractcube, instruments
 
 
 def main() -> None:

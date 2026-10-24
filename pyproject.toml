@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "charis"
-version = "2.2.0"
+dynamic = ["version"]
 description = "Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -40,16 +40,20 @@ classifiers = [
 test = ["pytest", "ruff"]
 
 [project.scripts]
-buildcal = "scripts.buildcal:main"
-extractcube = "scripts.extractcube:main"
-hexplot     = "scripts.hexplot:main"
+buildcal = "charis.scripts.buildcal:main"
+extractcube = "charis.scripts.extractcube:main"
+hexplot     = "charis.scripts.hexplot:main"
+
+[tool.setuptools_scm]
+# Tags have no "v" prefix (2.1.0, 2.2.0); _version.py is gitignored.
+version_file = "src/charis/_version.py"
 
 [tool.setuptools]
 include-package-data = true
 license-files = ["LICENSE*", "COPYING*", "NOTICE*"]
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 exclude = ["tests"]
 
 [tool.setuptools.package-data]
@@ -57,7 +61,7 @@ exclude = ["tests"]
 "charis" = ["calibrations/**/*.fits", "calibrations/**/*.json", "calibrations/**/*.dat"]
 
 [tool.pytest.ini_options]
-testpaths = ["charis"]
+testpaths = ["src/charis"]
 
 [tool.ruff]
 line-length = 127

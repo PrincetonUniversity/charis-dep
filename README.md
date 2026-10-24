@@ -76,7 +76,7 @@ For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow)
    ```bash
    pixi install -e dev      # test + notebook tooling
    pixi run -e test test    # pytest
-   pixi run -e test lint    # ruff check charis/
+   pixi run -e test lint    # ruff check src/charis/
    ```
 
 ### OpenMP
@@ -126,7 +126,7 @@ For example, run `CHARIS_REQUIRE_OPENMP=1 pip install -v .` in a clone.
 | Step | Command | Notes |
 |------|---------|-------|
 | **1. Build calibration** | `buildcal <monochromatic_flat.fits> <λ[nm]> <mode>` | Accepts optional dark/background frames. If wavelength & mode are encoded in the header, omit them. |
-| **2. Configure extraction** | Copy & edit [`charis/sample.ini`](./charis/sample.ini) | Tune bad-pixel masks, cube size, etc. |
+| **2. Configure extraction** | Copy & edit [`src/charis/sample.ini`](./src/charis/sample.ini) | Tune bad-pixel masks, cube size, etc. |
 | **3. Extract cube** | `extractcube <raw_reads.fits> <config.ini>` | Generates a 4‑HDU FITS: header · cube · inverse-variance · raw-header. |
 
 ### SPHERE/IFS Workflow
