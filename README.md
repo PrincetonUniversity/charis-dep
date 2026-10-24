@@ -16,6 +16,7 @@ The **CHARIS pipeline** is the reference tool for transforming raw detector read
 ## Table of Contents
 1. [Quick Start](#quick-start)  
 2. [Installation](#installation)  
+   * [OpenMP](#openmp)  
 3. [Requirements & Dependencies](#requirements--dependencies)  
 4. [Instrument Workflows](#instrument-workflows)  
    * [CHARIS](#charis-workflow)  
@@ -78,6 +79,33 @@ For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow)
    pixi run -e test lint    # ruff check charis/
    ```
 
+### OpenMP
+The compiled extensions run their inner loops in parallel with OpenMP (the `maxproc` setting).
+What the build needs depends on the platform.
+
+* **Linux**: nothing extra with gcc, which ships OpenMP.
+* **macOS**: Apple's clang has no OpenMP runtime of its own.
+  Either run `brew install libomp` before installing,
+  or install into a conda or pixi environment that provides `libomp` (conda-forge `llvm-openmp`).
+  The build looks for `omp.h` and `libomp.dylib` in the active environment first,
+  then in Homebrew (`/opt/homebrew/opt/libomp` on Apple Silicon, `/usr/local/opt/libomp` on Intel).
+
+If OpenMP is not found, or the OpenMP build fails, charis is built serially and prints a warning.
+`pip` only shows that warning with `pip install -v`, so check the result after installing.
+
+```bash
+python -c "import charis; print(charis.openmp_enabled())"   # True = parallel build
+```
+
+Two environment variables control the build.
+
+| Variable | Effect |
+|----------|--------|
+| `CHARIS_REQUIRE_OPENMP=1` | Fail the build instead of falling back to a serial build. |
+| `CHARIS_NO_OPENMP=1` | Build serially on purpose, without looking for OpenMP. |
+
+For example, run `CHARIS_REQUIRE_OPENMP=1 pip install -v .` in a clone.
+
 ---
 
 ## Requirements & Dependencies
@@ -117,7 +145,8 @@ pip install git+https://github.com/m-samland/spherical.git
 brew install libomp          # enable multi-core acceleration
 pip install git+https://github.com/PrincetonUniversity/charis-dep@main
 ```
-The installer automatically falls back to a non‑OpenMP build if the toolchain is missing, but we **recommend** ensuring OpenMP is available for large datasets.
+Without OpenMP the installer falls back to a serial build, which is much slower on large datasets.
+See [OpenMP](#openmp) for how to check the build and how to make a missing OpenMP an error.
 
 ---
 

@@ -16,6 +16,7 @@ import glob
 import configparser
 
 from astropy.io import fits
+from tqdm import tqdm
 
 
 def main() -> None:
@@ -45,11 +46,19 @@ def main() -> None:
     try:
         gain = Config.getfloat('Ramp', 'gain')
     except Exception:
-        gain = 2
+        gain = None
     try:
         noisefac = Config.getfloat('Ramp', 'noisefac')
     except Exception:
         noisefac = 0
+    try:
+        nonlinear_threshold = Config.get('Extract', 'nonlinear_threshold').strip()
+        if nonlinear_threshold.lower() in ('', 'none'):
+            nonlinear_threshold = None
+        else:
+            nonlinear_threshold = float(nonlinear_threshold)
+    except Exception:
+        nonlinear_threshold = None
     try:
         saveramp = Config.getboolean('Ramp', 'saveramp')
     except Exception:
@@ -147,7 +156,8 @@ def main() -> None:
     except Exception:
         verbose = False
 
-    for filename in filenames:
+    # disable=None turns the bar off when stderr is not a terminal (batch logs).
+    for filename in tqdm(filenames, desc="Extracting cubes", unit="file", disable=None):
         header = fits.getheader(filename)
         instrument, _, _ = instruments.instrument_from_data(
             header, calibration=False, interactive=False, verbose=False)
@@ -165,6 +175,7 @@ def main() -> None:
                     mask=mask,
                     gain=gain,
                     noisefac=noisefac,
+                    nonlinear_threshold=nonlinear_threshold,
                     saveramp=saveramp,
                     individual_dits=individual_dits,
                     refine=refine,
@@ -195,6 +206,7 @@ def main() -> None:
                 mask=mask,
                 gain=gain,
                 noisefac=noisefac,
+                nonlinear_threshold=nonlinear_threshold,
                 saveramp=saveramp,
                 individual_dits=individual_dits,
                 refine=refine,

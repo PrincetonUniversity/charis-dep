@@ -34,10 +34,59 @@ from charis.tools import (
 log = logging.getLogger('main')
 
 
+def sphere_variance(data, gain, readnoise, ndit, noisefac):
+    """Variance in counts^2 of a SPHERE frame that is the mean of ``ndit`` reads.
+
+    Parameters
+    ----------
+    data : ndarray
+        Frame in counts (DN).
+    gain : float
+        Detector gain in e-/DN.
+    readnoise : float
+        Read noise per read in electrons.
+    ndit : int
+        Number of frames averaged into ``data``.
+    noisefac : float
+        Systematic noise floor as a fraction of ``data``. Not averaged down.
+
+    Returns
+    -------
+    ndarray
+        Variance in counts^2.
+    """
+    return (np.abs(data) / gain + (readnoise / gain)**2) / ndit + (data * noisefac)**2
+
+
+def nonlinear_pixel_mask(data, threshold):
+    """Boolean mask of pixels above a saturation / non-linearity count level.
+
+    Parameters
+    ----------
+    data : ndarray
+        Raw counts (DN) per DIT, shape (y, x) or (NDIT, y, x). For a 3-D
+        stack a pixel is flagged if any DIT exceeds ``threshold``, since
+        averaging would hide a single saturated DIT.
+    threshold : float or None
+        Count level (DN, per DIT). ``None`` disables the mask.
+
+    Returns
+    -------
+    ndarray of bool
+        Shape (y, x); True where the pixel is flagged.
+    """
+    data = np.asarray(data)
+    if data.ndim == 3:
+        data = data.max(axis=0)
+    if threshold is None:
+        return np.zeros(data.shape, dtype=bool)
+    return data > threshold
+
+
 def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             bgsub=True, bgpath=None, bg_scaling_without_mask=False,
             mask=True,
-            gain=2, nonlinear_threshold=40000, noisefac=0,
+            gain=None, nonlinear_threshold=None, noisefac=0,
             saveramp=False, R=30,
             individual_dits=False,
             method='lstsq', refine=True, crosstalk_scale=0.8,
@@ -88,22 +137,20 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         Default True.
     gain : float, optional
         Detector gain in e⁻/DN, used to compute shot noise in the variance
-        model. Default 2.
-    nonlinear_threshold : int, optional
-        Count level (DN) above which a full non-linearity fit is performed
-        (SPHERE only). Default 40000.
-
-        .. warning::
-           **Currently inert — revisit.** The saturation mask this threshold
-           defines was computed and then discarded; the dead computation was
-           removed in the 2.1.0 lint pass rather than left as a false signal
-           that the correction was applied. Nothing in the extraction reacts to
-           this parameter today. Either implement the non-linearity handling or
-           drop the parameter. See
-           https://github.com/PrincetonUniversity/charis-dep/issues/51.
+        model. Default None, which uses the instrument's gain (2 for CHARIS,
+        1.8 for SPHERE).
+    nonlinear_threshold : float or None, optional
+        Count level (DN, per DIT) above which SPHERE pixels are treated as
+        saturated or non-linear and masked (``ivar = 0``, values
+        interpolated). ``None`` (default) disables it. No non-linearity
+        correction is applied; CHARIS ignores it. When set, the header
+        records ``NLTHRESH`` and ``NLNPIX`` (pixels flagged).
     noisefac : float, optional
         Additional noise floor as a fraction of the count rate:
         ``var = readnoise + shotnoise + (noisefac * countrate)^2``.
+        For SPHERE the variance is in counts^2 and the first two terms are
+        divided by the number of averaged DITs, whereas the ``noisefac`` term
+        is a systematic floor and is not.
         Values around 0.05 give a reduced chi-squared of ~1 in the lstsq fit.
         Default 0.
     saveramp : bool, optional
@@ -251,6 +298,9 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         header, calibration=False, static_calibdir=static_calibdir,
         interactive=False)
 
+    if gain is None:
+        gain = instrument.gain
+
     if instrument.instrument_name == 'CHARIS':
         header = utr.metadata(filename, version=version)
     elif instrument.instrument_name == 'SPHERE':
@@ -280,6 +330,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
     calibration_path_mode = instrument.calibration_path_mode
 
     maxcpus = min(maxcpus, multiprocessing.cpu_count())
+    primitives.warn_if_serial(maxcpus, log)
 
     maskarr = None
     if mask:
@@ -295,7 +346,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
 
     elif instrument.instrument_name == 'SPHERE':
         data = fits.getdata(filename).astype('float64')
-        readnoise = 6
+        readnoise = 6  # electrons
 
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-1]))
@@ -305,6 +356,20 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             good_pixels = np.logical_and(pixelflat > 0.9, pixelflat < 1.1)
             maskarr[~good_pixels] = 0
         bpm = np.logical_not(maskarr.astype('bool')).astype('int')
+
+        # Saturation mask on the raw data, before any NDIT averaging, so one
+        # saturated DIT is not hidden by the mean.
+        if nonlinear_threshold is not None:
+            if data.ndim == 3 and individual_dits and dit is not None and dit < data.shape[0]:
+                raw = data[dit]
+            else:
+                raw = data
+            nl_mask = nonlinear_pixel_mask(raw, nonlinear_threshold)
+            bpm = np.logical_or(bpm.astype(bool), nl_mask).astype('int')
+            header.append(('NLTHRESH', nonlinear_threshold,
+                           'Saturation mask threshold (DN per DIT)'), end=True)
+            header.append(('NLNPIX', int(nl_mask.sum()),
+                           'Pixels flagged by the saturation mask'), end=True)
 
         if data.ndim == 3:
             if not individual_dits:
@@ -323,7 +388,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         elif data.ndim == 2:
             file_ending = ''
             ndit = 1
-        ivar = 1. / (abs(data) * gain * ndit + (data * noisefac)**2 + readnoise**2 * ndit)
+        ivar = 1. / sphere_variance(data, gain, readnoise, ndit, noisefac)
 
         inImage = Image(data=data, ivar=ivar, header=header,
                         instrument_name=instrument.instrument_name)
@@ -371,7 +436,7 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             # The background contributes Poisson noise even after subtraction;
             # this term is absent from the initial ivar which was computed
             # before bg subtraction.
-            bg_var = np.maximum(bg, 0) * gain * ndit
+            bg_var = np.maximum(bg, 0) / (gain * ndit)
             inImage.ivar = 1.0 / (1.0 / (inImage.ivar + 1e-100) + bg_var) * (inImage.ivar > 0)
 
     if instrument.instrument_name == 'SPHERE':
