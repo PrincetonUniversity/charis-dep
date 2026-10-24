@@ -8,7 +8,7 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ---
 
-## [Unreleased]
+## [2.2.0] — 2026-10-24
 
 Corrections to the SPHERE/IFS inverse variance and cube-header angles, and an OpenMP build that is parallel on Linux too.
 **Re-extract SPHERE cubes before combining them with 2.1.0 products, including cubes reduced through spherical:**
