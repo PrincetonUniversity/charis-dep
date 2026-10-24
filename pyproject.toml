@@ -9,11 +9,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "charis"
-version = "2.1.0"
+version = "2.2.0"
 description = "Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
-license = "BSD-3-Clause"
+license = "BSD-2-Clause-Views"
 authors = [
     {name = "Timothy Brandt, Maxime Rizzo, Matthias Samland"},
     {email = "timothy.d.brandt@gmail.com"}
@@ -36,6 +36,9 @@ classifiers = [
     "Intended Audience :: Science/Research"
 ]
 
+[project.optional-dependencies]
+test = ["pytest", "ruff"]
+
 [project.scripts]
 buildcal = "scripts.buildcal:main"
 extractcube = "scripts.extractcube:main"
@@ -53,9 +56,12 @@ exclude = ["tests"]
 # include all .fits, .json, .dat recursively under calibrations/
 "charis" = ["calibrations/**/*.fits", "calibrations/**/*.json", "calibrations/**/*.dat"]
 
+[tool.pytest.ini_options]
+testpaths = ["charis"]
+
 [tool.ruff]
 line-length = 127
-target-version = "py312"
+target-version = "py310"
 exclude = ["docs", "*_version.py"]
 
 [tool.ruff.lint]

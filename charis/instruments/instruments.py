@@ -192,6 +192,7 @@ def instrument_from_data(
         header, calibration=True, interactive=False, static_calibdir=None,
         verbose=False):
     correct_header = True
+    missing = []
 
     if 'CHARIS' in header['INSTRUME']:
         if 'Y_FLTNAM' in header and 'OBJECT' in header:
@@ -212,6 +213,18 @@ def instrument_from_data(
                 return instrument, None, correct_header
         else:
             correct_header = False
+            missing = [key for key in ('Y_FLTNAM', 'OBJECT') if key not in header]
+
+        if not correct_header and not interactive:
+            if missing:
+                reason = "lacks the header keyword(s) {}".format(", ".join(missing))
+            else:
+                reason = "has an invalid OBJECT keyword {!r}, expected one of 1200nm, 1550nm, 2346nm".format(
+                    header['OBJECT'])
+            raise ValueError(
+                "The CHARIS file {}. This is typical of data taken before Apr 1st, 2017 "
+                "(Y_FLTNAM and OBJECT hold the filter and calibration wavelength 1200/1550/2346). "
+                "Pass interactive=True to enter them manually, or fix the header.".format(reason))
 
         if not correct_header and interactive:
             print("\n" + "*" * 60)

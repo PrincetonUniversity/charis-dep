@@ -8,6 +8,39 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ---
 
+## [2.2.0] — 2026-10-24
+
+Corrections to the SPHERE/IFS inverse variance and cube-header angles, and an OpenMP build that is parallel on Linux too.
+**Re-extract SPHERE cubes before combining them with 2.1.0 products, including cubes reduced through spherical:**
+`ivar` is now in counts, larger by about the gain squared (about 3.2),
+and the header angles change for targets just south of the equator, for sequences that cross the sidereal-time wrap, and for field-tracking data.
+
+### Added
+
+- A `test` extra (`pytest`, `ruff`) for running the test suite.
+- A progress bar for the `extractcube` command, one step per input file, shown only in an interactive terminal.
+  Based on [#23](https://github.com/PrincetonUniversity/charis-dep/pull/23) by @mileslucas.
+- `charis.openmp_enabled()` reports whether the installed build is parallel.
+  `CHARIS_REQUIRE_OPENMP=1` makes a missing OpenMP a build error, and `CHARIS_NO_OPENMP=1` builds serially on purpose.
+
+### Changed
+
+- The license metadata now matches the `LICENSE` file (`BSD-2-Clause-Views`).
+- `nonlinear_threshold` now defaults to `None` (it was an inert 40000).
+  When set, SPHERE pixels above that count level in a DIT are masked as bad pixels, recorded as `NLTHRESH` and `NLNPIX` in the header ([#51](https://github.com/PrincetonUniversity/charis-dep/issues/51)).
+- `getcube` and the `extractcube` command default to the instrument gain (1.8 for SPHERE) instead of 2.
+
+### Fixed
+
+- SPHERE `ivar` is the inverse variance in counts, matching the data, and scales correctly with the number of averaged DITs ([#52](https://github.com/PrincetonUniversity/charis-dep/issues/52)).
+- The `PARANG`, `PUPIL OFFSET` and `DEROT ANGLE` header values are correct for declinations between 0° and −1°, across the sidereal-time wrap, and in field tracking, which no longer crashes extraction ([#53](https://github.com/PrincetonUniversity/charis-dep/issues/53)).
+  spherical computes its own angles, so this part does not affect spherical reductions.
+- Linux builds compile with OpenMP, and macOS builds find `libomp` in the active conda or pixi environment or in either Homebrew prefix.
+  A build without OpenMP now logs a warning at run time when more than one thread is requested.
+- A CHARIS file without the `Y_FLTNAM` or `OBJECT` mode keywords (typical of data before 2017-04-01) raises a clear `ValueError` instead of an `UnboundLocalError`, unless `interactive=True` is passed ([#11](https://github.com/PrincetonUniversity/charis-dep/issues/11)).
+
+---
+
 ## [2.1.0] — 2026-07-29
 
 Substantial corrections to the SPHERE/IFS inverse-variance chain, plus a preprocessing-only mode
