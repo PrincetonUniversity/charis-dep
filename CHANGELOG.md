@@ -10,6 +10,16 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ## [Unreleased]
 
+### Changed
+
+- The package moved to a `src/` layout, and the `buildcal`, `extractcube` and `hexplot` commands now live in `charis.scripts`;
+  `import charis` is unchanged, and an install no longer adds a top-level `scripts` package ([#31](https://github.com/PrincetonUniversity/charis-dep/issues/31)).
+- The version now comes from the git tags, so development installs report it as, for example, `2.2.1.dev3+g1a2b3c4` in `charis.__version__` and in the cube headers ([#30](https://github.com/PrincetonUniversity/charis-dep/issues/30)).
+
+---
+
+## [2.2.0] — 2026-10-24
+
 Corrections to the SPHERE/IFS inverse variance and cube-header angles, and an OpenMP build that is parallel on Linux too.
 **Re-extract SPHERE cubes before combining them with 2.1.0 products, including cubes reduced through spherical:**
 `ivar` is now in counts, larger by about the gain squared (about 3.2),
@@ -29,9 +39,6 @@ and the header angles change for targets just south of the equator, for sequence
 - `nonlinear_threshold` now defaults to `None` (it was an inert 40000).
   When set, SPHERE pixels above that count level in a DIT are masked as bad pixels, recorded as `NLTHRESH` and `NLNPIX` in the header ([#51](https://github.com/PrincetonUniversity/charis-dep/issues/51)).
 - `getcube` and the `extractcube` command default to the instrument gain (1.8 for SPHERE) instead of 2.
-- The package moved to a `src/` layout, and the `buildcal`, `extractcube` and `hexplot` commands now live in `charis.scripts`;
-  `import charis` is unchanged, and an install no longer adds a top-level `scripts` package ([#31](https://github.com/PrincetonUniversity/charis-dep/issues/31)).
-- The version now comes from the git tags, so development installs report it as, for example, `2.2.1.dev3+g1a2b3c4` in `charis.__version__` and in the cube headers ([#30](https://github.com/PrincetonUniversity/charis-dep/issues/30)).
 
 ### Fixed
 
