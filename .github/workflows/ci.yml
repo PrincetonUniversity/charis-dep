@@ -42,9 +42,17 @@ jobs:
     needs: lint
     strategy:
       fail-fast: false
+      # The compiled extensions and the OpenMP setup differ per platform, so every
+      # platform builds at both ends of the supported range; the middle versions run
+      # on Linux x86_64 only.
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-14, macos-15-intel]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.13"]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
     env:
       CHARIS_REQUIRE_OPENMP: "1"
     steps:
