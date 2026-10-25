@@ -251,7 +251,7 @@ def instrument_from_data(
                     break
                 else:
                     print("Invalid input")
-            instrument = CHARIS(observing_mode)
+            instrument = CHARIS(observing_mode, static_calibdir)
 
     elif 'SPHERE' in header['INSTRUME']:
         if 'IFS' in header['HIERARCH ESO SEQ ARM']:

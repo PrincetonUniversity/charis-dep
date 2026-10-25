@@ -72,7 +72,7 @@ class Image(object):
         if data is None and filename != "":
             self.load(filename)
 
-    def load(self, filename, loadbadpixmap=False):
+    def load(self, filename):
         """
         Image.load(outfilename)
 
@@ -85,8 +85,6 @@ class Image(object):
         ----------
         filename: string
             Name of input file
-        loadbadpixmap: boolean
-            When True, loads the bad pixel map at `calibrations/mask.fits`
 
         """
         try:
@@ -120,8 +118,6 @@ class Image(object):
                         + " of "
                         + filename
                     )
-            elif loadbadpixmap:
-                self.ivar = fits.open("calibrations/mask.fits")[0].data
             else:
                 self.ivar = None
         except Exception:

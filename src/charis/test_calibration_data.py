@@ -83,6 +83,10 @@ def test_fetch_downloads_checks_and_extracts(tmp_path, zenodo):
 def test_fetch_rejects_a_bad_checksum(tmp_path, monkeypatch, zenodo):
     monkeypatch.setitem(REGISTRY["SPHERE"], "md5", "0" * 32)
 
+    def tarfile_open(*args, **kwargs):
+        raise AssertionError("the archive was opened before its md5 was checked")
+    monkeypatch.setattr(calibration_data.tarfile, "open", tarfile_open)
+
     with pytest.raises(OSError, match="md5"):
         fetch("SPHERE", tmp_path)
     assert list((tmp_path / VERSION).iterdir()) == []
@@ -110,3 +114,9 @@ def test_cube_header_records_the_calibration_version(calibrations, tmp_path):
     _append_calibration_header(header, str(tmp_path), SPHERE("YH", static_calibdir=str(calibration_root("SPHERE"))))
     assert "CALVERS" not in header
     assert "CALDOI" not in header
+
+
+def test_cube_header_has_no_empty_calibration_block(calibrations, tmp_path):
+    header = fits.Header()
+    _append_calibration_header(header, str(tmp_path), SPHERE("YH", static_calibdir=str(calibration_root("SPHERE"))))
+    assert len(header) == 0

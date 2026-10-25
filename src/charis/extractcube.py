@@ -88,8 +88,16 @@ def _append_calibration_header(header, calibdir, instrument):
 
     The block holds the version and DOI of the static calibration data (``CALVERS``,
     ``CALDOI``; only when the instrument resolved them from the registry, not for a
-    ``static_calibdir``) and the keywords of ``calibdir/cal_params.fits``.
+    ``static_calibdir``) and the keywords of ``calibdir/cal_params.fits``. Nothing is
+    appended when neither is available.
     """
+    try:
+        calhead = fits.getheader(os.path.join(calibdir, 'cal_params.fits'))
+    except Exception:
+        calhead = None
+        log.warning('Unable to append calibration parameters to FITS header.')
+    if calhead is None and instrument.calibration_version is None:
+        return
     header.append(('comment', ''), end=True)
     header.append(('comment', '*' * 60), end=True)
     header.append(('comment', '*' * 21 + ' Calibration Data ' + '*' * 21), end=True)
@@ -98,12 +106,9 @@ def _append_calibration_header(header, calibdir, instrument):
     if instrument.calibration_version is not None:
         header.append(('CALVERS', instrument.calibration_version, 'charis static calibration data version'), end=True)
         header.append(('CALDOI', instrument.calibration_doi, 'DOI of the static calibration data'), end=True)
-    try:
-        calhead = fits.getheader(os.path.join(calibdir, 'cal_params.fits'))
+    if calhead is not None:
         for key in calhead:
             header.append((key, calhead[key], calhead.comments[key]), end=True)
-    except Exception:
-        log.warn('Unable to append calibration parameters to FITS header.')
 
 
 def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,

@@ -19,19 +19,19 @@ from urllib.request import Request, urlopen
 
 import charis
 
-__all__ = ['REGISTRY', 'cache_root', 'calibration_root', 'fetch']
+__all__ = ["REGISTRY", "cache_root", "calibration_root", "fetch"]
 
 log = logging.getLogger(__name__)
 
-REGISTRY = json.loads(files('charis').joinpath('calibration_registry.json').read_text())
+REGISTRY = json.loads(files("charis").joinpath("calibration_registry.json").read_text())
 
 
 def cache_root():
     """The directory that holds one folder per calibration data version."""
-    if os.environ.get('CHARIS_CALIBRATION_DIR'):
-        return pathlib.Path(os.environ['CHARIS_CALIBRATION_DIR'])
-    cache = os.environ.get('XDG_CACHE_HOME') or os.path.join(os.path.expanduser('~'), '.cache')
-    return pathlib.Path(cache) / 'charis' / 'calibrations'
+    if os.environ.get("CHARIS_CALIBRATION_DIR"):
+        return pathlib.Path(os.environ["CHARIS_CALIBRATION_DIR"])
+    cache = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
+    return pathlib.Path(cache) / "charis" / "calibrations"
 
 
 def calibration_root(instrument, *, download=True):
@@ -55,7 +55,7 @@ def calibration_root(instrument, *, download=True):
     FileNotFoundError
         If the data is missing and ``download`` is False.
     """
-    version = REGISTRY[instrument]['version']
+    version = REGISTRY[instrument]["version"]
     root = cache_root()
     instrument_dir = root / version / instrument
     # An existing tree is used as is, without any network access, so read-only shared
@@ -85,29 +85,29 @@ def fetch(instrument, root):
         ``root/<version>/<instrument>``. If another process created it first, its tree is kept.
     """
     entry = REGISTRY[instrument]
-    version_dir = pathlib.Path(root) / entry['version']
+    version_dir = pathlib.Path(root) / entry["version"]
     instrument_dir = version_dir / instrument
     version_dir.mkdir(parents=True, exist_ok=True)
     # The partial directory sits next to its destination, so the final rename stays on one
     # filesystem and is atomic.
-    partial = pathlib.Path(tempfile.mkdtemp(prefix=f'.{instrument}.partial-', dir=version_dir))
+    partial = pathlib.Path(tempfile.mkdtemp(prefix=f".{instrument}.partial-", dir=version_dir))
     try:
         url = f"https://zenodo.org/api/records/{entry['record_id']}/files/{entry['archive']}/content"
-        archive = partial / entry['archive']
-        request = Request(url, headers={'User-Agent': f'charis/{charis.__version__}'})
+        archive = partial / entry["archive"]
+        request = Request(url, headers={"User-Agent": f"charis/{charis.__version__}"})
         md5 = hashlib.md5()
-        with urlopen(request, timeout=120) as response, open(archive, 'wb') as fout:
-            size = int(response.headers.get('Content-Length', 0))
+        with urlopen(request, timeout=120) as response, open(archive, "wb") as fout:
+            size = int(response.headers.get("Content-Length", 0))
             log.info(f"Downloading {instrument} calibration data {entry['version']} "
                      f"({size / 1e6:.0f} MB) from {url}")
-            for chunk in iter(lambda: response.read(1 << 20), b''):
+            for chunk in iter(lambda: response.read(1 << 20), b""):
                 md5.update(chunk)
                 fout.write(chunk)
-        if md5.hexdigest() != entry['md5']:
+        if md5.hexdigest() != entry["md5"]:
             raise OSError(f"md5 mismatch for {url}: got {md5.hexdigest()}, expected {entry['md5']}")
         with tarfile.open(archive) as tar:
-            if hasattr(tarfile, 'data_filter'):
-                tar.extractall(partial, filter='data')
+            if hasattr(tarfile, "data_filter"):
+                tar.extractall(partial, filter="data")
             else:
                 tar.extractall(partial)
         try:
