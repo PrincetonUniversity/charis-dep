@@ -75,7 +75,8 @@ def sphere_readnoise(dit):
 def sky_variance(sky, gain, readnoise, nframes):
     """Variance in counts^2 of a sky frame that is the median of ``nframes`` DITs.
 
-    The median of more than two frames is noisier than their mean by about pi/2 in variance.
+    The median of more than two frames is noisier than their mean by up to pi/2 in variance
+    (the large-N value; about 1.2-1.5 for 3-32 frames), so this is slightly conservative.
     """
     efficiency = np.pi / 2 if nframes > 2 else 1.
     return efficiency * sphere_variance(sky, gain, readnoise, nframes, 0)
@@ -177,10 +178,10 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         Subtract the thermal background loaded from ``calibdir/background.fits``.
         Default True.
     bgpath : str or None, optional
-        Path to a custom background file. If None, uses ``calibdir/background.fits``.
-        For SPHERE, None fits the background template instead, and a given file (a raw sky
-        cube, median-combined) is scaled to the frame; its own noise is added to the variance.
-        Default None.
+        Path to a custom background file. If None, uses ``calibdir/background.fits``
+        for CHARIS and fits the background template for SPHERE. For SPHERE a given file
+        (a raw sky cube, median-combined) is scaled to the frame, and its own noise is
+        added to the variance. Default None.
     bg_scaling_without_mask : bool, optional
         If True, scale the background using all good pixels rather than only
         the region defined by ``calibdir/background_scaling_mask.fits``.
