@@ -6,8 +6,9 @@ first use (`src/charis/calibration_data.py`) into
 `<root>/<version>/<instrument>/`, where `<root>` is `$CHARIS_CALIBRATION_DIR` or
 `${XDG_CACHE_HOME:-~/.cache}/charis/calibrations`.
 
-Each instrument is one Zenodo record, `charis-calibrations-SPHERE` and
-`charis-calibrations-CHARIS`. New calibrations become a new version of the same record.
+Each instrument is one Zenodo record, "VLT/SPHERE IFS calibration files for the charis pipeline"
+and "SCExAO/CHARIS calibration files for the charis pipeline" (the title ends with the data
+version). New calibrations become a new version of the same record.
 `src/charis/calibration_registry.json` pins, per instrument, the exact set a charis release was
 tested with:
 
