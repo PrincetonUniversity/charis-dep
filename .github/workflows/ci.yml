@@ -79,7 +79,7 @@ jobs:
       - name: Link calibration data
         shell: bash
         run: |
-          mkdir -p $RUNNER_TEMP/calib/2026.10.0 && ln -s $GITHUB_WORKSPACE/calibrations/* $RUNNER_TEMP/calib/2026.10.0/
+          python .github/scripts/link_calibrations.py calibrations "$RUNNER_TEMP/calib"
           echo "CHARIS_CALIBRATION_DIR=$RUNNER_TEMP/calib" >> "$GITHUB_ENV"
 
       # Run from outside the checkout: from the repo root, pytest would put the source

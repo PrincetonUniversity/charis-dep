@@ -1,0 +1,215 @@
+name: Publish
+
+# Builds the sdist and the wheels (cibuildwheel, settings in pyproject.toml) and tests every
+# wheel. Uploads use Trusted Publishing (no tokens), configured on PyPI and TestPyPI for this
+# file name and the environments below:
+# - a published GitHub release uploads to PyPI (environment `pypi`, waits for a maintainer's
+#   approval);
+# - a manual run uploads a dev version to TestPyPI (environment `testpypi`).
+# Renaming this file or an environment breaks publishing until the trusted publishers on
+# PyPI and TestPyPI are updated. The release steps are in RELEASING.md.
+on:
+  push:
+    branches: [main]
+  # Building and testing all wheels takes a while, so pull requests run it only when the
+  # packaging changes.
+  pull_request:
+    branches: [main, devel]
+    paths:
+      - pyproject.toml
+      - setup.py
+      - MANIFEST.in
+      - "src/**/*.pyx"
+      - .github/workflows/publish.yml
+      - .github/scripts/**
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      # setuptools_scm needs the tags; a shallow clone builds version 0.1.dev1.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # One version for every artifact, computed here instead of inside each build container.
+      # PyPI rejects local versions (+g<hash>), which every build between tags carries.
+      - name: Compute the version
+        id: version
+        env:
+          SETUPTOOLS_SCM_OVERRIDES_FOR_CHARIS: '{local_scheme = "no-local-version"}'
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python -m pip install "setuptools_scm>=8"
+          version=$(python -m setuptools_scm)
+          echo "version $version"
+          if [ -n "$RELEASE_TAG" ] && [ "$version" != "$RELEASE_TAG" ]; then
+            echo "::error::version $version does not match the release tag $RELEASE_TAG"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  sdist:
+    name: 📦 sdist
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      SETUPTOOLS_SCM_PRETEND_VERSION_FOR_CHARIS: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build and check the sdist
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build --sdist
+          twine check --strict dist/*
+          ls -l dist/
+
+      # The sdist must build on its own, with OpenMP, and must not carry the calibration data.
+      - name: Install the sdist
+        env:
+          CHARIS_REQUIRE_OPENMP: "1"
+        run: |
+          if tar -tzf dist/*.tar.gz | grep -q "/calibrations/"; then
+            echo "::error::the sdist contains calibration data"; exit 1
+          fi
+          python -m venv "$RUNNER_TEMP/sdist"
+          "$RUNNER_TEMP/sdist/bin/pip" install dist/*.tar.gz
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/sdist/bin/python" -c "import charis; print(charis.__version__); assert charis.openmp_enabled()"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-sdist
+          path: dist/*.tar.gz
+
+  wheels:
+    name: 🛞 Wheels on ${{ matrix.os }}
+    needs: version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-14, macos-15-intel]
+    steps:
+      - uses: actions/checkout@v7
+
+      # delocate copies libomp into the wheel. Homebrew builds it for the runner's macOS, and a
+      # wheel cannot claim an older macOS than the libraries it carries, so the wheel's
+      # deployment target is taken from the library.
+      - name: Install libomp (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libomp
+          minos=$(otool -l "$(brew --prefix libomp)/lib/libomp.dylib" | awk '/LC_BUILD_VERSION/ {found=1} found && $1 == "minos" {print $2; exit}')
+          echo "libomp needs macOS $minos"
+          echo "MACOSX_DEPLOYMENT_TARGET=$minos" >> "$GITHUB_ENV"
+
+      - name: Build and test the wheels
+        uses: pypa/cibuildwheel@v4.3.4
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_CHARIS: ${{ needs.version.outputs.version }}
+          CIBW_ENVIRONMENT_PASS_LINUX: SETUPTOOLS_SCM_PRETEND_VERSION_FOR_CHARIS
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  check:
+    name: ✅ Check the distributions
+    needs: [version, sdist, wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          path: dist/
+          merge-multiple: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # 3 Python versions on 4 platforms plus the sdist, all with the computed version, and no
+      # direct URL dependency (PyPI refuses those).
+      - name: Check the set of files
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          python -m pip install twine
+          twine check --strict dist/*
+          python - <<'EOF'
+          import os, pathlib, zipfile
+          files = sorted(pathlib.Path("dist").iterdir())
+          print("\n".join(f.name for f in files))
+          wheels = [f for f in files if f.suffix == ".whl"]
+          assert len(wheels) == 12, f"{len(wheels)} wheels, expected 12"
+          assert [f.name for f in files if f.suffix != ".whl"] == [f"charis-{os.environ['VERSION']}.tar.gz"]
+          assert all(f.name.startswith(f"charis-{os.environ['VERSION']}-") for f in wheels)
+          with zipfile.ZipFile(wheels[0]) as wheel:
+              metadata = next(n for n in wheel.namelist() if n.endswith(".dist-info/METADATA"))
+              requires = [line for line in wheel.read(metadata).decode().splitlines() if line.startswith("Requires-Dist:")]
+          assert not [r for r in requires if " @ " in r], requires
+          EOF
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  testpypi:
+    name: 🧪 Upload to TestPyPI
+    if: github.event_name == 'workflow_dispatch'
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/charis
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    name: 🚀 Upload to PyPI
+    if: github.event_name == 'release'
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/charis
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

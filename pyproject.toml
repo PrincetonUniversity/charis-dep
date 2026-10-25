@@ -64,6 +64,23 @@ exclude = ["tests"]
 # The calibration data itself is downloaded from Zenodo on first use (charis.calibration_data).
 "charis" = ["calibration_registry.json"]
 
+[tool.cibuildwheel]
+# Wheels for every supported CPython on 64-bit glibc Linux and macOS (see publish.yml).
+build = "cp311-* cp312-* cp313-*"
+skip = "*-musllinux_*"
+archs = ["auto64"]
+build-frontend = "build"
+# A wheel without OpenMP would run every extension single-threaded, so it must fail instead.
+environment = { CHARIS_REQUIRE_OPENMP = "1" }
+# The tests read the checkout's calibration tree, so the wheel builds never contact Zenodo.
+before-test = "python {package}/.github/scripts/link_calibrations.py {package}/calibrations /tmp/charis-calibrations"
+test-environment = { CHARIS_CALIBRATION_DIR = "/tmp/charis-calibrations" }
+test-requires = ["pytest"]
+test-command = [
+    "python -c \"import charis; assert charis.openmp_enabled(), 'built without OpenMP'\"",
+    "pytest --pyargs charis -q",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["src/charis"]
 

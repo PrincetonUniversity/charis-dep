@@ -66,8 +66,12 @@ For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow)
      ```
 3. Install the pipeline:
    ```bash
-   pip install git+https://github.com/PrincetonUniversity/charis-dep@main
+   pip install charis
    ```
+   This installs a prebuilt wheel with OpenMP on Linux (x86_64, aarch64) and macOS (Apple Silicon, Intel).
+   Elsewhere pip builds charis from source, which needs a C compiler and OpenMP (see below).
+   For the development version, install from GitHub instead:
+   `pip install git+https://github.com/PrincetonUniversity/charis-dep@devel`.
 4. (Developers) Editable install:
    ```bash
    git clone https://github.com/PrincetonUniversity/charis-dep.git
@@ -82,7 +86,7 @@ For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow)
 
 ### OpenMP
 The compiled extensions run their inner loops in parallel with OpenMP (the `maxproc` setting).
-What the build needs depends on the platform.
+The wheels on PyPI include it. When building from source, what the build needs depends on the platform.
 
 * **Linux**: nothing extra with gcc, which ships OpenMP.
 * **macOS**: Apple's clang has no OpenMP runtime of its own.

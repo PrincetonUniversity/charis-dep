@@ -10,6 +10,10 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ## [Unreleased]
 
+### Added
+
+- charis is on PyPI: `pip install charis` installs a prebuilt wheel with OpenMP for Linux (x86_64, aarch64) and macOS (Apple Silicon, Intel).
+
 ### Changed
 
 - The package moved to a `src/` layout, and the `buildcal`, `extractcube` and `hexplot` commands now live in `charis.scripts`;
