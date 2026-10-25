@@ -1,0 +1,16 @@
+{
+  "SPHERE": {
+    "version": "2026.10.0",
+    "record_id": null,
+    "doi": null,
+    "archive": "charis-calibrations-SPHERE-2026.10.0.tar.gz",
+    "md5": null
+  },
+  "CHARIS": {
+    "version": "2026.10.0",
+    "record_id": null,
+    "doi": null,
+    "archive": "charis-calibrations-CHARIS-2026.10.0.tar.gz",
+    "md5": null
+  }
+}

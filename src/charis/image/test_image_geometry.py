@@ -6,25 +6,30 @@ against the *real* shipped SPHERE calibration, because the resample's crop
 synthetic mini-grid would not survive it.
 """
 
+import functools
 import json
-from importlib.resources import files
 
 import numpy as np
 import pytest
 
+from charis.calibration_data import calibration_root
 from charis.image.image_geometry import (
     resample_good_fraction_cube,
     resample_image_cube,
     resample_ivar_cube,
 )
 
-CALIBRATION = files("charis").joinpath("calibrations", "SPHERE", "hexagon_mapping_calibration.json")
 
-
-@pytest.fixture(scope="module")
-def clip_infos():
-    with open(CALIBRATION) as fout:
+# Keyed on the resolved path, so the 11 MB file is parsed once even though each test gets its own symlinked root.
+@functools.cache
+def _load_clip_infos(path):
+    with open(path) as fout:
         return json.load(fout)
+
+
+@pytest.fixture
+def clip_infos(calibrations):
+    return _load_clip_infos((calibration_root("SPHERE") / "SPHERE" / "hexagon_mapping_calibration.json").resolve())
 
 
 def test_resample_ivar_reproduces_empirical_variance_of_data_resample(clip_infos):

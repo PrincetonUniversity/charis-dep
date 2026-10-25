@@ -44,6 +44,7 @@ test = ["pytest", "ruff"]
 buildcal = "charis.scripts.buildcal:main"
 extractcube = "charis.scripts.extractcube:main"
 hexplot     = "charis.scripts.hexplot:main"
+charis-calibrations = "charis.scripts.calibrations:main"
 
 [tool.setuptools_scm]
 # Tags have no "v" prefix (2.1.0, 2.2.0); _version.py is gitignored.
@@ -57,8 +58,8 @@ where = ["src"]
 exclude = ["tests"]
 
 [tool.setuptools.package-data]
-# include all .fits, .json, .dat recursively under calibrations/
-"charis" = ["calibrations/**/*.fits", "calibrations/**/*.json", "calibrations/**/*.dat"]
+# The calibration data itself is downloaded from Zenodo on first use (charis.calibration_data).
+"charis" = ["calibration_registry.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["src/charis"]

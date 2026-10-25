@@ -15,13 +15,13 @@ def test_charis_header_without_object_raises_without_interactive():
         instrument_from_data(header, calibration=False, interactive=False)
 
 
-def test_charis_calibration_with_invalid_wavelength_raises():
+def test_charis_calibration_with_invalid_wavelength_raises(calibrations):
     header = {'INSTRUME': 'CHARIS', 'Y_FLTNAM': 'J', 'OBJECT': 'foo'}
     with pytest.raises(ValueError, match="1200.*1550.*2346"):
         instrument_from_data(header, calibration=True, interactive=False)
 
 
-def test_charis_valid_header_returns_instrument():
+def test_charis_valid_header_returns_instrument(calibrations):
     header = {'INSTRUME': 'CHARIS', 'Y_FLTNAM': 'J', 'OBJECT': '1200nm'}
     instrument, wavelength, correct_header = instrument_from_data(header, calibration=True)
     assert correct_header
