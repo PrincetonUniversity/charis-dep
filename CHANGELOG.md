@@ -15,8 +15,16 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 - The package moved to a `src/` layout, and the `buildcal`, `extractcube` and `hexplot` commands now live in `charis.scripts`;
   `import charis` is unchanged, and an install no longer adds a top-level `scripts` package ([#31](https://github.com/PrincetonUniversity/charis-dep/issues/31)).
 - The version now comes from the git tags, so development installs report it as, for example, `2.2.1.dev3+g1a2b3c4` in `charis.__version__` and in the cube headers ([#30](https://github.com/PrincetonUniversity/charis-dep/issues/30)).
-- The calibration data is no longer part of the package: charis downloads it per instrument from Zenodo on first use (or ahead of time with `charis-calibrations fetch`) and records its version and DOI as `CALVERS` and `CALDOI` in the cube header.
+- The calibration data is no longer part of the package: charis downloads it per instrument from Zenodo on first use (or ahead of time with `charis-calibrations fetch`) and records its version and DOI as `CALVERS` and `CALDOI` in the cube header ([#59](https://github.com/PrincetonUniversity/charis-dep/pull/59)).
   If you edited files inside the installed `charis/calibrations`, copy them before upgrading and pass `static_calibdir`.
+
+### Fixed
+
+- `instrument_from_data(..., interactive=True)` now uses `static_calibdir` for CHARIS files whose mode is entered by hand, instead of the default calibration data.
+
+### Removed
+
+- The `loadbadpixmap` option of `Image.load`; it read `calibrations/mask.fits` from the working directory, a file charis has not provided since 2021.
 
 ---
 
