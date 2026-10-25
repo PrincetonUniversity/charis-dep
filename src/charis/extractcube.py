@@ -58,6 +58,30 @@ def sphere_variance(data, gain, readnoise, ndit, noisefac):
     return (np.abs(data) / gain + (readnoise / gain)**2) / ndit + (data * noisefac)**2
 
 
+# Effective read noise per DIT (e-) of the IFS detector in its Nondest readout, measured from the
+# variance between successive DITs of raw darks taken 2015-2019 (#62). It falls slowly with DIT.
+SPHERE_READNOISE_DIT = (1.65, 11., 22.)
+SPHERE_READNOISE = (8.6, 7.6, 7.3)
+
+
+def sphere_readnoise(dit):
+    """Effective read noise per DIT in electrons for a SPHERE IFS DIT in seconds.
+
+    Interpolated in ``SPHERE_READNOISE_DIT``; held at the end values outside the measured range.
+    """
+    return float(np.interp(dit, SPHERE_READNOISE_DIT, SPHERE_READNOISE))
+
+
+def sky_variance(sky, gain, readnoise, nframes):
+    """Variance in counts^2 of a sky frame that is the median of ``nframes`` DITs.
+
+    The median of more than two frames is noisier than their mean by up to pi/2 in variance
+    (the large-N value; about 1.2-1.5 for 3-32 frames), so this is slightly conservative.
+    """
+    efficiency = np.pi / 2 if nframes > 2 else 1.
+    return efficiency * sphere_variance(sky, gain, readnoise, nframes, 0)
+
+
 def nonlinear_pixel_mask(data, threshold):
     """Boolean mask of pixels above a saturation / non-linearity count level.
 
@@ -154,8 +178,10 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         Subtract the thermal background loaded from ``calibdir/background.fits``.
         Default True.
     bgpath : str or None, optional
-        Path to a custom background file. If None, uses ``calibdir/background.fits``.
-        Default None.
+        Path to a custom background file. If None, uses ``calibdir/background.fits``
+        for CHARIS and fits the background template for SPHERE. For SPHERE a given file
+        (a raw sky cube, median-combined) is scaled to the frame, and its own noise is
+        added to the variance. Default None.
     bg_scaling_without_mask : bool, optional
         If True, scale the background using all good pixels rather than only
         the region defined by ``calibdir/background_scaling_mask.fits``.
@@ -178,7 +204,8 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         ``var = readnoise + shotnoise + (noisefac * countrate)^2``.
         For SPHERE the variance is in counts^2 and the first two terms are
         divided by the number of averaged DITs, whereas the ``noisefac`` term
-        is a systematic floor and is not.
+        is a systematic floor and is not. The SPHERE read noise depends on the
+        DIT (``sphere_readnoise``) and is recorded as ``RDNOISE`` in the header.
         Values around 0.05 give a reduced chi-squared of ~1 in the lstsq fit.
         Default 0.
     saveramp : bool, optional
@@ -365,8 +392,13 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
         file_ending = ''
 
     elif instrument.instrument_name == 'SPHERE':
-        data = fits.getdata(filename).astype('float64')
-        readnoise = 6  # electrons
+        data, raw_header = fits.getdata(filename, header=True)
+        data = data.astype('float64')
+        exptime = raw_header['HIERARCH ESO DET SEQ1 DIT']
+        readnoise = sphere_readnoise(exptime)
+        header.append(('gain', gain, 'Assumed detector gain for Poisson variance'), end=True)
+        header.append(('rdnoise', readnoise, 'Read noise per DIT (e-) for the variance'), end=True)
+        header['noisefac'] = (noisefac, 'Added noise (as fraction of abs(ct rate))')
 
         if maskarr is None:
             maskarr = np.ones((data.shape[-2], data.shape[-1]))
@@ -423,8 +455,11 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
             bg = hdulist[0].data
             if bg is None:
                 bg = hdulist[1].data
+            bg_exptime = hdulist[0].header.get('HIERARCH ESO DET SEQ1 DIT')
             hdulist.close()
+            n_bg = 1
             if len(bg.shape) == 3:
+                n_bg = len(bg)
                 bg = np.median(bg, axis=0)
 
         if instrument.instrument_name == 'SPHERE':
@@ -442,6 +477,11 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                     norm, sigma=2., sigma_lower=None, sigma_upper=None,
                     maxiters=5, cenfunc='median', stdfunc='std',
                     std_ddof=0)
+                # The subtracted sky frame carries its own noise. A 2-D file is treated as a
+                # single frame, which overestimates the noise of a master sky.
+                if bg_exptime is None:
+                    bg_exptime = exptime
+                bg_var = norm**2 * sky_variance(bg, gain, sphere_readnoise(bg_exptime), n_bg)
                 bg *= norm
                 log.info("Background subtracted")
             else:
@@ -451,13 +491,12 @@ def getcube(dit=None, read_idx=[1, None], filename=None, calibdir=None,
                 bg, bg_coef = fit_background(
                     image=inImage.data, components=components, bgmask=bgscalemask & (bpm == 0), outlier_percentiles=[2, 98])
                 log.debug("Background template coefficients: %s", bg_coef)
+                # The ivar computed from the raw frame already contains the background's
+                # photon noise, and the fitted template model adds none.
+                bg_var = None
             inImage.data -= bg
-            # Add photon noise of the background to the variance.
-            # The background contributes Poisson noise even after subtraction;
-            # this term is absent from the initial ivar which was computed
-            # before bg subtraction.
-            bg_var = np.maximum(bg, 0) / (gain * ndit)
-            inImage.ivar = 1.0 / (1.0 / (inImage.ivar + 1e-100) + bg_var) * (inImage.ivar > 0)
+            if bg_var is not None:
+                inImage.ivar = 1.0 / (1.0 / (inImage.ivar + 1e-100) + bg_var) * (inImage.ivar > 0)
 
     if instrument.instrument_name == 'SPHERE':
         inImage.data = sph_ifs_fix_badpix(img=inImage.data, bpm=bpm)

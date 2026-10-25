@@ -20,6 +20,8 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ### Fixed
 
+- The SPHERE inverse variance no longer counts the background photon noise twice, and its read noise now depends on the DIT (8.6 e⁻ at 1.65 s to 7.3 e⁻ at 22 s, instead of 6 e⁻) ([#62](https://github.com/PrincetonUniversity/charis-dep/issues/62)).
+  Re-extract SPHERE cubes: `ivar` changes, and the flux changes slightly through the `ivar`-weighted fit.
 - `instrument_from_data(..., interactive=True)` now uses `static_calibdir` for CHARIS files whose mode is entered by hand, instead of the default calibration data.
 
 ### Removed
