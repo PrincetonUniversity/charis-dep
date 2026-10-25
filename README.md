@@ -17,6 +17,7 @@ The **CHARIS pipeline** is the reference tool for transforming raw detector read
 1. [Quick Start](#quick-start)  
 2. [Installation](#installation)  
    * [OpenMP](#openmp)  
+   * [Calibration data](#calibration-data)  
 3. [Requirements & Dependencies](#requirements--dependencies)  
 4. [Instrument Workflows](#instrument-workflows)  
    * [CHARIS](#charis-workflow)  
@@ -106,6 +107,35 @@ Two environment variables control the build.
 
 For example, run `CHARIS_REQUIRE_OPENMP=1 pip install -v .` in a clone.
 
+### Calibration data
+The static calibration files (bad-pixel masks, flats, PSFlet templates, wavelength solutions,
+background templates) are not part of the package. charis downloads them per instrument from
+Zenodo the first time an instrument is used (SPHERE about 86 MB, CHARIS about 71 MB), checks the
+md5, and keeps them in a cache. Later runs need no network.
+
+| Instrument | Data version | DOI |
+|------------|--------------|-----|
+| SPHERE IFS | 2026.10.0 | [10.5281/zenodo.23640607](https://doi.org/10.5281/zenodo.23640607) |
+| CHARIS | 2026.10.0 | [10.5281/zenodo.23640685](https://doi.org/10.5281/zenodo.23640685) |
+
+The cache is `$CHARIS_CALIBRATION_DIR` if set, otherwise `~/.cache/charis/calibrations`
+(`$XDG_CACHE_HOME/charis/calibrations`), with one folder per data version. Each cube records the
+data version and DOI in its header (`CALVERS`, `CALDOI`).
+
+On a cluster whose compute nodes have no internet access, download once on a login node into a
+shared directory and point every job at it:
+
+```bash
+export CHARIS_CALIBRATION_DIR=/shared/path/charis-calibrations
+charis-calibrations fetch SPHERE      # or CHARIS, or all
+charis-calibrations path              # prints the directory in use
+```
+
+The directory can be read-only for the jobs. Each charis release pins the exact calibration
+version it was tested with, so new calibrations only arrive with a charis update. Old version
+folders are never deleted automatically; remove them by hand when no installed charis uses them.
+To use your own calibration files instead, pass `static_calibdir` to the instrument.
+
 ---
 
 ## Requirements & Dependencies
@@ -156,6 +186,10 @@ If this pipeline contributes to your research, please cite both foundational pap
 - **[Brandt et al. 2017](https://ui.adsabs.harvard.edu/abs/2017JATIS...3d8002B/abstract)**, *JATIS* 3, 4, 8002  
   DOI: 10.1117/1.JATIS.3.4.048002
 - **[Samland et al. 2022](https://ui.adsabs.harvard.edu/abs/2022A%26A...668A..84S/abstract)**, *A&A* 668, A84
+
+If you publish results based on the shipped calibration files, please also cite the data
+version you used ([SPHERE](https://doi.org/10.5281/zenodo.23640607),
+[CHARIS](https://doi.org/10.5281/zenodo.23640685); the cube header's `CALDOI` names it).
 
 The ADS entries are linked in the bibliography below.
 

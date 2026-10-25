@@ -12,7 +12,7 @@ import charis
 MODULES = sorted(
     m.name
     for m in pkgutil.walk_packages(charis.__path__, "charis.")
-    if not m.name.rsplit(".", 1)[-1].startswith("test_")
+    if not m.name.rsplit(".", 1)[-1].startswith("test_") and m.name != "charis.conftest"
 )
 
 
@@ -31,7 +31,7 @@ def test_compiled_extensions_load():
     assert callable(fitramp.fit_ramp)
 
 
-def test_calibrations_resolve_from_an_installed_package():
+def test_calibrations_resolve_from_the_calibration_root(calibrations):
     from charis.instruments import SPHERE
 
     mode_dir = SPHERE("YH").calibration_path_mode

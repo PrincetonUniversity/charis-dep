@@ -2,11 +2,12 @@ import os
 
 # from abc import ABCMeta, abstractmethod, abstractproperty
 from builtins import input, object
-from importlib.resources import as_file, files
 
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import EarthLocation
+
+from charis.calibration_data import REGISTRY, calibration_root
 
 __all__ = ['CHARIS', 'SPHERE', 'instrument_from_data']
 
@@ -61,9 +62,12 @@ class CHARIS(object):
         if self.observing_mode == 'ND':
             self.observing_mode = 'Broadband'
 
+        self.calibration_version = None
+        self.calibration_doi = None
         if static_calibdir is None:
-            with as_file(files('charis').joinpath('calibrations')) as path:
-                static_calibdir = str(path)
+            static_calibdir = str(calibration_root('CHARIS'))
+            self.calibration_version = REGISTRY['CHARIS']['version']
+            self.calibration_doi = REGISTRY['CHARIS']['doi']
 
         self.calibration_path_instrument = \
             os.path.join(
@@ -165,9 +169,12 @@ class SPHERE(object):
         longitude, latitude = [-70.4045, -24.6268] * u.degree
         self.location = EarthLocation(longitude, latitude)
 
+        self.calibration_version = None
+        self.calibration_doi = None
         if static_calibdir is None:
-            with as_file(files('charis').joinpath('calibrations')) as path:
-                static_calibdir = str(path)
+            static_calibdir = str(calibration_root('SPHERE'))
+            self.calibration_version = REGISTRY['SPHERE']['version']
+            self.calibration_doi = REGISTRY['SPHERE']['doi']
 
         self.calibration_path_instrument = \
             os.path.join(
