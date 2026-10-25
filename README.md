@@ -1,6 +1,6 @@
 # CHARIS Pipeline & SPHERE / IFS Support
 
-[![PyPI - Python Version](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13-brightgreen)](https://github.com/PrincetonUniversity/charis-dep)
+[![PyPI - Python Version](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-brightgreen)](https://github.com/PrincetonUniversity/charis-dep)
 [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
 > **Open-source, parallel, and publication-ready data-reduction for high-contrast integral-field spectrographs**
@@ -52,7 +52,7 @@ For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow)
 ---
 
 ## Installation
-1. **Python ≥ 3.10** is required. We test against 3.10 – 3.13.  
+1. **Python ≥ 3.11** is required. We test against 3.11 – 3.13.  
 2. Set up an isolated environment:  
    * **venv**
      ```bash

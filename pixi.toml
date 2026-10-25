@@ -8,7 +8,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64"]
 # Core dependencies (mirrors [project.dependencies] in pyproject.toml)
 # ──────────────────────────────────────────────
 [dependencies]
-python = ">=3.10,<3.14"
+python = ">=3.11,<3.14"
 numpy = ">=2,<3"
 scipy = "*"
 astropy = "*"

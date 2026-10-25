@@ -12,7 +12,7 @@ name = "charis"
 dynamic = ["version"]
 description = "Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11,<3.14"
 license = "BSD-2-Clause-Views"
 license-files = ["LICENSE"]
 authors = [
@@ -33,6 +33,9 @@ dependencies = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research"
 ]
@@ -66,7 +69,7 @@ testpaths = ["src/charis"]
 
 [tool.ruff]
 line-length = 127
-target-version = "py310"
+target-version = "py311"
 exclude = ["docs", "*_version.py"]
 
 [tool.ruff.lint]

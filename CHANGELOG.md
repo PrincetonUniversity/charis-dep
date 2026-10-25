@@ -26,6 +26,7 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ### Removed
 
+- Support for Python 3.10; charis now needs Python 3.11 to 3.13.
 - The `loadbadpixmap` option of `Image.load`; it read `calibrations/mask.fits` from the working directory, a file charis has not provided since 2021.
 
 ---
