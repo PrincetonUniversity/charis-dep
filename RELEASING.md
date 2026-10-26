@@ -42,7 +42,8 @@ These steps need a PyPI account that will own the project and a repository admin
    Approve it on the workflow run's page (Actions → Publish → *Review deployments*).
 6. In a clean environment, `pip install charis==2.3.0`, check
    `python -c "import charis; print(charis.__version__, charis.openmp_enabled())"`, and extract
-   one SPHERE cube (for example `testdata/SPHERE/YH`) to check the calibration download.
+   one cube from a raw SPHERE or CHARIS file with an empty calibration cache, to check the
+   calibration download.
 7. Merge `main` back into `devel`, so that development versions count from the new tag.
 8. Update the packages that depend on charis, such as spherical's `pipeline` extra.
 

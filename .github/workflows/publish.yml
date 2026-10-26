@@ -192,9 +192,11 @@ jobs:
           name: dist
           path: dist/
 
+      # A second dry run of the same commit has the same version, which TestPyPI would refuse.
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 
   pypi:
     name: 🚀 Upload to PyPI

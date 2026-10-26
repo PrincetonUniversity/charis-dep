@@ -8,7 +8,8 @@ recursive-include src/charis *.pyx
 prune calibrations
 
 # Not needed to build or use the package, and most of the sdist's size: example notebooks
-# with outputs and the old Sphinx documentation, including its built HTML.
+# with outputs and the old Sphinx documentation, including its built HTML. The CI files
+# and the docs build script go with them.
 prune notebooks
 prune documentation
 prune .github
