@@ -162,7 +162,7 @@ jobs:
           files = sorted(pathlib.Path("dist").iterdir())
           print("\n".join(f.name for f in files))
           wheels = [f for f in files if f.suffix == ".whl"]
-          assert len(wheels) == 12, f"{len(wheels)} wheels, expected 12"
+          assert len(wheels) == 16, f"{len(wheels)} wheels, expected 16"
           assert [f.name for f in files if f.suffix != ".whl"] == [f"charis-{os.environ['VERSION']}.tar.gz"]
           assert all(f.name.startswith(f"charis-{os.environ['VERSION']}-") for f in wheels)
           with zipfile.ZipFile(wheels[0]) as wheel:

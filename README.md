@@ -1,6 +1,6 @@
 # CHARIS Pipeline & SPHERE / IFS Support
 
-[![Python](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-brightgreen)](https://pypi.org/p/charis)
+[![Python](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13%20|%203.14-brightgreen)](https://pypi.org/p/charis)
 [![CI](https://github.com/PrincetonUniversity/charis-dep/actions/workflows/ci.yml/badge.svg)](https://github.com/PrincetonUniversity/charis-dep/actions/workflows/ci.yml)
 [![License: BSD-2-Clause-Views](https://img.shields.io/badge/license-BSD--2--Clause--Views-blue.svg)](LICENSE)
 
@@ -51,7 +51,7 @@ For SPHERE/IFS data, jump directly to the [SPHERE workflow](#sphereifs-workflow)
 ---
 
 ## Installation
-1. **Python 3.11 to 3.13** is required.  
+1. **Python 3.11 to 3.14** is required.  
 2. Set up an isolated environment:  
    * **venv**
      ```bash

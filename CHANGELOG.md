@@ -13,6 +13,7 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 ### Added
 
 - `pip install charis` installs charis from PyPI, as a prebuilt wheel with OpenMP for Linux (x86_64, aarch64) and macOS 14 or newer (Apple Silicon, Intel) ([#64](https://github.com/PrincetonUniversity/charis-dep/pull/64)).
+- Support for Python 3.14 ([#65](https://github.com/PrincetonUniversity/charis-dep/issues/65)).
 
 ### Changed
 
@@ -31,7 +32,7 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ### Removed
 
-- Support for Python 3.10; charis now needs Python 3.11 to 3.13 ([#64](https://github.com/PrincetonUniversity/charis-dep/pull/64)).
+- Support for Python 3.10; charis now needs Python 3.11 to 3.14 ([#64](https://github.com/PrincetonUniversity/charis-dep/pull/64)).
 - The `loadbadpixmap` option of `Image.load`; it read `calibrations/mask.fits` from the working directory, a file charis has not provided since 2021.
 
 ---

@@ -2,7 +2,7 @@
 
 charis is published on PyPI as [`charis`](https://pypi.org/p/charis) by
 [`.github/workflows/publish.yml`](.github/workflows/publish.yml).
-The workflow builds an sdist and wheels for CPython 3.11–3.13 on Linux (x86_64, aarch64) and
+The workflow builds an sdist and wheels for CPython 3.11–3.14 on Linux (x86_64, aarch64) and
 macOS (arm64, x86_64) with [cibuildwheel](https://cibuildwheel.pypa.io) (settings in
 `pyproject.toml`), and runs the test suite against every wheel.
 It uploads with Trusted Publishing: PyPI trusts that workflow file together with a GitHub
