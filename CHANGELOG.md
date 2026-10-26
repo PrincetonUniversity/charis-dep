@@ -21,6 +21,7 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 - The version now comes from the git tags, so development installs report it as, for example, `2.2.1.dev3+g1a2b3c4` in `charis.__version__` and in the cube headers ([#30](https://github.com/PrincetonUniversity/charis-dep/issues/30)).
 - The calibration data is no longer part of the package: charis downloads it per instrument from Zenodo on first use (or ahead of time with `charis-calibrations fetch`) and records its version and DOI as `CALVERS` and `CALDOI` in the cube header ([#59](https://github.com/PrincetonUniversity/charis-dep/pull/59)).
   If you edited files inside the installed `charis/calibrations`, copy them before upgrading and pass `static_calibdir`.
+- charis now builds with Cython 3.1 or newer; the extracted cubes are unchanged ([#65](https://github.com/PrincetonUniversity/charis-dep/issues/65)).
 
 ### Fixed
 

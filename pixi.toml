@@ -20,7 +20,7 @@ bokeh = "*"
 bottleneck = "*"
 psutil = "*"
 # Build dependencies for Cython extensions
-cython = ">=2.0.0,<3.1"
+cython = ">=3.1,<4"
 setuptools = ">=77"
 setuptools-scm = ">=8.0"
 jupyterlab = ">=4.5.6,<5"
