@@ -80,12 +80,15 @@ def _isolated_libomps(extension):
 
 
 def _assert_from_this_environment(libomps, where):
-    prefix = Path(sys.prefix).resolve()
+    # setup.py also searches sys.base_prefix: a venv made from a conda or pixi Python links
+    # the base environment's libomp.
+    prefixes = {Path(sys.prefix).resolve(), Path(sys.base_prefix).resolve()}
     for path in libomps:
         lib = Path(path).resolve()
         in_homebrew = ".pixi" not in lib.parts and any(lib.is_relative_to(root) for root in HOMEBREW_PREFIXES)
-        assert lib.is_relative_to(prefix) or in_homebrew, (
-            f"{where}: libomp {lib} is neither under sys.prefix ({prefix}) nor in a Homebrew prefix"
+        assert any(lib.is_relative_to(prefix) for prefix in prefixes) or in_homebrew, (
+            f"{where}: libomp {lib} is neither under sys.prefix or sys.base_prefix ({sorted(map(str, prefixes))}) "
+            "nor in a Homebrew prefix"
         )
 
 

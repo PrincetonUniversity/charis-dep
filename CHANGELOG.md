@@ -10,6 +10,11 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ## [Unreleased]
 
+### Added
+
+- `pip install charis` installs charis from PyPI, as a prebuilt wheel with OpenMP for Linux (x86_64, aarch64) and macOS 14 or newer (Apple Silicon, Intel) ([#64](https://github.com/PrincetonUniversity/charis-dep/pull/64)).
+- Support for Python 3.14 ([#65](https://github.com/PrincetonUniversity/charis-dep/issues/65)).
+
 ### Changed
 
 - The package moved to a `src/` layout, and the `buildcal`, `extractcube` and `hexplot` commands now live in `charis.scripts`;
@@ -17,6 +22,7 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 - The version now comes from the git tags, so development installs report it as, for example, `2.2.1.dev3+g1a2b3c4` in `charis.__version__` and in the cube headers ([#30](https://github.com/PrincetonUniversity/charis-dep/issues/30)).
 - The calibration data is no longer part of the package: charis downloads it per instrument from Zenodo on first use (or ahead of time with `charis-calibrations fetch`) and records its version and DOI as `CALVERS` and `CALDOI` in the cube header ([#59](https://github.com/PrincetonUniversity/charis-dep/pull/59)).
   If you edited files inside the installed `charis/calibrations`, copy them before upgrading and pass `static_calibdir`.
+- charis now builds with Cython 3.1 or newer; the extracted cubes are unchanged ([#65](https://github.com/PrincetonUniversity/charis-dep/issues/65)).
 
 ### Fixed
 
@@ -26,6 +32,7 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ### Removed
 
+- Support for Python 3.10; charis now needs Python 3.11 to 3.14 ([#64](https://github.com/PrincetonUniversity/charis-dep/pull/64)).
 - The `loadbadpixmap` option of `Image.load`; it read `calibrations/mask.fits` from the working directory, a file charis has not provided since 2021.
 
 ---

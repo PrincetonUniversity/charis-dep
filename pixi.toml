@@ -8,7 +8,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64"]
 # Core dependencies (mirrors [project.dependencies] in pyproject.toml)
 # ──────────────────────────────────────────────
 [dependencies]
-python = ">=3.10,<3.14"
+python = ">=3.11,<3.14"
 numpy = ">=2,<3"
 scipy = "*"
 astropy = "*"
@@ -20,7 +20,7 @@ bokeh = "*"
 bottleneck = "*"
 psutil = "*"
 # Build dependencies for Cython extensions
-cython = ">=2.0.0,<3.1"
+cython = ">=3.1,<4"
 setuptools = ">=77"
 setuptools-scm = ">=8.0"
 jupyterlab = ">=4.5.6,<5"
