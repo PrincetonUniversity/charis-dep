@@ -149,7 +149,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # 3 Python versions on 4 platforms plus the sdist, all with the computed version, and no
+      # 4 Python versions on 4 platforms plus the sdist, all with the computed version, and no
       # direct URL dependency (PyPI refuses those).
       - name: Check the set of files
         env:
