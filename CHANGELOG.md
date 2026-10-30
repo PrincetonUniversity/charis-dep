@@ -8,7 +8,10 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ---
 
-## [Unreleased]
+## [2.3.0] — 2026-10-30
+
+Calibration data downloaded from Zenodo instead of shipped in the package, wheels for PyPI, Python 3.11 to 3.14, and a corrected SPHERE noise model.
+**Re-extract SPHERE cubes before combining them with 2.2.0 products:** the inverse variance counts the background noise once and uses a DIT-dependent read noise.
 
 ### Added
 
