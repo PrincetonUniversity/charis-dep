@@ -3,17 +3,18 @@ requires = [
     "setuptools>=77",
     "setuptools_scm>=8.0",
     "wheel",
-    "cython>=2.0.0,<3.1"
+    "cython>=3.1,<4"
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "charis"
-version = "2.2.0"
+dynamic = ["version"]
 description = "Data Reduction Pipeline for the CHARIS and SPHERE Integral-Field Spectrographs"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11,<3.15"
 license = "BSD-2-Clause-Views"
+license-files = ["LICENSE"]
 authors = [
     {name = "Timothy Brandt, Maxime Rizzo, Matthias Samland"},
     {email = "timothy.d.brandt@gmail.com"}
@@ -32,6 +33,10 @@ dependencies = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research"
 ]
@@ -40,28 +45,49 @@ classifiers = [
 test = ["pytest", "ruff"]
 
 [project.scripts]
-buildcal = "scripts.buildcal:main"
-extractcube = "scripts.extractcube:main"
-hexplot     = "scripts.hexplot:main"
+buildcal = "charis.scripts.buildcal:main"
+extractcube = "charis.scripts.extractcube:main"
+hexplot     = "charis.scripts.hexplot:main"
+charis-calibrations = "charis.scripts.calibrations:main"
+
+[tool.setuptools_scm]
+# Tags have no "v" prefix (2.1.0, 2.2.0); _version.py is gitignored.
+version_file = "src/charis/_version.py"
 
 [tool.setuptools]
 include-package-data = true
-license-files = ["LICENSE*", "COPYING*", "NOTICE*"]
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 exclude = ["tests"]
 
 [tool.setuptools.package-data]
-# include all .fits, .json, .dat recursively under calibrations/
-"charis" = ["calibrations/**/*.fits", "calibrations/**/*.json", "calibrations/**/*.dat"]
+# The calibration data itself is downloaded from Zenodo on first use (charis.calibration_data).
+"charis" = ["calibration_registry.json"]
+
+[tool.cibuildwheel]
+# Wheels for every supported CPython on 64-bit glibc Linux and macOS (see publish.yml).
+build = "cp311-* cp312-* cp313-* cp314-*"
+skip = "*-musllinux_*"
+archs = ["auto64"]
+build-frontend = "build"
+# A wheel without OpenMP would run every extension single-threaded, so it must fail instead.
+environment = { CHARIS_REQUIRE_OPENMP = "1" }
+# The tests read the checkout's calibration tree, so the wheel builds never contact Zenodo.
+before-test = "python {package}/.github/scripts/link_calibrations.py {package}/calibrations /tmp/charis-calibrations"
+test-environment = { CHARIS_CALIBRATION_DIR = "/tmp/charis-calibrations" }
+test-requires = ["pytest"]
+test-command = [
+    "python -c \"import charis; assert charis.openmp_enabled(), 'built without OpenMP'\"",
+    "pytest --pyargs charis -q",
+]
 
 [tool.pytest.ini_options]
-testpaths = ["charis"]
+testpaths = ["src/charis"]
 
 [tool.ruff]
 line-length = 127
-target-version = "py310"
+target-version = "py311"
 exclude = ["docs", "*_version.py"]
 
 [tool.ruff.lint]

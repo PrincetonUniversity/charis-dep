@@ -1,15 +1,16 @@
 include README.md
 
-# Include all .pyx and .c files used by Cython
-recursive-include charis *.pyx
-recursive-include charis *.c
+# Include the Cython sources
+recursive-include src/charis *.pyx
 
-# Include calibration data files
-recursive-include charis/calibrations *.fits
-recursive-include charis/calibrations *.json
-recursive-include charis/calibrations *.dat
+# The calibration data is tracked in git but downloaded from Zenodo at run time, and
+# setuptools_scm would otherwise put the whole tree into the sdist.
+prune calibrations
 
-# Include any deeper nested calibration data
-recursive-include charis/calibrations **/*.fits
-recursive-include charis/calibrations **/*.json
-recursive-include charis/calibrations **/*.dat
+# Not needed to build or use the package, and most of the sdist's size: example notebooks
+# with outputs and the old Sphinx documentation, including its built HTML. The CI files
+# and the docs build script go with them.
+prune notebooks
+prune documentation
+prune .github
+exclude autodoc.sh

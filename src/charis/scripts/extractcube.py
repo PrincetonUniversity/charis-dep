@@ -1,0 +1,229 @@
+#!/usr/bin/env python
+
+#########################################################################
+# A provisional routine for actually producing and returning data cubes.
+#########################################################################
+
+import configparser
+import glob
+import multiprocessing
+import sys
+from builtins import range
+
+from astropy.io import fits
+from tqdm import tqdm
+
+from charis import extractcube, instruments
+
+
+def main() -> None:
+    if len(sys.argv) < 3:
+        errstring = "Must call extractcube.py with at least two arguments:\n"
+        errstring += "1: string(s) parsed by glob matching files to be turned into data cubes\n"
+        errstring += "2: a .ini configuration file processed by ConfigParser"
+        print(errstring)
+        exit()
+
+    filenames = []
+    for i in range(1, len(sys.argv) - 1):
+        filenames += glob.glob(sys.argv[i])
+
+    if len(filenames) == 0:
+        raise ValueError("No matching data files found by extractcube.")
+
+    Config = configparser.ConfigParser()
+    Config.read(sys.argv[len(sys.argv) - 1])
+
+    read_0 = Config.getint('Ramp', 'read_0')
+    try:
+        read_1 = Config.getint('Ramp', 'read_f')
+    except Exception:
+        read_1 = None
+    read_idx = [read_0, read_1]
+    try:
+        gain = Config.getfloat('Ramp', 'gain')
+    except Exception:
+        gain = None
+    try:
+        noisefac = Config.getfloat('Ramp', 'noisefac')
+    except Exception:
+        noisefac = 0
+    try:
+        nonlinear_threshold = Config.get('Extract', 'nonlinear_threshold').strip()
+        if nonlinear_threshold.lower() in ('', 'none'):
+            nonlinear_threshold = None
+        else:
+            nonlinear_threshold = float(nonlinear_threshold)
+    except Exception:
+        nonlinear_threshold = None
+    try:
+        saveramp = Config.getboolean('Ramp', 'saveramp')
+    except Exception:
+        saveramp = True
+    try:
+        bgsub = Config.getboolean('Calib', 'bgsub')
+    except Exception:
+        bgsub = True
+    try:
+        mask = Config.getboolean('Calib', 'mask')
+    except Exception:
+        mask = True
+    # try:
+    #     fixbadpixels = Config.getboolean('Calib', 'fixbadpixels')
+    # except:
+    #     fixbadpixels = False
+    try:
+        flatfield = Config.getboolean('Calib', 'flatfield')
+    except Exception:
+        flatfield = True
+    try:
+        fitshift = Config.getboolean('Calib', 'fitshift')
+    except Exception:
+        fitshift = True
+
+    calibdir = Config.get('Calib', 'calibdir')
+    R = Config.getint('Extract', 'R')
+    method = Config.get('Extract', 'method')
+    try:
+        refine = Config.getboolean('Extract', 'refine')
+    except Exception:
+        refine = True
+    try:
+        crosstalk_scale = Config.getfloat('Extract', 'crosstalkscale')
+    except Exception:
+        crosstalk_scale = 1.0
+    try:
+        dc_xtalk_correction = Config.getboolean('Extract', 'dcxtalkcorrection')
+    except Exception:
+        dc_xtalk_correction = False
+    try:
+        linear_wavelength = Config.getboolean('Extract', 'linearwavelength')
+    except Exception:
+        linear_wavelength = False
+    try:
+        suppressrn = Config.getboolean('Extract', 'suppressrn')
+    except Exception:
+        suppressrn = True
+    try:
+        minpct = Config.getint('Extract', 'minpct')
+        minpct = max(minpct, 0)
+        # Don't allow more than 90% of the pixels to be used in estimating the read noise.
+        minpct = min(minpct, 90)
+    except Exception:
+        minpct = 60
+    try:
+        fitbkgnd = Config.getboolean('Extract', 'fitbkgnd')
+    except Exception:
+        fitbkgnd = True
+    try:
+        saveresid = Config.getboolean('Extract', 'saveresid')
+    except Exception:
+        saveresid = False
+
+    ################################################################
+    # Maximum threads must be between 1 and cpu_count, inclusive
+    ################################################################
+
+    try:
+        maxcpus = Config.getint('Extract', 'maxcpus')
+        if maxcpus <= 0:
+            maxcpus = multiprocessing.cpu_count() + maxcpus
+        maxcpus = min(maxcpus, multiprocessing.cpu_count())
+        maxcpus = max(maxcpus, 1)
+    except Exception:
+        maxcpus = multiprocessing.cpu_count()
+
+    try:
+        smoothandmask = Config.getboolean('Extract', 'smoothandmask')
+    except Exception:
+        smoothandmask = True
+
+    try:
+        preprocessing_only = Config.getboolean('Extract', 'preprocessing_only')
+    except Exception:
+        preprocessing_only = False
+
+    try:
+        individual_dits = Config.getboolean('Extract', 'individual_dits')
+    except Exception:
+        individual_dits = False
+
+    try:
+        verbose = Config.getboolean('Extract', 'verbose')
+    except Exception:
+        verbose = False
+
+    # disable=None turns the bar off when stderr is not a terminal (batch logs).
+    for filename in tqdm(filenames, desc="Extracting cubes", unit="file", disable=None):
+        header = fits.getheader(filename)
+        instrument, _, _ = instruments.instrument_from_data(
+            header, calibration=False, interactive=False, verbose=False)
+        name = instrument.instrument_name
+
+        if name == 'SPHERE' and individual_dits:
+            ndit = header['NAXIS3']
+            for dit in range(ndit):
+                _ = extractcube.getcube(
+                    dit=dit,
+                    filename=filename,
+                    read_idx=read_idx,
+                    bgsub=bgsub,
+                    bgpath=None,
+                    mask=mask,
+                    gain=gain,
+                    noisefac=noisefac,
+                    nonlinear_threshold=nonlinear_threshold,
+                    saveramp=saveramp,
+                    individual_dits=individual_dits,
+                    refine=refine,
+                    crosstalk_scale=crosstalk_scale,
+                    dc_xtalk_correction=dc_xtalk_correction,
+                    linear_wavelength=linear_wavelength,
+                    maxcpus=maxcpus,
+                    calibdir=calibdir,
+                    R=R,
+                    method=method,
+                    smoothandmask=smoothandmask,
+                    flatfield=flatfield,
+                    fitshift=fitshift,
+                    suppressrn=suppressrn,
+                    minpct=minpct,
+                    fitbkgnd=fitbkgnd,
+                    saveresid=saveresid,
+                    preprocessing_only=preprocessing_only,
+                    static_calibdir=None,
+                    verbose=verbose)
+
+        else:
+            _ = extractcube.getcube(
+                filename=filename,
+                read_idx=read_idx,
+                bgsub=bgsub,
+                bgpath=None,
+                mask=mask,
+                gain=gain,
+                noisefac=noisefac,
+                nonlinear_threshold=nonlinear_threshold,
+                saveramp=saveramp,
+                individual_dits=individual_dits,
+                refine=refine,
+                crosstalk_scale=crosstalk_scale,
+                dc_xtalk_correction=dc_xtalk_correction,
+                linear_wavelength=linear_wavelength,
+                maxcpus=maxcpus,
+                calibdir=calibdir,
+                R=R,
+                method=method,
+                smoothandmask=smoothandmask,
+                flatfield=flatfield,
+                fitshift=fitshift,
+                suppressrn=suppressrn,
+                minpct=minpct,
+                fitbkgnd=fitbkgnd,
+                saveresid=saveresid,
+                preprocessing_only=preprocessing_only,
+                static_calibdir=None,
+                verbose=verbose)
+
+if __name__ == "__main__":
+    main()

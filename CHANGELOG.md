@@ -8,6 +8,38 @@ rationale is too long for a changelog entry; the commit messages carry the measu
 
 ---
 
+## [2.3.0] — 2026-10-30
+
+Calibration data downloaded from Zenodo instead of shipped in the package, wheels for PyPI, Python 3.11 to 3.14, and a corrected SPHERE noise model.
+**Re-extract SPHERE cubes before combining them with 2.2.0 products:** the inverse variance counts the background noise once and uses a DIT-dependent read noise.
+
+### Added
+
+- `pip install charis` installs charis from PyPI, as a prebuilt wheel with OpenMP for Linux (x86_64, aarch64) and macOS 14 or newer (Apple Silicon, Intel) ([#64](https://github.com/PrincetonUniversity/charis-dep/pull/64)).
+- Support for Python 3.14 ([#65](https://github.com/PrincetonUniversity/charis-dep/issues/65)).
+
+### Changed
+
+- The package moved to a `src/` layout, and the `buildcal`, `extractcube` and `hexplot` commands now live in `charis.scripts`;
+  `import charis` is unchanged, and an install no longer adds a top-level `scripts` package ([#31](https://github.com/PrincetonUniversity/charis-dep/issues/31)).
+- The version now comes from the git tags, so development installs report it as, for example, `2.2.1.dev3+g1a2b3c4` in `charis.__version__` and in the cube headers ([#30](https://github.com/PrincetonUniversity/charis-dep/issues/30)).
+- The calibration data is no longer part of the package: charis downloads it per instrument from Zenodo on first use (or ahead of time with `charis-calibrations fetch`) and records its version and DOI as `CALVERS` and `CALDOI` in the cube header ([#59](https://github.com/PrincetonUniversity/charis-dep/pull/59)).
+  If you edited files inside the installed `charis/calibrations`, copy them before upgrading and pass `static_calibdir`.
+- charis now builds with Cython 3.1 or newer; the extracted cubes are unchanged ([#65](https://github.com/PrincetonUniversity/charis-dep/issues/65)).
+
+### Fixed
+
+- The SPHERE inverse variance no longer counts the background photon noise twice, and its read noise now depends on the DIT (8.6 e⁻ at 1.65 s to 7.3 e⁻ at 22 s, instead of 6 e⁻) ([#62](https://github.com/PrincetonUniversity/charis-dep/issues/62)).
+  Re-extract SPHERE cubes: `ivar` changes, and the flux changes slightly through the `ivar`-weighted fit.
+- `instrument_from_data(..., interactive=True)` now uses `static_calibdir` for CHARIS files whose mode is entered by hand, instead of the default calibration data.
+
+### Removed
+
+- Support for Python 3.10; charis now needs Python 3.11 to 3.14 ([#64](https://github.com/PrincetonUniversity/charis-dep/pull/64)).
+- The `loadbadpixmap` option of `Image.load`; it read `calibrations/mask.fits` from the working directory, a file charis has not provided since 2021.
+
+---
+
 ## [2.2.0] — 2026-10-24
 
 Corrections to the SPHERE/IFS inverse variance and cube-header angles, and an OpenMP build that is parallel on Linux too.

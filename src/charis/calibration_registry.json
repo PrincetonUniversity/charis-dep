@@ -1,0 +1,16 @@
+{
+  "SPHERE": {
+    "version": "2026.10.0",
+    "record_id": 23640607,
+    "doi": "10.5281/zenodo.23640607",
+    "archive": "charis-calibrations-SPHERE-2026.10.0.tar.gz",
+    "md5": "c97d1d6b506ef88c865da453bcad4c04"
+  },
+  "CHARIS": {
+    "version": "2026.10.0",
+    "record_id": 23640685,
+    "doi": "10.5281/zenodo.23640685",
+    "archive": "charis-calibrations-CHARIS-2026.10.0.tar.gz",
+    "md5": "24b1f85e55a6831acdfeecce2e64a51d"
+  }
+}
